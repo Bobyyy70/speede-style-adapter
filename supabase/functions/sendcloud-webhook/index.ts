@@ -44,9 +44,44 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     console.log('📦 Webhook SendCloud reçu');
+    console.log('Method:', req.method);
+    console.log('Content-Type:', req.headers.get('content-type'));
 
-    const sendcloudData: SendCloudOrder = await req.json();
-    console.log('Données SendCloud:', JSON.stringify(sendcloudData, null, 2));
+    // Lire le body brut d'abord
+    const rawBody = await req.text();
+    console.log('Raw body:', rawBody);
+    console.log('Body length:', rawBody.length);
+
+    // Vérifier si le body est vide
+    if (!rawBody || rawBody.trim() === '') {
+      console.error('❌ Body vide reçu');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Body vide - veuillez envoyer des données JSON',
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    // Parser le JSON
+    let sendcloudData: SendCloudOrder;
+    try {
+      sendcloudData = JSON.parse(rawBody);
+    } catch (parseError) {
+      console.error('❌ Erreur parsing JSON:', parseError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'JSON invalide',
+          details: parseError instanceof Error ? parseError.message : 'Unknown parsing error',
+          receivedBody: rawBody.substring(0, 500) // Premiers 500 caractères pour debug
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    console.log('Données SendCloud parsées:', JSON.stringify(sendcloudData, null, 2));
 
     // 1. Vérifier si la commande existe déjà
     const { data: existingCommande } = await supabase
