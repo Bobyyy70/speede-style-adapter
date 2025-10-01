@@ -17,6 +17,8 @@ import Transporteurs from "./pages/Transporteurs";
 import Facturation from "./pages/Facturation";
 import Retours from "./pages/Retours";
 import Parametres from "./pages/Parametres";
+import Preparation from "./pages/Preparation";
+import Connecteurs from "./pages/Connecteurs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,7 +41,7 @@ const App = () => (
               }
             />
             <Route
-              path="/reception"
+              path="/stock/reception"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur']}>
                   <Reception />
@@ -51,14 +53,6 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur']}>
                   <Mouvements />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/commandes"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'operateur']}>
-                  <Commandes />
                 </ProtectedRoute>
               }
             />
@@ -87,7 +81,23 @@ const App = () => (
               }
             />
             <Route
-              path="/transporteurs"
+              path="/commandes/preparation"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur']}>
+                  <Preparation />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/commandes/retours"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <Retours />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/integrations/transporteurs"
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Transporteurs />
@@ -95,18 +105,18 @@ const App = () => (
               }
             />
             <Route
-              path="/facturation"
+              path="/integrations/connecteurs"
               element={
-                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
-                  <Facturation />
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Connecteurs />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/retours"
+              path="/administratif/facturation"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
-                  <Retours />
+                  <Facturation />
                 </ProtectedRoute>
               }
             />

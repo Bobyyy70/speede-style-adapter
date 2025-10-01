@@ -23,6 +23,10 @@ import {
   PackageCheck,
   TruckIcon,
   FileText,
+  Plug,
+  FolderTree,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -54,7 +58,7 @@ type NavigationItem = {
   children?: Array<{ name: string; href: string; icon: any }>;
 };
 
-// Navigation V2 - Structure organisée par métier avec onglets et sous-sections
+// Navigation V3 - Structure avec menus déroulants hiérarchiques
 const getNavigationForRole = (role: string | null): NavigationItem[] => {
   const baseNavigation: NavigationItem[] = [
     { name: "Tableau de Bord", href: "/", icon: LayoutDashboard },
@@ -71,13 +75,32 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
           { name: "Emplacements", href: "/stock/emplacements", icon: MapPin },
           { name: "Réappro", href: "/stock/reappro", icon: RefreshCw },
           { name: "Mouvements", href: "/stock/mouvements", icon: ArrowRightLeft },
+          { name: "Réception", href: "/stock/reception", icon: PackageCheck },
         ]
       },
-      { name: "Réception", href: "/reception", icon: PackageCheck },
-      { name: "Commandes", href: "/commandes", icon: ClipboardList },
-      { name: "Transporteurs", href: "/transporteurs", icon: TruckIcon },
-      { name: "Facturation", href: "/facturation", icon: FileText },
-      { name: "Retours", href: "/retours", icon: Undo2 },
+      { 
+        name: "Commandes", 
+        icon: ClipboardList,
+        children: [
+          { name: "Préparation", href: "/commandes/preparation", icon: ClipboardList },
+          { name: "Retours", href: "/commandes/retours", icon: Undo2 },
+        ]
+      },
+      { 
+        name: "Intégrations", 
+        icon: Plug,
+        children: [
+          { name: "Transporteurs", href: "/integrations/transporteurs", icon: TruckIcon },
+          { name: "Connecteurs", href: "/integrations/connecteurs", icon: Plug },
+        ]
+      },
+      { 
+        name: "Administratif", 
+        icon: FolderTree,
+        children: [
+          { name: "Facturation", href: "/administratif/facturation", icon: FileText },
+        ]
+      },
       { name: "Paramètres", href: "/parametres", icon: Settings },
     ];
   }
@@ -85,7 +108,6 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
   if (role === "operateur") {
     return [
       ...baseNavigation,
-      { name: "Réception", href: "/reception", icon: PackageCheck },
       { 
         name: "Stock", 
         icon: Package,
@@ -93,9 +115,16 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
           { name: "Produits", href: "/stock/produits", icon: Package },
           { name: "Emplacements", href: "/stock/emplacements", icon: MapPin },
           { name: "Mouvements", href: "/stock/mouvements", icon: ArrowRightLeft },
+          { name: "Réception", href: "/stock/reception", icon: PackageCheck },
         ]
       },
-      { name: "Commandes", href: "/commandes", icon: ClipboardList },
+      { 
+        name: "Commandes", 
+        icon: ClipboardList,
+        children: [
+          { name: "Préparation", href: "/commandes/preparation", icon: ClipboardList },
+        ]
+      },
     ];
   }
 
@@ -109,8 +138,20 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
           { name: "Réappro", href: "/stock/reappro", icon: RefreshCw },
         ]
       },
-      { name: "Retours", href: "/retours", icon: Undo2 },
-      { name: "Facturation", href: "/facturation", icon: FileText },
+      { 
+        name: "Commandes", 
+        icon: ClipboardList,
+        children: [
+          { name: "Retours", href: "/commandes/retours", icon: Undo2 },
+        ]
+      },
+      { 
+        name: "Administratif", 
+        icon: FolderTree,
+        children: [
+          { name: "Facturation", href: "/administratif/facturation", icon: FileText },
+        ]
+      },
       { name: "Paramètres", href: "/parametres", icon: Settings },
     ];
   }
@@ -130,6 +171,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, userRole, signOut } = useAuth();
@@ -137,6 +179,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { results: searchResults, isLoading: searchLoading } = useGlobalSearch(searchQuery);
   
   const navigation = getNavigationForRole(userRole);
+
+  const toggleMenu = (menuName: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(menuName) 
+        ? prev.filter(name => name !== menuName)
+        : [...prev, menuName]
+    );
+  };
+
+  const isMenuActive = (item: NavigationItem) => {
+    if (item.href && location.pathname === item.href) return true;
+    if (item.children) {
+      return item.children.some(child => location.pathname === child.href);
+    }
+    return false;
+  };
 
   const getRoleBadgeVariant = (role: string | null) => {
     switch (role) {
@@ -197,53 +255,75 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         <nav className="flex-1 space-y-1 p-4">
-          {navigation.map((item) => (
-            <div key={item.name}>
-              {item.children ? (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground">
+          {navigation.map((item) => {
+            const isActive = isMenuActive(item);
+            const isExpanded = expandedMenus.includes(item.name);
+            
+            return (
+              <div key={item.name}>
+                {item.children ? (
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => toggleMenu(item.name)}
+                      className={cn(
+                        "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      )}
+                    >
+                      <item.icon className="w-5 h-5 flex-shrink-0" />
+                      {sidebarOpen && (
+                        <>
+                          <span className="flex-1 text-left">{item.name}</span>
+                          {isExpanded ? (
+                            <ChevronDown className="w-4 h-4" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4" />
+                          )}
+                        </>
+                      )}
+                    </button>
+                    {sidebarOpen && isExpanded && (
+                      <div className="ml-6 space-y-1 mt-1">
+                        {item.children.map((child) => {
+                          const isChildActive = location.pathname === child.href;
+                          return (
+                            <Link
+                              key={child.name}
+                              to={child.href}
+                              className={cn(
+                                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                                isChildActive
+                                  ? "bg-primary text-primary-foreground shadow-md"
+                                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                              )}
+                            >
+                              <child.icon className="w-4 h-4 flex-shrink-0" />
+                              <span>{child.name}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Link
+                    to={item.href!}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      location.pathname === item.href
+                        ? "bg-primary text-primary-foreground shadow-md"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    )}
+                  >
                     <item.icon className="w-5 h-5 flex-shrink-0" />
                     {sidebarOpen && <span>{item.name}</span>}
-                  </div>
-                  {sidebarOpen && (
-                    <div className="ml-6 space-y-1">
-                      {item.children.map((child) => {
-                        const isActive = location.pathname === child.href;
-                        return (
-                          <Link
-                            key={child.name}
-                            to={child.href}
-                            className={cn(
-                              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                              isActive
-                                ? "bg-primary text-primary-foreground shadow-md"
-                                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                            )}
-                          >
-                            <child.icon className="w-4 h-4 flex-shrink-0" />
-                            <span>{child.name}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <Link
-                  to={item.href!}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    location.pathname === item.href
-                      ? "bg-primary text-primary-foreground shadow-md"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  )}
-                >
-                  <item.icon className="w-5 h-5 flex-shrink-0" />
-                  {sidebarOpen && <span>{item.name}</span>}
-                </Link>
-              )}
-            </div>
-          ))}
+                  </Link>
+                )}
+              </div>
+            );
+          })}
         </nav>
       </aside>
 

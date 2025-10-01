@@ -7,16 +7,20 @@ export interface Breadcrumb {
 
 const routeLabels: Record<string, string> = {
   "/": "Tableau de Bord",
-  "/reception": "Réception",
   "/stock": "Stock",
+  "/stock/reception": "Réception",
   "/stock/mouvements": "Mouvements",
   "/stock/reappro": "Réapprovisionnement",
   "/stock/produits": "Produits",
   "/stock/emplacements": "Emplacements",
   "/commandes": "Commandes",
-  "/transporteurs": "Transporteurs",
-  "/facturation": "Facturation",
-  "/retours": "Retours",
+  "/commandes/preparation": "Préparation",
+  "/commandes/retours": "Retours",
+  "/integrations": "Intégrations",
+  "/integrations/transporteurs": "Transporteurs",
+  "/integrations/connecteurs": "Connecteurs",
+  "/administratif": "Administratif",
+  "/administratif/facturation": "Facturation",
   "/parametres": "Paramètres",
 };
 
