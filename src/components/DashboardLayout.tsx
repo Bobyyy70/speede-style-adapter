@@ -10,22 +10,67 @@ import {
   Menu,
   X,
   Bell,
-  Search
+  Search,
+  LogOut,
+  BarChart3,
+  ShoppingCart,
+  FileText
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
 
-const navigation = [
-  { name: "Tableau de Bord", href: "/", icon: LayoutDashboard },
-  { name: "Clients", href: "/clients", icon: Users },
-  { name: "Produits", href: "/produits", icon: Package },
-  { name: "Services", href: "/services", icon: ClipboardList },
-  { name: "Stock", href: "/stock", icon: Warehouse },
-  { name: "Ordres", href: "/ordres", icon: TruckIcon },
-  { name: "Paramètres", href: "/parametres", icon: Settings },
-];
+// Navigation adaptée aux rôles
+const getNavigationForRole = (role: string | null) => {
+  const adminNav = [
+    { name: 'Tableau de Bord', href: '/', icon: LayoutDashboard },
+    { name: 'Clients', href: '/clients', icon: Users },
+    { name: 'Produits', href: '/produits', icon: Package },
+    { name: 'Stock', href: '/stock', icon: Warehouse },
+    { name: 'Ordres', href: '/ordres', icon: TruckIcon },
+    { name: 'Rapports', href: '/rapports', icon: FileText },
+    { name: 'Paramètres', href: '/parametres', icon: Settings },
+  ];
+
+  const operateurNav = [
+    { name: 'Tableau de Bord', href: '/', icon: LayoutDashboard },
+    { name: 'Réception', href: '/reception', icon: ClipboardList },
+    { name: 'Picking', href: '/picking', icon: Package },
+    { name: 'Mouvements', href: '/mouvements', icon: TruckIcon },
+    { name: 'Stock', href: '/stock', icon: Warehouse },
+  ];
+
+  const gestionnaireNav = [
+    { name: 'Tableau de Bord', href: '/', icon: LayoutDashboard },
+    { name: 'Rapports', href: '/rapports', icon: BarChart3 },
+    { name: 'Réappro', href: '/reappro', icon: Package },
+    { name: 'Approbations', href: '/approbations', icon: FileText },
+    { name: 'Retours', href: '/retours', icon: TruckIcon },
+  ];
+
+  const clientNav = [
+    { name: 'Tableau de Bord', href: '/', icon: LayoutDashboard },
+    { name: 'Mes Produits', href: '/mes-produits', icon: Package },
+    { name: 'Mes Commandes', href: '/mes-commandes', icon: ShoppingCart },
+    { name: 'Mes Rapports', href: '/mes-rapports', icon: FileText },
+  ];
+
+  switch (role) {
+    case 'admin':
+      return adminNav;
+    case 'operateur':
+      return operateurNav;
+    case 'gestionnaire':
+      return gestionnaireNav;
+    case 'client':
+      return clientNav;
+    default:
+      return adminNav;
+  }
+};
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -34,6 +79,39 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
+  const { user, userRole, signOut } = useAuth();
+  
+  const navigation = getNavigationForRole(userRole);
+
+  const getRoleBadgeVariant = (role: string | null) => {
+    switch (role) {
+      case 'admin':
+        return 'destructive' as const;
+      case 'gestionnaire':
+        return 'default' as const;
+      case 'operateur':
+        return 'secondary' as const;
+      case 'client':
+        return 'outline' as const;
+      default:
+        return 'outline' as const;
+    }
+  };
+
+  const getRoleLabel = (role: string | null) => {
+    switch (role) {
+      case 'admin':
+        return 'Administrateur';
+      case 'gestionnaire':
+        return 'Gestionnaire';
+      case 'operateur':
+        return 'Opérateur';
+      case 'client':
+        return 'Client';
+      default:
+        return 'Utilisateur';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -113,12 +191,25 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               
               <div className="flex items-center gap-3 ml-4 pl-4 border-l border-border">
                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-primary">AD</span>
+                  <span className="text-sm font-semibold text-primary">
+                    {user?.email?.substring(0, 2).toUpperCase()}
+                  </span>
                 </div>
                 <div className="text-sm">
-                  <div className="font-medium">Admin</div>
-                  <div className="text-muted-foreground text-xs">Gestionnaire</div>
+                  <div className="font-medium">{user?.email?.split('@')[0]}</div>
+                  <Badge variant={getRoleBadgeVariant(userRole)} className="text-xs mt-0.5">
+                    {getRoleLabel(userRole)}
+                  </Badge>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={signOut}
+                  className="h-8 w-8"
+                  title="Déconnexion"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
