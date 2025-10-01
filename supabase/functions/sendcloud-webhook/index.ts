@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
         valeur_totale: sendcloudData.total_order_value || 0,
         devise: sendcloudData.currency || 'EUR',
         statut_wms: 'En attente de réappro',
-        source: 'SendCloud',
+        source: 'sendcloud',
         transporteur: sendcloudData.shipment?.name || null,
       })
       .select()
