@@ -14,8 +14,9 @@ interface SendCloudProduct {
 }
 
 interface SendCloudOrder {
-  id: string;
-  order_number: string;
+  id: string | number;
+  order_number?: string;
+  order_id?: string;
   name: string;
   email?: string;
   telephone?: string;
@@ -83,31 +84,38 @@ Deno.serve(async (req) => {
 
     console.log('Données SendCloud parsées:', JSON.stringify(sendcloudData, null, 2));
 
-    // 1. Vérifier si la commande existe déjà
+    // Normaliser order_number (accepter order_number ou order_id)
+    const orderNumber = sendcloudData.order_number || sendcloudData.order_id || String(sendcloudData.id);
+    console.log('📋 Traitement commande:', orderNumber);
+
+    // 1. Vérifier si la commande existe déjà (par sendcloud_id ET par numero_commande)
     const { data: existingCommande } = await supabase
       .from('commande')
-      .select('id')
-      .eq('sendcloud_id', sendcloudData.id)
-      .single();
+      .select('id, numero_commande')
+      .or(`sendcloud_id.eq.${sendcloudData.id},numero_commande.eq.${orderNumber}`)
+      .maybeSingle();
 
     if (existingCommande) {
-      console.log('⚠️ Commande déjà existante:', sendcloudData.order_number);
+      console.log('⚠️ Commande déjà existante:', existingCommande.numero_commande);
       return new Response(
         JSON.stringify({ 
-          success: false, 
-          error: 'Commande déjà traitée',
-          commande_id: existingCommande.id 
+          success: true,
+          already_exists: true,
+          message: 'Commande déjà traitée',
+          commande_id: existingCommande.id,
+          numero_commande: existingCommande.numero_commande
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
     // 2. Insérer la commande
+    console.log('➕ Création nouvelle commande:', orderNumber);
     const { data: commande, error: commandeError } = await supabase
       .from('commande')
       .insert({
-        sendcloud_id: sendcloudData.id,
-        numero_commande: sendcloudData.order_number,
+        sendcloud_id: String(sendcloudData.id),
+        numero_commande: orderNumber,
         nom_client: sendcloudData.name,
         email_client: sendcloudData.email || null,
         telephone_client: sendcloudData.telephone || null,
@@ -127,11 +135,11 @@ Deno.serve(async (req) => {
       .single();
 
     if (commandeError) {
-      console.error('❌ Erreur insertion commande:', commandeError);
+      console.error('❌ Erreur insertion commande:', orderNumber, commandeError);
       throw commandeError;
     }
 
-    console.log('✅ Commande créée:', commande.id);
+    console.log('✅ Commande créée:', commande.id, '- N°:', commande.numero_commande);
 
     // 3. Traiter chaque produit et créer les lignes
     const lignesCreees = [];
@@ -252,7 +260,7 @@ Deno.serve(async (req) => {
       .update({ statut_wms: nouveauStatut })
       .eq('id', commande.id);
 
-    console.log('✅ Traitement terminé - Statut:', nouveauStatut);
+    console.log('✅ Traitement terminé -', commande.numero_commande, '- Statut:', nouveauStatut);
 
     return new Response(
       JSON.stringify({
