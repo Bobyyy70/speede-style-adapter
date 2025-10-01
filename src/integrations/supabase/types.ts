@@ -14,7 +14,155 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      commande: {
+        Row: {
+          adresse_ligne_1: string
+          adresse_ligne_2: string | null
+          adresse_nom: string
+          code_postal: string
+          date_creation: string
+          date_modification: string
+          devise: string | null
+          email_client: string | null
+          facturation_code_postal: string | null
+          facturation_ligne_1: string | null
+          facturation_ligne_2: string | null
+          facturation_nom: string | null
+          facturation_pays_code: string | null
+          facturation_ville: string | null
+          id: string
+          methode_expedition: string | null
+          nom_client: string
+          numero_commande: string
+          numero_facture_commerciale: string | null
+          pays_code: string
+          poids_total: number | null
+          remarques: string | null
+          sendcloud_id: string | null
+          source: string
+          statut_wms: string
+          telephone_client: string | null
+          transporteur: string | null
+          valeur_totale: number
+          ville: string
+        }
+        Insert: {
+          adresse_ligne_1: string
+          adresse_ligne_2?: string | null
+          adresse_nom: string
+          code_postal: string
+          date_creation?: string
+          date_modification?: string
+          devise?: string | null
+          email_client?: string | null
+          facturation_code_postal?: string | null
+          facturation_ligne_1?: string | null
+          facturation_ligne_2?: string | null
+          facturation_nom?: string | null
+          facturation_pays_code?: string | null
+          facturation_ville?: string | null
+          id?: string
+          methode_expedition?: string | null
+          nom_client: string
+          numero_commande: string
+          numero_facture_commerciale?: string | null
+          pays_code: string
+          poids_total?: number | null
+          remarques?: string | null
+          sendcloud_id?: string | null
+          source: string
+          statut_wms?: string
+          telephone_client?: string | null
+          transporteur?: string | null
+          valeur_totale?: number
+          ville: string
+        }
+        Update: {
+          adresse_ligne_1?: string
+          adresse_ligne_2?: string | null
+          adresse_nom?: string
+          code_postal?: string
+          date_creation?: string
+          date_modification?: string
+          devise?: string | null
+          email_client?: string | null
+          facturation_code_postal?: string | null
+          facturation_ligne_1?: string | null
+          facturation_ligne_2?: string | null
+          facturation_nom?: string | null
+          facturation_pays_code?: string | null
+          facturation_ville?: string | null
+          id?: string
+          methode_expedition?: string | null
+          nom_client?: string
+          numero_commande?: string
+          numero_facture_commerciale?: string | null
+          pays_code?: string
+          poids_total?: number | null
+          remarques?: string | null
+          sendcloud_id?: string | null
+          source?: string
+          statut_wms?: string
+          telephone_client?: string | null
+          transporteur?: string | null
+          valeur_totale?: number
+          ville?: string
+        }
+        Relationships: []
+      }
+      ligne_commande: {
+        Row: {
+          commande_id: string
+          date_creation: string
+          date_peremption: string | null
+          id: string
+          numero_lot: string | null
+          poids_unitaire: number | null
+          prix_unitaire: number | null
+          produit_nom: string
+          produit_reference: string
+          quantite_commandee: number
+          quantite_preparee: number | null
+          valeur_totale: number | null
+        }
+        Insert: {
+          commande_id: string
+          date_creation?: string
+          date_peremption?: string | null
+          id?: string
+          numero_lot?: string | null
+          poids_unitaire?: number | null
+          prix_unitaire?: number | null
+          produit_nom: string
+          produit_reference: string
+          quantite_commandee: number
+          quantite_preparee?: number | null
+          valeur_totale?: number | null
+        }
+        Update: {
+          commande_id?: string
+          date_creation?: string
+          date_peremption?: string | null
+          id?: string
+          numero_lot?: string | null
+          poids_unitaire?: number | null
+          prix_unitaire?: number | null
+          produit_nom?: string
+          produit_reference?: string
+          quantite_commandee?: number
+          quantite_preparee?: number | null
+          valeur_totale?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ligne_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
