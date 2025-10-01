@@ -1,74 +1,96 @@
 import { useState } from "react";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Package, 
-  ClipboardList, 
-  Warehouse, 
-  TruckIcon,
-  Settings,
-  Menu,
-  X,
-  Bell,
-  Search,
-  LogOut,
-  BarChart3,
-  ShoppingCart,
-  FileText
-} from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useBreadcrumbs } from "@/hooks/useBreadcrumbs";
+import { useGlobalSearch } from "@/hooks/useGlobalSearch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/useAuth";
+import {
+  LayoutDashboard,
+  Package,
+  Settings,
+  LogOut,
+  Search,
+  Menu,
+  X,
+  Bell,
+  ArrowRightLeft,
+  ClipboardList,
+  RefreshCw,
+  MapPin,
+  RotateCcw,
+} from "lucide-react";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
-// Navigation adaptée aux rôles
+// Navigation V1 - Structure unifiée adaptée aux rôles
 const getNavigationForRole = (role: string | null) => {
   const adminNav = [
-    { name: 'Tableau de Bord', href: '/', icon: LayoutDashboard },
-    { name: 'Clients', href: '/clients', icon: Users },
-    { name: 'Produits', href: '/produits', icon: Package },
-    { name: 'Stock', href: '/stock', icon: Warehouse },
-    { name: 'Ordres', href: '/ordres', icon: TruckIcon },
-    { name: 'Rapports', href: '/rapports', icon: FileText },
-    { name: 'Paramètres', href: '/parametres', icon: Settings },
+    { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Réception", href: "/reception", icon: Package },
+    { name: "Mouvements", href: "/mouvements", icon: ArrowRightLeft },
+    { name: "Picking", href: "/picking", icon: ClipboardList },
+    { name: "Réappro", href: "/reappro", icon: RefreshCw },
+    { name: "Produits", href: "/produits", icon: Package },
+    { name: "Emplacements", href: "/emplacements", icon: MapPin },
+    { name: "Retours", href: "/retours", icon: RotateCcw },
+    { name: "Paramètres", href: "/parametres", icon: Settings },
   ];
 
   const operateurNav = [
-    { name: 'Tableau de Bord', href: '/', icon: LayoutDashboard },
-    { name: 'Réception', href: '/reception', icon: ClipboardList },
-    { name: 'Picking', href: '/picking', icon: Package },
-    { name: 'Mouvements', href: '/mouvements', icon: TruckIcon },
-    { name: 'Stock', href: '/stock', icon: Warehouse },
+    { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Réception", href: "/reception", icon: Package },
+    { name: "Mouvements", href: "/mouvements", icon: ArrowRightLeft },
+    { name: "Picking", href: "/picking", icon: ClipboardList },
+    { name: "Produits", href: "/produits", icon: Package },
+    { name: "Emplacements", href: "/emplacements", icon: MapPin },
   ];
 
   const gestionnaireNav = [
-    { name: 'Tableau de Bord', href: '/', icon: LayoutDashboard },
-    { name: 'Rapports', href: '/rapports', icon: BarChart3 },
-    { name: 'Réappro', href: '/reappro', icon: Package },
-    { name: 'Approbations', href: '/approbations', icon: FileText },
-    { name: 'Retours', href: '/retours', icon: TruckIcon },
+    { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Réappro", href: "/reappro", icon: RefreshCw },
+    { name: "Retours", href: "/retours", icon: RotateCcw },
+    { name: "Produits", href: "/produits", icon: Package },
+    { name: "Emplacements", href: "/emplacements", icon: MapPin },
+    { name: "Paramètres", href: "/parametres", icon: Settings },
   ];
 
   const clientNav = [
-    { name: 'Tableau de Bord', href: '/', icon: LayoutDashboard },
-    { name: 'Mes Produits', href: '/mes-produits', icon: Package },
-    { name: 'Mes Commandes', href: '/mes-commandes', icon: ShoppingCart },
-    { name: 'Mes Rapports', href: '/mes-rapports', icon: FileText },
+    { name: "Dashboard", href: "/", icon: LayoutDashboard },
   ];
 
   switch (role) {
-    case 'admin':
+    case "admin":
       return adminNav;
-    case 'operateur':
+    case "operateur":
       return operateurNav;
-    case 'gestionnaire':
+    case "gestionnaire":
       return gestionnaireNav;
-    case 'client':
+    case "client":
       return clientNav;
     default:
-      return adminNav;
+      return [{ name: "Dashboard", href: "/", icon: LayoutDashboard }];
   }
 };
 
@@ -78,38 +100,43 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, userRole, signOut } = useAuth();
+  const breadcrumbs = useBreadcrumbs();
+  const { results: searchResults, isLoading: searchLoading } = useGlobalSearch(searchQuery);
   
   const navigation = getNavigationForRole(userRole);
 
   const getRoleBadgeVariant = (role: string | null) => {
     switch (role) {
-      case 'admin':
-        return 'destructive' as const;
-      case 'gestionnaire':
-        return 'default' as const;
-      case 'operateur':
-        return 'secondary' as const;
-      case 'client':
-        return 'outline' as const;
+      case "admin":
+        return "destructive" as const;
+      case "gestionnaire":
+        return "default" as const;
+      case "operateur":
+        return "secondary" as const;
+      case "client":
+        return "outline" as const;
       default:
-        return 'outline' as const;
+        return "outline" as const;
     }
   };
 
   const getRoleLabel = (role: string | null) => {
     switch (role) {
-      case 'admin':
-        return 'Administrateur';
-      case 'gestionnaire':
-        return 'Gestionnaire';
-      case 'operateur':
-        return 'Opérateur';
-      case 'client':
-        return 'Client';
+      case "admin":
+        return "Administrateur";
+      case "gestionnaire":
+        return "Gestionnaire";
+      case "operateur":
+        return "Opérateur";
+      case "client":
+        return "Client";
       default:
-        return 'Utilisateur';
+        return "Utilisateur";
     }
   };
 
@@ -174,13 +201,47 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <header className="sticky top-0 z-40 bg-card border-b border-border">
           <div className="flex h-16 items-center justify-between px-6">
             <div className="flex items-center flex-1 gap-4 max-w-md">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher..."
-                  className="pl-10 bg-background"
-                />
-              </div>
+              <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-muted-foreground">
+                    <Search className="mr-2 h-4 w-4" />
+                    Recherche globale... (Ctrl+K)
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <Command>
+                    <CommandInput 
+                      placeholder="Rechercher produits, ordres, emplacements..." 
+                      value={searchQuery}
+                      onValueChange={setSearchQuery}
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        {searchLoading ? "Recherche en cours..." : "Aucun résultat trouvé."}
+                      </CommandEmpty>
+                      {searchResults.length > 0 && (
+                        <CommandGroup heading="Résultats">
+                          {searchResults.map((result) => (
+                            <CommandItem
+                              key={result.id}
+                              onSelect={() => {
+                                navigate(result.href);
+                                setSearchOpen(false);
+                                setSearchQuery("");
+                              }}
+                            >
+                              <div>
+                                <div className="font-medium">{result.title}</div>
+                                <div className="text-sm text-muted-foreground">{result.subtitle}</div>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="flex items-center gap-3">
@@ -196,7 +257,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   </span>
                 </div>
                 <div className="text-sm">
-                  <div className="font-medium">{user?.email?.split('@')[0]}</div>
+                  <div className="font-medium">{user?.email?.split("@")[0]}</div>
                   <Badge variant={getRoleBadgeVariant(userRole)} className="text-xs mt-0.5">
                     {getRoleLabel(userRole)}
                   </Badge>
@@ -213,10 +274,32 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             </div>
           </div>
+
+          {/* Breadcrumbs */}
+          <div className="flex h-12 items-center border-t px-6 bg-muted/50">
+            <Breadcrumb>
+              <BreadcrumbList>
+                {breadcrumbs.map((crumb, index) => (
+                  <div key={crumb.href} className="flex items-center">
+                    {index > 0 && <BreadcrumbSeparator />}
+                    <BreadcrumbItem>
+                      {index === breadcrumbs.length - 1 ? (
+                        <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                      ) : (
+                        <BreadcrumbLink asChild>
+                          <Link to={crumb.href}>{crumb.label}</Link>
+                        </BreadcrumbLink>
+                      )}
+                    </BreadcrumbItem>
+                  </div>
+                ))}
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
         </header>
 
         {/* Page Content */}
-        <main className="p-6 bg-dots-pattern min-h-[calc(100vh-4rem)]">
+        <main className="p-6 bg-dots-pattern min-h-[calc(100vh-7rem)]">
           {children}
         </main>
       </div>
