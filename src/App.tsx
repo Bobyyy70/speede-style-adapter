@@ -9,10 +9,12 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Reception from "./pages/Reception";
 import Mouvements from "./pages/Mouvements";
-import Picking from "./pages/Picking";
+import Commandes from "./pages/Commandes";
 import Reappro from "./pages/Reappro";
 import Produits from "./pages/Produits";
 import Emplacements from "./pages/Emplacements";
+import Transporteurs from "./pages/Transporteurs";
+import Facturation from "./pages/Facturation";
 import Retours from "./pages/Retours";
 import Parametres from "./pages/Parametres";
 import NotFound from "./pages/NotFound";
@@ -45,7 +47,7 @@ const App = () => (
               }
             />
             <Route
-              path="/mouvements"
+              path="/stock/mouvements"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur']}>
                   <Mouvements />
@@ -53,15 +55,15 @@ const App = () => (
               }
             />
             <Route
-              path="/picking"
+              path="/commandes"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur']}>
-                  <Picking />
+                  <Commandes />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/reappro"
+              path="/stock/reappro"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <Reappro />
@@ -69,7 +71,7 @@ const App = () => (
               }
             />
             <Route
-              path="/produits"
+              path="/stock/produits"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
                   <Produits />
@@ -77,10 +79,26 @@ const App = () => (
               }
             />
             <Route
-              path="/emplacements"
+              path="/stock/emplacements"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
                   <Emplacements />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/transporteurs"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Transporteurs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/facturation"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <Facturation />
                 </ProtectedRoute>
               }
             />

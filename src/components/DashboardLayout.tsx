@@ -19,7 +19,10 @@ import {
   ClipboardList,
   RefreshCw,
   MapPin,
-  RotateCcw,
+  Undo2,
+  PackageCheck,
+  TruckIcon,
+  FileText,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -44,54 +47,79 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-// Navigation V1 - Structure unifiée adaptée aux rôles
-const getNavigationForRole = (role: string | null) => {
-  const adminNav = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Réception", href: "/reception", icon: Package },
-    { name: "Mouvements", href: "/mouvements", icon: ArrowRightLeft },
-    { name: "Picking", href: "/picking", icon: ClipboardList },
-    { name: "Réappro", href: "/reappro", icon: RefreshCw },
-    { name: "Produits", href: "/produits", icon: Package },
-    { name: "Emplacements", href: "/emplacements", icon: MapPin },
-    { name: "Retours", href: "/retours", icon: RotateCcw },
-    { name: "Paramètres", href: "/parametres", icon: Settings },
+type NavigationItem = {
+  name: string;
+  href?: string;
+  icon: any;
+  children?: Array<{ name: string; href: string; icon: any }>;
+};
+
+// Navigation V2 - Structure organisée par métier avec onglets et sous-sections
+const getNavigationForRole = (role: string | null): NavigationItem[] => {
+  const baseNavigation: NavigationItem[] = [
+    { name: "Tableau de Bord", href: "/", icon: LayoutDashboard },
   ];
 
-  const operateurNav = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Réception", href: "/reception", icon: Package },
-    { name: "Mouvements", href: "/mouvements", icon: ArrowRightLeft },
-    { name: "Picking", href: "/picking", icon: ClipboardList },
-    { name: "Produits", href: "/produits", icon: Package },
-    { name: "Emplacements", href: "/emplacements", icon: MapPin },
-  ];
-
-  const gestionnaireNav = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Réappro", href: "/reappro", icon: RefreshCw },
-    { name: "Retours", href: "/retours", icon: RotateCcw },
-    { name: "Produits", href: "/produits", icon: Package },
-    { name: "Emplacements", href: "/emplacements", icon: MapPin },
-    { name: "Paramètres", href: "/parametres", icon: Settings },
-  ];
-
-  const clientNav = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  ];
-
-  switch (role) {
-    case "admin":
-      return adminNav;
-    case "operateur":
-      return operateurNav;
-    case "gestionnaire":
-      return gestionnaireNav;
-    case "client":
-      return clientNav;
-    default:
-      return [{ name: "Dashboard", href: "/", icon: LayoutDashboard }];
+  if (role === "admin") {
+    return [
+      ...baseNavigation,
+      { 
+        name: "Stock", 
+        icon: Package,
+        children: [
+          { name: "Produits", href: "/stock/produits", icon: Package },
+          { name: "Emplacements", href: "/stock/emplacements", icon: MapPin },
+          { name: "Réappro", href: "/stock/reappro", icon: RefreshCw },
+          { name: "Mouvements", href: "/stock/mouvements", icon: ArrowRightLeft },
+        ]
+      },
+      { name: "Réception", href: "/reception", icon: PackageCheck },
+      { name: "Commandes", href: "/commandes", icon: ClipboardList },
+      { name: "Transporteurs", href: "/transporteurs", icon: TruckIcon },
+      { name: "Facturation", href: "/facturation", icon: FileText },
+      { name: "Retours", href: "/retours", icon: Undo2 },
+      { name: "Paramètres", href: "/parametres", icon: Settings },
+    ];
   }
+
+  if (role === "operateur") {
+    return [
+      ...baseNavigation,
+      { name: "Réception", href: "/reception", icon: PackageCheck },
+      { 
+        name: "Stock", 
+        icon: Package,
+        children: [
+          { name: "Produits", href: "/stock/produits", icon: Package },
+          { name: "Emplacements", href: "/stock/emplacements", icon: MapPin },
+          { name: "Mouvements", href: "/stock/mouvements", icon: ArrowRightLeft },
+        ]
+      },
+      { name: "Commandes", href: "/commandes", icon: ClipboardList },
+    ];
+  }
+
+  if (role === "gestionnaire") {
+    return [
+      ...baseNavigation,
+      { 
+        name: "Stock", 
+        icon: Package,
+        children: [
+          { name: "Réappro", href: "/stock/reappro", icon: RefreshCw },
+        ]
+      },
+      { name: "Retours", href: "/retours", icon: Undo2 },
+      { name: "Facturation", href: "/facturation", icon: FileText },
+      { name: "Paramètres", href: "/parametres", icon: Settings },
+    ];
+  }
+
+  if (role === "client") {
+    return baseNavigation;
+  }
+
+  return baseNavigation;
 };
 
 interface DashboardLayoutProps {
@@ -169,24 +197,53 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         <nav className="flex-1 space-y-1 p-4">
-          {navigation.map((item) => {
-            const isActive = location.pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                <item.icon className="w-5 h-5 flex-shrink-0" />
-                {sidebarOpen && <span>{item.name}</span>}
-              </Link>
-            );
-          })}
+          {navigation.map((item) => (
+            <div key={item.name}>
+              {item.children ? (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground">
+                    <item.icon className="w-5 h-5 flex-shrink-0" />
+                    {sidebarOpen && <span>{item.name}</span>}
+                  </div>
+                  {sidebarOpen && (
+                    <div className="ml-6 space-y-1">
+                      {item.children.map((child) => {
+                        const isActive = location.pathname === child.href;
+                        return (
+                          <Link
+                            key={child.name}
+                            to={child.href}
+                            className={cn(
+                              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                              isActive
+                                ? "bg-primary text-primary-foreground shadow-md"
+                                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                            )}
+                          >
+                            <child.icon className="w-4 h-4 flex-shrink-0" />
+                            <span>{child.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  to={item.href!}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    location.pathname === item.href
+                      ? "bg-primary text-primary-foreground shadow-md"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  )}
+                >
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  {sidebarOpen && <span>{item.name}</span>}
+                </Link>
+              )}
+            </div>
+          ))}
         </nav>
       </aside>
 

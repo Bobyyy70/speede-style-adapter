@@ -6,13 +6,16 @@ export interface Breadcrumb {
 }
 
 const routeLabels: Record<string, string> = {
-  "/": "Dashboard",
+  "/": "Tableau de Bord",
   "/reception": "Réception",
-  "/mouvements": "Mouvements",
-  "/picking": "Picking",
-  "/reappro": "Réapprovisionnement",
-  "/produits": "Produits",
-  "/emplacements": "Emplacements",
+  "/stock": "Stock",
+  "/stock/mouvements": "Mouvements",
+  "/stock/reappro": "Réapprovisionnement",
+  "/stock/produits": "Produits",
+  "/stock/emplacements": "Emplacements",
+  "/commandes": "Commandes",
+  "/transporteurs": "Transporteurs",
+  "/facturation": "Facturation",
   "/retours": "Retours",
   "/parametres": "Paramètres",
 };
@@ -22,7 +25,7 @@ export const useBreadcrumbs = (): Breadcrumb[] => {
   const pathSegments = location.pathname.split("/").filter(Boolean);
 
   const breadcrumbs: Breadcrumb[] = [
-    { label: "Dashboard", href: "/" },
+    { label: "Tableau de Bord", href: "/" },
   ];
 
   if (pathSegments.length === 0) {
