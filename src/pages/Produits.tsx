@@ -4,8 +4,56 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Package, Search, AlertTriangle, TrendingUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 
 const Produits = () => {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const { data: produits = [], isLoading } = useQuery({
+    queryKey: ["produits"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("produit")
+        .select("*")
+        .eq("statut_actif", true)
+        .order("reference");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: ["produits-stats"],
+    queryFn: async () => {
+      const { data: stockDispo, error } = await supabase
+        .from("stock_disponible")
+        .select("*");
+      
+      if (error) throw error;
+
+      const totalProduits = stockDispo?.length || 0;
+      const valeurTotale = produits.reduce((sum, p) => sum + (p.stock_actuel * (p.prix_unitaire || 0)), 0);
+      const alertes = stockDispo?.filter(p => p.stock_disponible < (produits.find(pr => pr.id === p.produit_id)?.stock_minimum || 0)).length || 0;
+
+      return {
+        totalProduits,
+        valeurTotale,
+        alertes,
+        rotation: 8.5 // À calculer plus tard avec historique mouvements
+      };
+    },
+  });
+
+  const filteredProduits = produits.filter(p => 
+    searchTerm === "" || 
+    p.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.code_barre_ean && p.code_barre_ean.includes(searchTerm))
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -23,7 +71,7 @@ const Produits = () => {
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">2,543</div>
+              <div className="text-2xl font-bold">{stats?.totalProduits || 0}</div>
               <p className="text-xs text-muted-foreground">Actives</p>
             </CardContent>
           </Card>
@@ -34,7 +82,9 @@ const Produits = () => {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">€1.2M</div>
+              <div className="text-2xl font-bold">
+                €{((stats?.valeurTotale || 0) / 1000000).toFixed(1)}M
+              </div>
               <p className="text-xs text-muted-foreground">Stock en valeur</p>
             </CardContent>
           </Card>
@@ -45,7 +95,7 @@ const Produits = () => {
               <AlertTriangle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">18</div>
+              <div className="text-2xl font-bold">{stats?.alertes || 0}</div>
               <p className="text-xs text-muted-foreground">Sous seuil</p>
             </CardContent>
           </Card>
@@ -56,7 +106,7 @@ const Produits = () => {
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">8.5x</div>
+              <div className="text-2xl font-bold">{stats?.rotation || 0}x</div>
               <p className="text-xs text-muted-foreground">Moyenne annuelle</p>
             </CardContent>
           </Card>
@@ -76,28 +126,42 @@ const Produits = () => {
             <div className="mb-4">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Rechercher par référence, nom ou code-barres..." className="pl-10" />
+                <Input 
+                  placeholder="Rechercher par référence, nom ou code-barres..." 
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
             </div>
-            <div className="space-y-4">
-              {[
-                { ref: "PROD-123", nom: "Produit A", stock: 450, seuil: 100, statut: "OK" },
-                { ref: "PROD-456", nom: "Produit B", stock: 80, seuil: 100, statut: "Alerte" },
-                { ref: "PROD-789", nom: "Produit C", stock: 1200, seuil: 200, statut: "OK" },
-              ].map((produit) => (
-                <div key={produit.ref} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <div className="font-medium">{produit.ref} - {produit.nom}</div>
-                    <div className="text-sm text-muted-foreground">
-                      Stock: {produit.stock} / Seuil: {produit.seuil}
+            
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+            ) : filteredProduits.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchTerm ? "Aucun produit trouvé" : "Aucun produit en stock"}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredProduits.map((produit) => {
+                  const isAlerte = produit.stock_actuel < produit.stock_minimum;
+                  return (
+                    <div key={produit.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/5 transition-colors">
+                      <div className="flex-1">
+                        <div className="font-medium">{produit.reference} - {produit.nom}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Stock: {produit.stock_actuel} / Seuil: {produit.stock_minimum}
+                          {produit.code_barre_ean && ` • EAN: ${produit.code_barre_ean}`}
+                        </div>
+                      </div>
+                      <Badge variant={isAlerte ? "destructive" : "default"}>
+                        {isAlerte ? "Alerte" : "OK"}
+                      </Badge>
                     </div>
-                  </div>
-                  <Badge variant={produit.statut === "Alerte" ? "destructive" : "default"}>
-                    {produit.statut}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

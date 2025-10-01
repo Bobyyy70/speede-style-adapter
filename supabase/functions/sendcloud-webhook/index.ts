@@ -1,0 +1,253 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+interface SendCloudProduct {
+  sku: string;
+  name: string;
+  quantity: number;
+  weight?: number;
+  price?: number;
+}
+
+interface SendCloudOrder {
+  id: string;
+  order_number: string;
+  name: string;
+  email?: string;
+  telephone?: string;
+  address: string;
+  address_2?: string;
+  city: string;
+  postal_code: string;
+  country: string;
+  order_products: SendCloudProduct[];
+  total_order_value?: number;
+  currency?: string;
+  shipment?: {
+    name?: string;
+  };
+}
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    console.log('📦 Webhook SendCloud reçu');
+
+    const sendcloudData: SendCloudOrder = await req.json();
+    console.log('Données SendCloud:', JSON.stringify(sendcloudData, null, 2));
+
+    // 1. Vérifier si la commande existe déjà
+    const { data: existingCommande } = await supabase
+      .from('commande')
+      .select('id')
+      .eq('sendcloud_id', sendcloudData.id)
+      .single();
+
+    if (existingCommande) {
+      console.log('⚠️ Commande déjà existante:', sendcloudData.order_number);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Commande déjà traitée',
+          commande_id: existingCommande.id 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
+    // 2. Insérer la commande
+    const { data: commande, error: commandeError } = await supabase
+      .from('commande')
+      .insert({
+        sendcloud_id: sendcloudData.id,
+        numero_commande: sendcloudData.order_number,
+        nom_client: sendcloudData.name,
+        email_client: sendcloudData.email || null,
+        telephone_client: sendcloudData.telephone || null,
+        adresse_nom: sendcloudData.name,
+        adresse_ligne_1: sendcloudData.address,
+        adresse_ligne_2: sendcloudData.address_2 || null,
+        code_postal: sendcloudData.postal_code,
+        ville: sendcloudData.city,
+        pays_code: sendcloudData.country,
+        valeur_totale: sendcloudData.total_order_value || 0,
+        devise: sendcloudData.currency || 'EUR',
+        statut_wms: 'En attente de réappro',
+        source: 'SendCloud',
+        transporteur: sendcloudData.shipment?.name || null,
+      })
+      .select()
+      .single();
+
+    if (commandeError) {
+      console.error('❌ Erreur insertion commande:', commandeError);
+      throw commandeError;
+    }
+
+    console.log('✅ Commande créée:', commande.id);
+
+    // 3. Traiter chaque produit et créer les lignes
+    const lignesCreees = [];
+    const mouvementsCreees = [];
+    const produitsManquants = [];
+    let peutReserver = true;
+
+    for (const product of sendcloudData.order_products) {
+      console.log(`📦 Traitement produit: ${product.sku} x${product.quantity}`);
+
+      // Chercher le produit par référence
+      const { data: produit, error: produitError } = await supabase
+        .from('produit')
+        .select('id, reference, nom, stock_actuel, poids_unitaire, prix_unitaire')
+        .eq('reference', product.sku)
+        .eq('statut_actif', true)
+        .single();
+
+      if (produitError || !produit) {
+        console.warn(`⚠️ Produit non trouvé: ${product.sku}`);
+        produitsManquants.push(product.sku);
+        peutReserver = false;
+        
+        // Créer quand même la ligne avec produit_id null
+        const { data: ligne } = await supabase
+          .from('ligne_commande')
+          .insert({
+            commande_id: commande.id,
+            produit_reference: product.sku,
+            produit_nom: product.name,
+            quantite_commandee: product.quantity,
+            quantite_preparee: 0,
+            poids_unitaire: product.weight || null,
+            prix_unitaire: product.price || null,
+            valeur_totale: (product.price || 0) * product.quantity,
+            statut_ligne: 'en_attente',
+          })
+          .select()
+          .single();
+
+        if (ligne) lignesCreees.push(ligne);
+        continue;
+      }
+
+      // Vérifier le stock disponible
+      const { data: stockDispo } = await supabase
+        .from('stock_disponible')
+        .select('stock_disponible')
+        .eq('produit_id', produit.id)
+        .single();
+
+      const stockDisponible = stockDispo?.stock_disponible || produit.stock_actuel;
+
+      if (stockDisponible < product.quantity) {
+        console.warn(`⚠️ Stock insuffisant pour ${product.sku}: dispo=${stockDisponible}, demandé=${product.quantity}`);
+        peutReserver = false;
+      }
+
+      // Créer la ligne de commande
+      const { data: ligne, error: ligneError } = await supabase
+        .from('ligne_commande')
+        .insert({
+          commande_id: commande.id,
+          produit_id: produit.id,
+          produit_reference: product.sku,
+          produit_nom: product.name,
+          quantite_commandee: product.quantity,
+          quantite_preparee: 0,
+          poids_unitaire: product.weight || produit.poids_unitaire,
+          prix_unitaire: product.price || produit.prix_unitaire,
+          valeur_totale: (product.price || produit.prix_unitaire || 0) * product.quantity,
+          statut_ligne: stockDisponible >= product.quantity ? 'en_attente' : 'en_attente',
+        })
+        .select()
+        .single();
+
+      if (ligneError) {
+        console.error('❌ Erreur création ligne:', ligneError);
+        continue;
+      }
+
+      lignesCreees.push(ligne);
+
+      // Si stock suffisant, créer la réservation
+      if (stockDisponible >= product.quantity) {
+        const { data: reservation, error: reservError } = await supabase.rpc('reserver_stock', {
+          p_produit_id: produit.id,
+          p_quantite: product.quantity,
+          p_commande_id: commande.id,
+          p_reference_origine: commande.numero_commande,
+        });
+
+        if (reservError) {
+          console.error('❌ Erreur réservation stock:', reservError);
+        } else if (reservation?.success) {
+          console.log(`✅ Stock réservé: ${product.sku} x${product.quantity}`);
+          mouvementsCreees.push(reservation.mouvement_id);
+          
+          // Mettre à jour le statut de la ligne
+          await supabase
+            .from('ligne_commande')
+            .update({ statut_ligne: 'réservé' })
+            .eq('id', ligne.id);
+        }
+      }
+    }
+
+    // 4. Mettre à jour le statut de la commande
+    let nouveauStatut = 'En attente de réappro';
+    if (peutReserver && produitsManquants.length === 0) {
+      nouveauStatut = 'Réservé';
+    } else if (produitsManquants.length > 0) {
+      nouveauStatut = 'En attente de réappro';
+    }
+
+    await supabase
+      .from('commande')
+      .update({ statut_wms: nouveauStatut })
+      .eq('id', commande.id);
+
+    console.log('✅ Traitement terminé - Statut:', nouveauStatut);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        commande_id: commande.id,
+        numero_commande: commande.numero_commande,
+        statut: nouveauStatut,
+        lignes_creees: lignesCreees.length,
+        mouvements_crees: mouvementsCreees.length,
+        produits_manquants: produitsManquants,
+        details: {
+          peut_reserver: peutReserver,
+          lignes: lignesCreees,
+        }
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+    );
+
+  } catch (error) {
+    console.error('❌ Erreur webhook:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: errorMessage,
+        stack: errorStack 
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    );
+  }
+});

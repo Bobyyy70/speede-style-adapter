@@ -143,47 +143,107 @@ export type Database = {
         }
         Relationships: []
       }
+      emplacement: {
+        Row: {
+          capacite_maximale: number | null
+          code_emplacement: string
+          date_creation: string | null
+          id: string
+          produit_actuel_id: string | null
+          quantite_actuelle: number | null
+          statut_actuel: string | null
+          type_emplacement: string
+          zone: string
+        }
+        Insert: {
+          capacite_maximale?: number | null
+          code_emplacement: string
+          date_creation?: string | null
+          id?: string
+          produit_actuel_id?: string | null
+          quantite_actuelle?: number | null
+          statut_actuel?: string | null
+          type_emplacement: string
+          zone: string
+        }
+        Update: {
+          capacite_maximale?: number | null
+          code_emplacement?: string
+          date_creation?: string | null
+          id?: string
+          produit_actuel_id?: string | null
+          quantite_actuelle?: number | null
+          statut_actuel?: string | null
+          type_emplacement?: string
+          zone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emplacement_produit_actuel_id_fkey"
+            columns: ["produit_actuel_id"]
+            isOneToOne: false
+            referencedRelation: "produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emplacement_produit_actuel_id_fkey"
+            columns: ["produit_actuel_id"]
+            isOneToOne: false
+            referencedRelation: "stock_disponible"
+            referencedColumns: ["produit_id"]
+          },
+        ]
+      }
       ligne_commande: {
         Row: {
           commande_id: string
           date_creation: string
           date_peremption: string | null
+          emplacement_picking_id: string | null
           id: string
           numero_lot: string | null
           poids_unitaire: number | null
           prix_unitaire: number | null
+          produit_id: string | null
           produit_nom: string
           produit_reference: string
           quantite_commandee: number
           quantite_preparee: number | null
+          statut_ligne: string | null
           valeur_totale: number | null
         }
         Insert: {
           commande_id: string
           date_creation?: string
           date_peremption?: string | null
+          emplacement_picking_id?: string | null
           id?: string
           numero_lot?: string | null
           poids_unitaire?: number | null
           prix_unitaire?: number | null
+          produit_id?: string | null
           produit_nom: string
           produit_reference: string
           quantite_commandee: number
           quantite_preparee?: number | null
+          statut_ligne?: string | null
           valeur_totale?: number | null
         }
         Update: {
           commande_id?: string
           date_creation?: string
           date_peremption?: string | null
+          emplacement_picking_id?: string | null
           id?: string
           numero_lot?: string | null
           poids_unitaire?: number | null
           prix_unitaire?: number | null
+          produit_id?: string | null
           produit_nom?: string
           produit_reference?: string
           quantite_commandee?: number
           quantite_preparee?: number | null
+          statut_ligne?: string | null
           valeur_totale?: number | null
         }
         Relationships: [
@@ -194,7 +254,160 @@ export type Database = {
             referencedRelation: "commande"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ligne_commande_emplacement_picking_id_fkey"
+            columns: ["emplacement_picking_id"]
+            isOneToOne: false
+            referencedRelation: "emplacement"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ligne_commande_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ligne_commande_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "stock_disponible"
+            referencedColumns: ["produit_id"]
+          },
         ]
+      }
+      mouvement_stock: {
+        Row: {
+          commande_id: string | null
+          created_by: string | null
+          date_mouvement: string | null
+          emplacement_destination_id: string | null
+          emplacement_source_id: string | null
+          id: string
+          numero_mouvement: string
+          produit_id: string
+          quantite: number
+          reference_origine: string | null
+          remarques: string | null
+          type_mouvement: string
+          type_origine: string | null
+        }
+        Insert: {
+          commande_id?: string | null
+          created_by?: string | null
+          date_mouvement?: string | null
+          emplacement_destination_id?: string | null
+          emplacement_source_id?: string | null
+          id?: string
+          numero_mouvement: string
+          produit_id: string
+          quantite: number
+          reference_origine?: string | null
+          remarques?: string | null
+          type_mouvement: string
+          type_origine?: string | null
+        }
+        Update: {
+          commande_id?: string | null
+          created_by?: string | null
+          date_mouvement?: string | null
+          emplacement_destination_id?: string | null
+          emplacement_source_id?: string | null
+          id?: string
+          numero_mouvement?: string
+          produit_id?: string
+          quantite?: number
+          reference_origine?: string | null
+          remarques?: string | null
+          type_mouvement?: string
+          type_origine?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mouvement_stock_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvement_stock_emplacement_destination_id_fkey"
+            columns: ["emplacement_destination_id"]
+            isOneToOne: false
+            referencedRelation: "emplacement"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvement_stock_emplacement_source_id_fkey"
+            columns: ["emplacement_source_id"]
+            isOneToOne: false
+            referencedRelation: "emplacement"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvement_stock_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvement_stock_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "stock_disponible"
+            referencedColumns: ["produit_id"]
+          },
+        ]
+      }
+      produit: {
+        Row: {
+          code_barre_ean: string | null
+          date_creation: string | null
+          date_modification: string | null
+          description: string | null
+          id: string
+          nom: string
+          poids_unitaire: number | null
+          prix_unitaire: number | null
+          reference: string
+          statut_actif: boolean | null
+          stock_actuel: number | null
+          stock_maximum: number | null
+          stock_minimum: number | null
+        }
+        Insert: {
+          code_barre_ean?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          id?: string
+          nom: string
+          poids_unitaire?: number | null
+          prix_unitaire?: number | null
+          reference: string
+          statut_actif?: boolean | null
+          stock_actuel?: number | null
+          stock_maximum?: number | null
+          stock_minimum?: number | null
+        }
+        Update: {
+          code_barre_ean?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          id?: string
+          nom?: string
+          poids_unitaire?: number | null
+          prix_unitaire?: number | null
+          reference?: string
+          statut_actif?: boolean | null
+          stock_actuel?: number | null
+          stock_maximum?: number | null
+          stock_minimum?: number | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -246,7 +459,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      stock_disponible: {
+        Row: {
+          nom: string | null
+          produit_id: string | null
+          reference: string | null
+          stock_actuel: number | null
+          stock_disponible: number | null
+          stock_reserve: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_user_role: {
@@ -259,6 +482,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      reserver_stock: {
+        Args: {
+          p_commande_id: string
+          p_produit_id: string
+          p_quantite: number
+          p_reference_origine: string
+        }
+        Returns: Json
       }
     }
     Enums: {
