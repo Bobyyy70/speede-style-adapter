@@ -19,6 +19,8 @@ import Retours from "./pages/Retours";
 import Parametres from "./pages/Parametres";
 import Preparation from "./pages/Preparation";
 import Connecteurs from "./pages/Connecteurs";
+import ServicesLogistiques from "./pages/ServicesLogistiques";
+import BacsAdresses from "./pages/BacsAdresses";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -81,6 +83,14 @@ const App = () => (
               }
             />
             <Route
+              path="/stock/bacs"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <BacsAdresses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/commandes/preparation"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur']}>
@@ -117,6 +127,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <Facturation />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/administratif/services"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ServicesLogistiques />
                 </ProtectedRoute>
               }
             />

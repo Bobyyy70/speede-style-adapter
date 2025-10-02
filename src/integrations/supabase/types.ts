@@ -47,6 +47,128 @@ export type Database = {
         }
         Relationships: []
       }
+      bac_adresse: {
+        Row: {
+          allee: string | null
+          capacite_max_kg: number | null
+          capacite_max_volume: number | null
+          code_bac: string
+          date_creation: string | null
+          date_derniere_activite: string | null
+          id: string
+          niveau: number | null
+          position: string | null
+          produit_actuel_id: string | null
+          quantite_actuelle: number | null
+          statut: string | null
+          type_bac: string
+          zone: string
+        }
+        Insert: {
+          allee?: string | null
+          capacite_max_kg?: number | null
+          capacite_max_volume?: number | null
+          code_bac: string
+          date_creation?: string | null
+          date_derniere_activite?: string | null
+          id?: string
+          niveau?: number | null
+          position?: string | null
+          produit_actuel_id?: string | null
+          quantite_actuelle?: number | null
+          statut?: string | null
+          type_bac: string
+          zone: string
+        }
+        Update: {
+          allee?: string | null
+          capacite_max_kg?: number | null
+          capacite_max_volume?: number | null
+          code_bac?: string
+          date_creation?: string | null
+          date_derniere_activite?: string | null
+          id?: string
+          niveau?: number | null
+          position?: string | null
+          produit_actuel_id?: string | null
+          quantite_actuelle?: number | null
+          statut?: string | null
+          type_bac?: string
+          zone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bac_adresse_produit_actuel_id_fkey"
+            columns: ["produit_actuel_id"]
+            isOneToOne: false
+            referencedRelation: "produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bac_adresse_produit_actuel_id_fkey"
+            columns: ["produit_actuel_id"]
+            isOneToOne: false
+            referencedRelation: "stock_disponible"
+            referencedColumns: ["produit_id"]
+          },
+        ]
+      }
+      calculateur_volumetrique: {
+        Row: {
+          commande_id: string | null
+          date_calcul: string | null
+          est_multi_colis: boolean | null
+          id: string
+          nombre_bacs_grand: number | null
+          nombre_bacs_moyen: number | null
+          nombre_bacs_petit: number | null
+          nombre_cartons_pcb: number | null
+          nombre_colis_total: number | null
+          nombre_palettes: number | null
+          poids_total_kg: number | null
+          services_auto_generes: Json | null
+          volume_total_m3: number | null
+        }
+        Insert: {
+          commande_id?: string | null
+          date_calcul?: string | null
+          est_multi_colis?: boolean | null
+          id?: string
+          nombre_bacs_grand?: number | null
+          nombre_bacs_moyen?: number | null
+          nombre_bacs_petit?: number | null
+          nombre_cartons_pcb?: number | null
+          nombre_colis_total?: number | null
+          nombre_palettes?: number | null
+          poids_total_kg?: number | null
+          services_auto_generes?: Json | null
+          volume_total_m3?: number | null
+        }
+        Update: {
+          commande_id?: string | null
+          date_calcul?: string | null
+          est_multi_colis?: boolean | null
+          id?: string
+          nombre_bacs_grand?: number | null
+          nombre_bacs_moyen?: number | null
+          nombre_bacs_petit?: number | null
+          nombre_cartons_pcb?: number | null
+          nombre_colis_total?: number | null
+          nombre_palettes?: number | null
+          poids_total_kg?: number | null
+          services_auto_generes?: Json | null
+          volume_total_m3?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calculateur_volumetrique_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commande: {
         Row: {
           adresse_ligne_1: string
@@ -277,6 +399,121 @@ export type Database = {
           },
         ]
       }
+      ligne_retour_produit: {
+        Row: {
+          action_a_faire: string | null
+          categorie_emballage: number | null
+          cout_traitement: number | null
+          date_creation: string | null
+          id: string
+          produit_id: string | null
+          produit_nom: string
+          produit_reference: string
+          quantite_retournee: number
+          retour_id: string | null
+          statut_produit: string | null
+        }
+        Insert: {
+          action_a_faire?: string | null
+          categorie_emballage?: number | null
+          cout_traitement?: number | null
+          date_creation?: string | null
+          id?: string
+          produit_id?: string | null
+          produit_nom: string
+          produit_reference: string
+          quantite_retournee: number
+          retour_id?: string | null
+          statut_produit?: string | null
+        }
+        Update: {
+          action_a_faire?: string | null
+          categorie_emballage?: number | null
+          cout_traitement?: number | null
+          date_creation?: string | null
+          id?: string
+          produit_id?: string | null
+          produit_nom?: string
+          produit_reference?: string
+          quantite_retournee?: number
+          retour_id?: string | null
+          statut_produit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ligne_retour_produit_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ligne_retour_produit_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "stock_disponible"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "ligne_retour_produit_retour_id_fkey"
+            columns: ["retour_id"]
+            isOneToOne: false
+            referencedRelation: "retour_produit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ligne_service_commande: {
+        Row: {
+          commande_id: string | null
+          date_creation: string | null
+          genere_automatiquement: boolean | null
+          id: string
+          prix_total: number | null
+          prix_unitaire: number
+          quantite: number
+          remarques: string | null
+          service_id: string | null
+        }
+        Insert: {
+          commande_id?: string | null
+          date_creation?: string | null
+          genere_automatiquement?: boolean | null
+          id?: string
+          prix_total?: number | null
+          prix_unitaire: number
+          quantite?: number
+          remarques?: string | null
+          service_id?: string | null
+        }
+        Update: {
+          commande_id?: string | null
+          date_creation?: string | null
+          genere_automatiquement?: boolean | null
+          id?: string
+          prix_total?: number | null
+          prix_unitaire?: number
+          quantite?: number
+          remarques?: string | null
+          service_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ligne_service_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ligne_service_commande_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_logistique"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mouvement_stock: {
         Row: {
           commande_id: string | null
@@ -290,6 +527,8 @@ export type Database = {
           quantite: number
           reference_origine: string | null
           remarques: string | null
+          statut_mouvement: string | null
+          type_contenant: string | null
           type_mouvement: string
           type_origine: string | null
         }
@@ -305,6 +544,8 @@ export type Database = {
           quantite: number
           reference_origine?: string | null
           remarques?: string | null
+          statut_mouvement?: string | null
+          type_contenant?: string | null
           type_mouvement: string
           type_origine?: string | null
         }
@@ -320,6 +561,8 @@ export type Database = {
           quantite?: number
           reference_origine?: string | null
           remarques?: string | null
+          statut_mouvement?: string | null
+          type_contenant?: string | null
           type_mouvement?: string
           type_origine?: string | null
         }
@@ -363,6 +606,7 @@ export type Database = {
       }
       produit: {
         Row: {
+          categorie_emballage: number | null
           code_barre_ean: string | null
           date_creation: string | null
           date_modification: string | null
@@ -378,6 +622,7 @@ export type Database = {
           stock_minimum: number | null
         }
         Insert: {
+          categorie_emballage?: number | null
           code_barre_ean?: string | null
           date_creation?: string | null
           date_modification?: string | null
@@ -393,6 +638,7 @@ export type Database = {
           stock_minimum?: number | null
         }
         Update: {
+          categorie_emballage?: number | null
           code_barre_ean?: string | null
           date_creation?: string | null
           date_modification?: string | null
@@ -435,6 +681,143 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      retour_produit: {
+        Row: {
+          client_nom: string
+          commande_origine_id: string | null
+          date_creation: string | null
+          date_modification: string | null
+          date_retour: string | null
+          id: string
+          numero_retour: string
+          raison_retour: string | null
+          remarques: string | null
+          statut_retour: string | null
+          valeur_totale: number | null
+        }
+        Insert: {
+          client_nom: string
+          commande_origine_id?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          date_retour?: string | null
+          id?: string
+          numero_retour: string
+          raison_retour?: string | null
+          remarques?: string | null
+          statut_retour?: string | null
+          valeur_totale?: number | null
+        }
+        Update: {
+          client_nom?: string
+          commande_origine_id?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          date_retour?: string | null
+          id?: string
+          numero_retour?: string
+          raison_retour?: string | null
+          remarques?: string | null
+          statut_retour?: string | null
+          valeur_totale?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retour_produit_commande_origine_id_fkey"
+            columns: ["commande_origine_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_logistique: {
+        Row: {
+          actif: boolean | null
+          categorie: string
+          code_service: string
+          date_creation: string | null
+          date_modification: string | null
+          description: string | null
+          id: string
+          nom_service: string
+          prix_unitaire: number
+          type_facturation: string
+        }
+        Insert: {
+          actif?: boolean | null
+          categorie: string
+          code_service: string
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          id?: string
+          nom_service: string
+          prix_unitaire: number
+          type_facturation: string
+        }
+        Update: {
+          actif?: boolean | null
+          categorie?: string
+          code_service?: string
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          id?: string
+          nom_service?: string
+          prix_unitaire?: number
+          type_facturation?: string
+        }
+        Relationships: []
+      }
+      sku_variante: {
+        Row: {
+          actif: boolean | null
+          code_barre_variante: string | null
+          date_creation: string | null
+          id: string
+          produit_id: string | null
+          quantite_par_unite: number
+          sku_principal: string
+          type_variante: string
+        }
+        Insert: {
+          actif?: boolean | null
+          code_barre_variante?: string | null
+          date_creation?: string | null
+          id?: string
+          produit_id?: string | null
+          quantite_par_unite?: number
+          sku_principal: string
+          type_variante?: string
+        }
+        Update: {
+          actif?: boolean | null
+          code_barre_variante?: string | null
+          date_creation?: string | null
+          id?: string
+          produit_id?: string | null
+          quantite_par_unite?: number
+          sku_principal?: string
+          type_variante?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sku_variante_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sku_variante_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "stock_disponible"
+            referencedColumns: ["produit_id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
