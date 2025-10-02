@@ -2,3 +2,6 @@ project_id = "tggdjeoxvpzbigbikpfy"
 
 [functions.sendcloud-webhook]
 verify_jwt = false
+
+[functions.sendcloud-orders-batch]
+verify_jwt = false
