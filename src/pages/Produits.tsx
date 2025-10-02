@@ -1,17 +1,17 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Package, Search, AlertTriangle, TrendingUp } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
+import { NouveauProduitDialog } from "@/components/NouveauProduitDialog";
 
 const Produits = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: produits = [], isLoading } = useQuery({
+  const { data: produits = [], isLoading, refetch } = useQuery({
     queryKey: ["produits"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -119,7 +119,7 @@ const Produits = () => {
                 <CardTitle>Catalogue produits</CardTitle>
                 <CardDescription>Liste des références en stock</CardDescription>
               </div>
-              <Button>Nouveau produit</Button>
+              <NouveauProduitDialog onSuccess={() => refetch()} />
             </div>
           </CardHeader>
           <CardContent>
@@ -152,11 +152,19 @@ const Produits = () => {
                         <div className="text-sm text-muted-foreground">
                           Stock: {produit.stock_actuel} / Seuil: {produit.stock_minimum}
                           {produit.code_barre_ean && ` • EAN: ${produit.code_barre_ean}`}
+                          {produit.categorie_emballage && ` • Cat. ${produit.categorie_emballage}`}
                         </div>
                       </div>
-                      <Badge variant={isAlerte ? "destructive" : "default"}>
-                        {isAlerte ? "Alerte" : "OK"}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {produit.categorie_emballage && (
+                          <Badge variant="outline">
+                            Cat. {produit.categorie_emballage}
+                          </Badge>
+                        )}
+                        <Badge variant={isAlerte ? "destructive" : "default"}>
+                          {isAlerte ? "Alerte" : "OK"}
+                        </Badge>
+                      </div>
                     </div>
                   );
                 })}

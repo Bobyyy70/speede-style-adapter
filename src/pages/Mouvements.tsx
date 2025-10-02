@@ -13,6 +13,7 @@ import { fr } from "date-fns/locale";
 const Mouvements = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [statutFilter, setStatutFilter] = useState<string>("all");
 
   const { data: mouvements = [], isLoading } = useQuery({
     queryKey: ["mouvements"],
@@ -91,8 +92,9 @@ const Mouvements = () => {
       m.produit?.reference.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesType = typeFilter === "all" || m.type_mouvement === typeFilter;
+    const matchesStatut = statutFilter === "all" || m.statut_mouvement === statutFilter;
     
-    return matchesSearch && matchesType;
+    return matchesSearch && matchesType && matchesStatut;
   });
 
   const getTypeBadgeVariant = (type: string) => {
@@ -115,6 +117,34 @@ const Mouvements = () => {
       case "réservation": return <ArrowUpRight className="h-4 w-4 text-orange-500" />;
       default: return null;
     }
+  };
+
+  const getStatutBadgeVariant = (statut: string): "default" | "secondary" | "destructive" | "outline" => {
+    switch(statut) {
+      case 'stock_physique': return 'default';
+      case 'stock_réservé': return 'secondary';
+      case 'en_cours_picking':
+      case 'en_cours_emballage': return 'outline';
+      case 'en_attente_transporteur':
+      case 'en_cours_livraison': return 'secondary';
+      case 'livrée': return 'default';
+      default: return 'outline';
+    }
+  };
+
+  const getStatutLabel = (statut: string) => {
+    const labels: Record<string, string> = {
+      'attente_arrivage_reappro': 'Attente réappro',
+      'mise_en_stock': 'Mise en stock',
+      'stock_physique': 'Stock physique',
+      'stock_réservé': 'Réservé',
+      'en_cours_picking': 'En picking',
+      'en_cours_emballage': 'En emballage',
+      'en_attente_transporteur': 'Attente transporteur',
+      'en_cours_livraison': 'En livraison',
+      'livrée': 'Livrée'
+    };
+    return labels[statut] || statut;
   };
 
   return (
@@ -202,6 +232,21 @@ const Mouvements = () => {
                   <SelectItem value="ajustement">Ajustements</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={statutFilter} onValueChange={setStatutFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Tous les statuts" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="stock_physique">Stock physique</SelectItem>
+                  <SelectItem value="stock_réservé">Réservé</SelectItem>
+                  <SelectItem value="en_cours_picking">En picking</SelectItem>
+                  <SelectItem value="en_cours_emballage">En emballage</SelectItem>
+                  <SelectItem value="en_attente_transporteur">Attente transporteur</SelectItem>
+                  <SelectItem value="en_cours_livraison">En livraison</SelectItem>
+                  <SelectItem value="livrée">Livrée</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
             {isLoading ? (
@@ -230,6 +275,7 @@ const Mouvements = () => {
                           </span>
                           {" • "}
                           {format(new Date(mouvement.date_mouvement), "dd MMM yyyy HH:mm", { locale: fr })}
+                          {mouvement.type_contenant && ` • ${mouvement.type_contenant}`}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
                           {mouvement.emplacement_source && `De: ${mouvement.emplacement_source.code_emplacement}`}
@@ -239,9 +285,16 @@ const Mouvements = () => {
                         </div>
                       </div>
                     </div>
-                    <Badge variant={getTypeBadgeVariant(mouvement.type_mouvement)}>
-                      {mouvement.type_mouvement}
-                    </Badge>
+                    <div className="flex flex-col gap-2 items-end">
+                      <Badge variant={getTypeBadgeVariant(mouvement.type_mouvement)}>
+                        {mouvement.type_mouvement}
+                      </Badge>
+                      {mouvement.statut_mouvement && (
+                        <Badge variant={getStatutBadgeVariant(mouvement.statut_mouvement)}>
+                          {getStatutLabel(mouvement.statut_mouvement)}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
