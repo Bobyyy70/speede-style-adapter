@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -362,20 +363,17 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
                     placeholder="0.000"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="categorie_emballage">Protection emballage</Label>
-                  <Select
-                    value={formData.categorie_emballage}
-                    onValueChange={(value) => setFormData({ ...formData, categorie_emballage: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">Cat. 1 - Sans protection (AC)</SelectItem>
-                      <SelectItem value="2">Cat. 2 - Avec protection</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="protection_individuelle"
+                    checked={formData.categorie_emballage === "2"}
+                    onCheckedChange={(checked) => 
+                      setFormData({ ...formData, categorie_emballage: checked ? "2" : "1" })
+                    }
+                  />
+                  <Label htmlFor="protection_individuelle" className="cursor-pointer">
+                    Protection individuelle
+                  </Label>
                 </div>
               </div>
 
