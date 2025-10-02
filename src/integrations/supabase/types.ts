@@ -607,12 +607,30 @@ export type Database = {
       produit: {
         Row: {
           categorie_emballage: number | null
+          classe_danger: string | null
           code_barre_ean: string | null
+          code_sh: string | null
+          conditions_speciales: string[] | null
           date_creation: string | null
           date_modification: string | null
+          delai_peremption_alerte_jours: number | null
           description: string | null
+          duree_vie_jours: number | null
+          fournisseur: string | null
+          gestion_lots: boolean | null
+          gestion_serie: boolean | null
+          hauteur_cm: number | null
           id: string
+          image_url: string | null
+          instructions_picking: string | null
+          instructions_stockage: string | null
+          largeur_cm: number | null
+          longueur_cm: number | null
+          marque: string | null
+          matieres_dangereuses: boolean | null
           nom: string
+          numero_onu: string | null
+          pays_origine: string | null
           poids_unitaire: number | null
           prix_unitaire: number | null
           reference: string
@@ -620,15 +638,37 @@ export type Database = {
           stock_actuel: number | null
           stock_maximum: number | null
           stock_minimum: number | null
+          taux_tva: number | null
+          temperature_stockage: string | null
+          valeur_douaniere: number | null
+          volume_m3: number | null
         }
         Insert: {
           categorie_emballage?: number | null
+          classe_danger?: string | null
           code_barre_ean?: string | null
+          code_sh?: string | null
+          conditions_speciales?: string[] | null
           date_creation?: string | null
           date_modification?: string | null
+          delai_peremption_alerte_jours?: number | null
           description?: string | null
+          duree_vie_jours?: number | null
+          fournisseur?: string | null
+          gestion_lots?: boolean | null
+          gestion_serie?: boolean | null
+          hauteur_cm?: number | null
           id?: string
+          image_url?: string | null
+          instructions_picking?: string | null
+          instructions_stockage?: string | null
+          largeur_cm?: number | null
+          longueur_cm?: number | null
+          marque?: string | null
+          matieres_dangereuses?: boolean | null
           nom: string
+          numero_onu?: string | null
+          pays_origine?: string | null
           poids_unitaire?: number | null
           prix_unitaire?: number | null
           reference: string
@@ -636,15 +676,37 @@ export type Database = {
           stock_actuel?: number | null
           stock_maximum?: number | null
           stock_minimum?: number | null
+          taux_tva?: number | null
+          temperature_stockage?: string | null
+          valeur_douaniere?: number | null
+          volume_m3?: number | null
         }
         Update: {
           categorie_emballage?: number | null
+          classe_danger?: string | null
           code_barre_ean?: string | null
+          code_sh?: string | null
+          conditions_speciales?: string[] | null
           date_creation?: string | null
           date_modification?: string | null
+          delai_peremption_alerte_jours?: number | null
           description?: string | null
+          duree_vie_jours?: number | null
+          fournisseur?: string | null
+          gestion_lots?: boolean | null
+          gestion_serie?: boolean | null
+          hauteur_cm?: number | null
           id?: string
+          image_url?: string | null
+          instructions_picking?: string | null
+          instructions_stockage?: string | null
+          largeur_cm?: number | null
+          longueur_cm?: number | null
+          marque?: string | null
+          matieres_dangereuses?: boolean | null
           nom?: string
+          numero_onu?: string | null
+          pays_origine?: string | null
           poids_unitaire?: number | null
           prix_unitaire?: number | null
           reference?: string
@@ -652,6 +714,10 @@ export type Database = {
           stock_actuel?: number | null
           stock_maximum?: number | null
           stock_minimum?: number | null
+          taux_tva?: number | null
+          temperature_stockage?: string | null
+          valeur_douaniere?: number | null
+          volume_m3?: number | null
         }
         Relationships: []
       }
