@@ -2,14 +2,19 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Package, Search, AlertTriangle, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Package, Search, AlertTriangle, TrendingUp, LayoutList, LayoutGrid } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { NouveauProduitDialog } from "@/components/NouveauProduitDialog";
+import { FicheProduitDialog } from "@/components/FicheProduitDialog";
+import { ProduitsKanban } from "@/components/ProduitsKanban";
 
 const Produits = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
+  const [selectedProduitId, setSelectedProduitId] = useState<string | null>(null);
 
   const { data: produits = [], isLoading, refetch } = useQuery({
     queryKey: ["produits"],
@@ -119,60 +124,117 @@ const Produits = () => {
                 <CardTitle>Catalogue produits</CardTitle>
                 <CardDescription>Liste des références en stock</CardDescription>
               </div>
-              <NouveauProduitDialog onSuccess={() => refetch()} />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === "list" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                >
+                  <LayoutList className="h-4 w-4 mr-1" />
+                  Liste
+                </Button>
+                <Button
+                  variant={viewMode === "kanban" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setViewMode("kanban")}
+                >
+                  <LayoutGrid className="h-4 w-4 mr-1" />
+                  Kanban
+                </Button>
+                <NouveauProduitDialog onSuccess={() => refetch()} />
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Rechercher par référence, nom ou code-barres..." 
-                  className="pl-10"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-            
-            {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Chargement...</div>
-            ) : filteredProduits.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                {searchTerm ? "Aucun produit trouvé" : "Aucun produit en stock"}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredProduits.map((produit) => {
-                  const isAlerte = produit.stock_actuel < produit.stock_minimum;
-                  return (
-                    <div key={produit.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/5 transition-colors">
-                      <div className="flex-1">
-                        <div className="font-medium">{produit.reference} - {produit.nom}</div>
-                        <div className="text-sm text-muted-foreground">
-                          Stock: {produit.stock_actuel} / Seuil: {produit.stock_minimum}
-                          {produit.code_barre_ean && ` • EAN: ${produit.code_barre_ean}`}
-                          {produit.categorie_emballage && ` • Cat. ${produit.categorie_emballage}`}
+            {viewMode === "list" && (
+              <>
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Rechercher par référence, nom ou code-barres..." 
+                      className="pl-10"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                {isLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+                ) : filteredProduits.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {searchTerm ? "Aucun produit trouvé" : "Aucun produit en stock"}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredProduits.map((produit) => {
+                      const isAlerte = produit.stock_actuel < produit.stock_minimum;
+                      return (
+                        <div 
+                          key={produit.id} 
+                          onClick={() => setSelectedProduitId(produit.id)}
+                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
+                        >
+                          <div className="flex-1">
+                            <div className="font-medium">{produit.reference} - {produit.nom}</div>
+                            <div className="text-sm text-muted-foreground">
+                              Stock: {produit.stock_actuel} / Seuil: {produit.stock_minimum}
+                              {produit.code_barre_ean && ` • EAN: ${produit.code_barre_ean}`}
+                              {produit.categorie_emballage === 2 && ` • Protection individuelle`}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {produit.categorie_emballage === 2 && (
+                              <Badge variant="outline">
+                                Prot.
+                              </Badge>
+                            )}
+                            <Badge variant={isAlerte ? "destructive" : "default"}>
+                              {isAlerte ? "Alerte" : "OK"}
+                            </Badge>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {produit.categorie_emballage && (
-                          <Badge variant="outline">
-                            Cat. {produit.categorie_emballage}
-                          </Badge>
-                        )}
-                        <Badge variant={isAlerte ? "destructive" : "default"}>
-                          {isAlerte ? "Alerte" : "OK"}
-                        </Badge>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+
+            {viewMode === "kanban" && (
+              <>
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Rechercher par référence, nom ou code-barres..." 
+                      className="pl-10"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                {isLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+                ) : (
+                  <ProduitsKanban produits={filteredProduits} onRefetch={refetch} />
+                )}
+              </>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {selectedProduitId && (
+        <FicheProduitDialog
+          produitId={selectedProduitId}
+          open={!!selectedProduitId}
+          onOpenChange={(open) => !open && setSelectedProduitId(null)}
+          onSuccess={() => refetch()}
+        />
+      )}
     </DashboardLayout>
   );
 };
