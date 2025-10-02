@@ -363,7 +363,7 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="categorie_emballage">Catégorie emballage</Label>
+                  <Label htmlFor="categorie_emballage">Protection emballage</Label>
                   <Select
                     value={formData.categorie_emballage}
                     onValueChange={(value) => setFormData({ ...formData, categorie_emballage: value })}
@@ -372,10 +372,8 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
                       <SelectValue placeholder="Sélectionner" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">Cat. 1 - Petit (bac)</SelectItem>
-                      <SelectItem value="2">Cat. 2 - Moyen (carton)</SelectItem>
-                      <SelectItem value="3">Cat. 3 - Grand (carton)</SelectItem>
-                      <SelectItem value="4">Cat. 4 - Palette</SelectItem>
+                      <SelectItem value="1">Cat. 1 - Sans protection (AC)</SelectItem>
+                      <SelectItem value="2">Cat. 2 - Avec protection</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
