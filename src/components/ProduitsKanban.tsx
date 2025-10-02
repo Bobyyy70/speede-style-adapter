@@ -13,6 +13,7 @@ interface Produit {
   prix_unitaire: number;
   code_barre_ean: string;
   categorie_emballage: number;
+  image_url?: string;
 }
 
 interface ProduitsKanbanProps {
@@ -32,28 +33,48 @@ export const ProduitsKanban = ({ produits, onRefetch }: ProduitsKanbanProps) => 
     <div
       key={produit.id}
       onClick={() => setSelectedProduitId(produit.id)}
-      className="p-3 bg-card border rounded-lg hover:shadow-md transition-all cursor-pointer space-y-2"
+      className="group bg-card border rounded-lg hover:shadow-lg transition-all cursor-pointer overflow-hidden"
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="font-medium text-sm">{produit.reference}</div>
-          <div className="text-xs text-muted-foreground line-clamp-1">{produit.nom}</div>
-        </div>
-        {produit.categorie_emballage === 2 && (
-          <Badge variant="outline" className="text-xs">Prot.</Badge>
+      {/* Image du produit ou icône par défaut */}
+      <div className="relative h-32 bg-muted/30 flex items-center justify-center overflow-hidden">
+        {produit.image_url ? (
+          <img
+            src={produit.image_url}
+            alt={produit.nom}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <Package className="h-12 w-12 text-muted-foreground/30" />
         )}
-      </div>
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">Stock: {produit.stock_actuel}</span>
-        {produit.prix_unitaire && (
-          <span className="font-medium">€{produit.prix_unitaire.toFixed(2)}</span>
-        )}
-      </div>
-      {produit.code_barre_ean && (
-        <div className="text-xs text-muted-foreground truncate">
-          EAN: {produit.code_barre_ean}
+        {/* Overlay avec infos au survol */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+          <div className="text-white text-xs space-y-1">
+            <div className="font-medium">{produit.reference}</div>
+            {produit.code_barre_ean && (
+              <div className="text-white/80">EAN: {produit.code_barre_ean}</div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
+
+      {/* Informations du produit */}
+      <div className="p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-sm truncate">{produit.reference}</div>
+            <div className="text-xs text-muted-foreground line-clamp-2">{produit.nom}</div>
+          </div>
+          {produit.categorie_emballage === 2 && (
+            <Badge variant="outline" className="text-xs shrink-0">Prot.</Badge>
+          )}
+        </div>
+        <div className="flex items-center justify-between text-xs pt-1 border-t">
+          <span className="text-muted-foreground">Stock: <span className="font-semibold text-foreground">{produit.stock_actuel}</span></span>
+          {produit.prix_unitaire && (
+            <span className="font-medium text-primary">€{produit.prix_unitaire.toFixed(2)}</span>
+          )}
+        </div>
+      </div>
     </div>
   );
 

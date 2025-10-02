@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Edit2, Save, X, Package, TrendingUp, AlertTriangle, MapPin, Barcode, Plus, Trash2 } from "lucide-react";
+import { Edit2, Save, X, Package, TrendingUp, AlertTriangle, MapPin, Barcode, Plus, Trash2, Upload, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -102,6 +102,24 @@ export const FicheProduitDialog = ({ produitId, open, onOpenChange, onSuccess }:
     enabled: open && !!produitId,
   });
 
+  const { data: alertes, refetch: refetchAlertes } = useQuery({
+    queryKey: ["alertes", produitId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("produit_alertes_stock")
+        .select("*")
+        .eq("produit_id", produitId)
+        .eq("actif", true)
+        .order("seuil", { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!produitId,
+  });
+
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   const [formData, setFormData] = useState({
     reference: "",
     nom: "",
@@ -131,6 +149,14 @@ export const FicheProduitDialog = ({ produitId, open, onOpenChange, onSuccess }:
     delai_peremption_alerte_jours: "",
     instructions_picking: "",
     instructions_stockage: "",
+    image_url: "",
+  });
+
+  const [newAlerte, setNewAlerte] = useState({
+    type_alerte: "critique",
+    seuil: "",
+    couleur: "#ef4444",
+    message_alerte: "",
   });
 
   useEffect(() => {
@@ -164,9 +190,129 @@ export const FicheProduitDialog = ({ produitId, open, onOpenChange, onSuccess }:
         delai_peremption_alerte_jours: produit.delai_peremption_alerte_jours?.toString() || "",
         instructions_picking: produit.instructions_picking || "",
         instructions_stockage: produit.instructions_stockage || "",
+        image_url: produit.image_url || "",
       });
     }
   }, [produit]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Erreur",
+        description: "Le fichier doit être une image",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${produitId}-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('produits-images')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('produits-images')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('produit')
+        .update({ image_url: publicUrl })
+        .eq('id', produitId);
+
+      if (updateError) throw updateError;
+
+      setFormData({ ...formData, image_url: publicUrl });
+      refetch();
+      toast({
+        title: "Succès",
+        description: "Photo du produit mise à jour",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleAddAlerte = async () => {
+    if (!newAlerte.seuil) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez saisir un seuil",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('produit_alertes_stock')
+        .insert({
+          produit_id: produitId,
+          type_alerte: newAlerte.type_alerte,
+          seuil: parseInt(newAlerte.seuil),
+          couleur: newAlerte.couleur,
+          message_alerte: newAlerte.message_alerte,
+        });
+
+      if (error) throw error;
+
+      refetchAlertes();
+      setNewAlerte({
+        type_alerte: "critique",
+        seuil: "",
+        couleur: "#ef4444",
+        message_alerte: "",
+      });
+
+      toast({
+        title: "Succès",
+        description: "Alerte ajoutée",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteAlerte = async (alerteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('produit_alertes_stock')
+        .delete()
+        .eq('id', alerteId);
+
+      if (error) throw error;
+
+      refetchAlertes();
+      toast({
+        title: "Succès",
+        description: "Alerte supprimée",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -307,12 +453,13 @@ export const FicheProduitDialog = ({ produitId, open, onOpenChange, onSuccess }:
         </div>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="general">Général</TabsTrigger>
             <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
             <TabsTrigger value="international">International</TabsTrigger>
             <TabsTrigger value="logistique">Logistique</TabsTrigger>
             <TabsTrigger value="tracabilite">Traçabilité</TabsTrigger>
+            <TabsTrigger value="alertes">Alertes</TabsTrigger>
             <TabsTrigger value="emplacements">Emplacements</TabsTrigger>
             <TabsTrigger value="variantes">Références</TabsTrigger>
             <TabsTrigger value="mouvements">Mouvements</TabsTrigger>
@@ -658,6 +805,151 @@ export const FicheProduitDialog = ({ produitId, open, onOpenChange, onSuccess }:
                   disabled={!editMode}
                 />
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="alertes" className="space-y-4 mt-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    Alertes de stock personnalisables
+                  </h4>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Définissez des seuils d'alerte personnalisés pour ce produit
+                  </p>
+                </div>
+              </div>
+
+              {editMode && (
+                <div className="p-4 border rounded-lg bg-muted/50 space-y-3">
+                  <h5 className="font-medium text-sm">Nouvelle alerte</h5>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="type_alerte" className="text-xs">Type</Label>
+                      <Select
+                        value={newAlerte.type_alerte}
+                        onValueChange={(value) => setNewAlerte({ ...newAlerte, type_alerte: value })}
+                      >
+                        <SelectTrigger id="type_alerte">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="critique">Critique</SelectItem>
+                          <SelectItem value="bas">Bas</SelectItem>
+                          <SelectItem value="optimal">Optimal</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="seuil_alerte" className="text-xs">Seuil</Label>
+                      <Input
+                        id="seuil_alerte"
+                        type="number"
+                        placeholder="100"
+                        value={newAlerte.seuil}
+                        onChange={(e) => setNewAlerte({ ...newAlerte, seuil: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="couleur_alerte" className="text-xs">Couleur</Label>
+                      <Input
+                        id="couleur_alerte"
+                        type="color"
+                        value={newAlerte.couleur}
+                        onChange={(e) => setNewAlerte({ ...newAlerte, couleur: e.target.value })}
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs invisible">Action</Label>
+                      <Button onClick={handleAddAlerte} size="sm" className="w-full">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Ajouter
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="message_alerte" className="text-xs">Message personnalisé (optionnel)</Label>
+                    <Input
+                      id="message_alerte"
+                      placeholder="Ex: Commander d'urgence chez le fournisseur"
+                      value={newAlerte.message_alerte}
+                      onChange={(e) => setNewAlerte({ ...newAlerte, message_alerte: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {alertes && alertes.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Seuil</TableHead>
+                      <TableHead>Couleur</TableHead>
+                      <TableHead>Message</TableHead>
+                      <TableHead>Statut actuel</TableHead>
+                      {editMode && <TableHead>Actions</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {alertes.map((alerte) => {
+                      const isActive = produit.stock_actuel <= alerte.seuil;
+                      return (
+                        <TableRow key={alerte.id} className={isActive ? "bg-muted/50" : ""}>
+                          <TableCell>
+                            <Badge variant="outline">{alerte.type_alerte}</Badge>
+                          </TableCell>
+                          <TableCell className="font-medium">≤ {alerte.seuil}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-6 h-6 rounded border"
+                                style={{ backgroundColor: alerte.couleur }}
+                              />
+                              <span className="text-xs font-mono">{alerte.couleur}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {alerte.message_alerte || "-"}
+                          </TableCell>
+                          <TableCell>
+                            {isActive ? (
+                              <Badge variant="destructive" className="gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                Active
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">Inactive</Badge>
+                            )}
+                          </TableCell>
+                          {editMode && (
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDeleteAlerte(alerte.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                  <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>Aucune alerte configurée</p>
+                  <p className="text-xs mt-2">
+                    Ajoutez des alertes personnalisées pour être notifié selon vos besoins
+                  </p>
+                </div>
+              )}
             </div>
           </TabsContent>
 

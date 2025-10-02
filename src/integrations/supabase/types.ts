@@ -721,6 +721,54 @@ export type Database = {
         }
         Relationships: []
       }
+      produit_alertes_stock: {
+        Row: {
+          actif: boolean | null
+          couleur: string
+          date_creation: string | null
+          id: string
+          message_alerte: string | null
+          produit_id: string
+          seuil: number
+          type_alerte: string
+        }
+        Insert: {
+          actif?: boolean | null
+          couleur: string
+          date_creation?: string | null
+          id?: string
+          message_alerte?: string | null
+          produit_id: string
+          seuil: number
+          type_alerte: string
+        }
+        Update: {
+          actif?: boolean | null
+          couleur?: string
+          date_creation?: string | null
+          id?: string
+          message_alerte?: string | null
+          produit_id?: string
+          seuil?: number
+          type_alerte?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produit_alertes_stock_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produit_alertes_stock_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "stock_disponible"
+            referencedColumns: ["produit_id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           client_id: string | null
