@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Edit2, Save, X, Package, TrendingUp, AlertTriangle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Edit2, Save, X, Package, TrendingUp, AlertTriangle, MapPin, Barcode, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -50,6 +51,50 @@ export const FicheProduitDialog = ({ produitId, open, onOpenChange, onSuccess }:
         .eq("produit_id", produitId)
         .order("date_mouvement", { ascending: false })
         .limit(10);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!produitId,
+  });
+
+  const { data: stockDisponible } = useQuery({
+    queryKey: ["stock_disponible", produitId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stock_disponible")
+        .select("*")
+        .eq("produit_id", produitId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!produitId,
+  });
+
+  const { data: emplacements } = useQuery({
+    queryKey: ["emplacements_produit", produitId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("emplacement")
+        .select("*")
+        .eq("produit_actuel_id", produitId);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!produitId,
+  });
+
+  const { data: variantes } = useQuery({
+    queryKey: ["variantes", produitId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sku_variante")
+        .select("*")
+        .eq("produit_id", produitId)
+        .eq("actif", true);
       
       if (error) throw error;
       return data;
@@ -222,13 +267,33 @@ export const FicheProduitDialog = ({ produitId, open, onOpenChange, onSuccess }:
         </DialogHeader>
 
         {/* Stats rapides */}
-        <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+        <div className="grid grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Stock actuel</span>
+              <span className="text-sm text-muted-foreground">Stock physique</span>
             </div>
-            <div className="text-2xl font-bold">{produit.stock_actuel}</div>
+            <div className="text-2xl font-bold text-primary">
+              {stockDisponible?.stock_actuel ?? produit.stock_actuel}
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Stock réservé</span>
+            </div>
+            <div className="text-2xl font-bold text-orange-500">
+              {stockDisponible?.stock_reserve ?? 0}
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Stock disponible</span>
+            </div>
+            <div className="text-2xl font-bold text-green-600">
+              {stockDisponible?.stock_disponible ?? produit.stock_actuel}
+            </div>
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -239,24 +304,17 @@ export const FicheProduitDialog = ({ produitId, open, onOpenChange, onSuccess }:
               €{((produit.stock_actuel * (produit.prix_unitaire || 0))).toFixed(2)}
             </div>
           </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Statut</span>
-            </div>
-            <Badge variant={isAlerte ? "destructive" : "default"}>
-              {isAlerte ? "Alerte stock" : "OK"}
-            </Badge>
-          </div>
         </div>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="general">Général</TabsTrigger>
             <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
             <TabsTrigger value="international">International</TabsTrigger>
             <TabsTrigger value="logistique">Logistique</TabsTrigger>
             <TabsTrigger value="tracabilite">Traçabilité</TabsTrigger>
+            <TabsTrigger value="emplacements">Emplacements</TabsTrigger>
+            <TabsTrigger value="variantes">Références</TabsTrigger>
             <TabsTrigger value="mouvements">Mouvements</TabsTrigger>
           </TabsList>
 
@@ -600,6 +658,116 @@ export const FicheProduitDialog = ({ produitId, open, onOpenChange, onSuccess }:
                   disabled={!editMode}
                 />
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="emplacements" className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Emplacements du produit
+                </h4>
+              </div>
+              {emplacements && emplacements.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Code emplacement</TableHead>
+                      <TableHead>Zone</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Quantité</TableHead>
+                      <TableHead>Statut</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {emplacements.map((emp) => (
+                      <TableRow key={emp.id}>
+                        <TableCell className="font-medium">{emp.code_emplacement}</TableCell>
+                        <TableCell>{emp.zone}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{emp.type_emplacement}</Badge>
+                        </TableCell>
+                        <TableCell>{emp.quantite_actuelle}</TableCell>
+                        <TableCell>
+                          <Badge variant={emp.statut_actuel === 'disponible' ? 'default' : 'secondary'}>
+                            {emp.statut_actuel}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                  Aucun emplacement assigné
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="variantes" className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Barcode className="h-4 w-4" />
+                  Références supplémentaires (Variantes SKU)
+                </h4>
+                {editMode && (
+                  <Button size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Ajouter
+                  </Button>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Gérez les variantes de scanning (ex: carton de 40 unités)
+              </p>
+              {variantes && variantes.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>SKU Principal</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Quantité par unité</TableHead>
+                      <TableHead>Code-barres variante</TableHead>
+                      {editMode && <TableHead>Actions</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {variantes.map((variante) => (
+                      <TableRow key={variante.id}>
+                        <TableCell className="font-medium">{variante.sku_principal}</TableCell>
+                        <TableCell>
+                          <Badge>{variante.type_variante}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-semibold text-primary">
+                            {variante.quantite_par_unite}x
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {variante.code_barre_variante || '-'}
+                        </TableCell>
+                        {editMode && (
+                          <TableCell>
+                            <Button size="sm" variant="ghost">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                  <p>Aucune variante configurée</p>
+                  <p className="text-xs mt-2">
+                    Les variantes permettent de scanner un code-barres différent qui ajoute automatiquement plusieurs unités
+                  </p>
+                </div>
+              )}
             </div>
           </TabsContent>
 
