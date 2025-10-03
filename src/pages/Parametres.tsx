@@ -45,14 +45,15 @@ const Parametres = () => {
   const [importReport, setImportReport] = useState<ImportReport | null>(null);
   const [importProgress, setImportProgress] = useState(0);
 
-  const tabs = [
+  const mainTabs = [
     { id: "general" as const, label: "Général", icon: Sliders },
     { id: "users" as const, label: "Utilisateurs", icon: UserCog },
     { id: "notifications" as const, label: "Notifications", icon: BellRing },
     { id: "import-export" as const, label: "Import/Export", icon: ArrowUpDown },
     { id: "data" as const, label: "Données", icon: HardDrive },
-    { id: "statistics" as const, label: "Statistiques", icon: BarChart3 },
   ];
+
+  const statisticsTab = { id: "statistics" as const, label: "Statistiques", icon: BarChart3 };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -555,7 +556,7 @@ const Parametres = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-4">
+      <div className="space-y-4 flex flex-col h-[calc(100vh-8rem)]">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Paramètres</h1>
           <p className="text-muted-foreground mt-1">
@@ -563,29 +564,45 @@ const Parametres = () => {
           </p>
         </div>
 
-        <div className="flex gap-6 min-h-[calc(100vh-12rem)]">
-          {/* Sidebar verticale */}
-          <nav className="w-56 space-y-2 bg-card border rounded-lg p-3 h-fit">
-            {tabs.map((tab) => (
+        {/* Navigation horizontale */}
+        <nav className="bg-card border rounded-lg p-2">
+          <div className="flex gap-1">
+            {mainTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex flex-col items-center gap-2 p-4 rounded-lg w-full transition-all",
+                  "flex items-center gap-2 px-6 py-3 rounded-lg transition-all flex-1",
                   "hover:bg-accent hover:text-accent-foreground",
                   activeTab === tab.id
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "bg-transparent"
                 )}
               >
-                <tab.icon className="h-6 w-6" />
-                <span className="text-sm font-medium text-center">{tab.label}</span>
+                <tab.icon className="h-5 w-5" />
+                <span className="text-sm font-medium">{tab.label}</span>
               </button>
             ))}
-          </nav>
+          </div>
+        </nav>
 
-          {/* Contenu */}
-          <div className="flex-1 bg-card border rounded-lg p-6 overflow-auto">
+        {/* Onglet Statistiques séparé */}
+        <button
+          onClick={() => setActiveTab("statistics")}
+          className={cn(
+            "flex items-center justify-center gap-3 px-6 py-4 rounded-lg transition-all bg-card border",
+            "hover:bg-accent hover:text-accent-foreground",
+            activeTab === "statistics"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "bg-transparent"
+          )}
+        >
+          <statisticsTab.icon className="h-5 w-5" />
+          <span className="text-sm font-medium">{statisticsTab.label}</span>
+        </button>
+
+        {/* Contenu */}
+        <div className="flex-1 bg-card border rounded-lg p-6 overflow-auto">
             {activeTab === "general" && (
               <div className="space-y-4">
             <Card>
@@ -1079,7 +1096,6 @@ const Parametres = () => {
             )}
           </div>
         </div>
-      </div>
       
       {/* Duplicate Confirmation Dialog */}
       <AlertDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
