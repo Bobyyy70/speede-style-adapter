@@ -1,12 +1,12 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Settings, Users, Bell, Database, FileSpreadsheet, Upload, Download, FileText, FileDown, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
+import { Sliders, UserCog, BellRing, HardDrive, ArrowUpDown, Upload, Download, FileText, FileDown, CheckCircle2, AlertCircle, RefreshCw, BarChart3 } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +34,7 @@ interface ImportReport {
 
 const Parametres = () => {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<"general" | "users" | "notifications" | "import-export" | "data" | "statistics">("general");
   const [importType, setImportType] = useState<"produits" | "commandes" | "emplacements">("produits");
   const [csvData, setCsvData] = useState<any[]>([]);
   const [validatedData, setValidatedData] = useState<ValidationResult | null>(null);
@@ -43,6 +44,15 @@ const Parametres = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [importReport, setImportReport] = useState<ImportReport | null>(null);
   const [importProgress, setImportProgress] = useState(0);
+
+  const tabs = [
+    { id: "general" as const, label: "Général", icon: Sliders },
+    { id: "users" as const, label: "Utilisateurs", icon: UserCog },
+    { id: "notifications" as const, label: "Notifications", icon: BellRing },
+    { id: "import-export" as const, label: "Import/Export", icon: ArrowUpDown },
+    { id: "data" as const, label: "Données", icon: HardDrive },
+    { id: "statistics" as const, label: "Statistiques", icon: BarChart3 },
+  ];
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -545,7 +555,7 @@ const Parametres = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Paramètres</h1>
           <p className="text-muted-foreground mt-1">
@@ -553,31 +563,31 @@ const Parametres = () => {
           </p>
         </div>
 
-        <Tabs defaultValue="general" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="general">
-              <Settings className="h-4 w-4 mr-2" />
-              Général
-            </TabsTrigger>
-            <TabsTrigger value="users">
-              <Users className="h-4 w-4 mr-2" />
-              Utilisateurs
-            </TabsTrigger>
-            <TabsTrigger value="notifications">
-              <Bell className="h-4 w-4 mr-2" />
-              Notifications
-            </TabsTrigger>
-            <TabsTrigger value="import-export">
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Import/Export
-            </TabsTrigger>
-            <TabsTrigger value="data">
-              <Database className="h-4 w-4 mr-2" />
-              Données
-            </TabsTrigger>
-          </TabsList>
+        <div className="flex gap-6 min-h-[calc(100vh-12rem)]">
+          {/* Sidebar verticale */}
+          <nav className="w-56 space-y-2 bg-card border rounded-lg p-3 h-fit">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "flex flex-col items-center gap-2 p-4 rounded-lg w-full transition-all",
+                  "hover:bg-accent hover:text-accent-foreground",
+                  activeTab === tab.id
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-transparent"
+                )}
+              >
+                <tab.icon className="h-6 w-6" />
+                <span className="text-sm font-medium text-center">{tab.label}</span>
+              </button>
+            ))}
+          </nav>
 
-          <TabsContent value="general" className="space-y-4">
+          {/* Contenu */}
+          <div className="flex-1 bg-card border rounded-lg p-6 overflow-auto">
+            {activeTab === "general" && (
+              <div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Paramètres généraux</CardTitle>
@@ -602,9 +612,11 @@ const Parametres = () => {
                 <Button>Enregistrer</Button>
               </CardContent>
             </Card>
-          </TabsContent>
+              </div>
+            )}
 
-          <TabsContent value="users" className="space-y-4">
+            {activeTab === "users" && (
+              <div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Gestion des utilisateurs</CardTitle>
@@ -628,9 +640,11 @@ const Parametres = () => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+              </div>
+            )}
 
-          <TabsContent value="notifications" className="space-y-4">
+            {activeTab === "notifications" && (
+              <div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Notifications</CardTitle>
@@ -661,9 +675,11 @@ const Parametres = () => {
                 <Button>Enregistrer</Button>
               </CardContent>
             </Card>
-          </TabsContent>
+              </div>
+            )}
 
-          <TabsContent value="import-export" className="space-y-4">
+            {activeTab === "import-export" && (
+              <div className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               {/* Section Import */}
               <Card>
@@ -884,9 +900,11 @@ const Parametres = () => {
                 </Button>
               </CardContent>
             </Card>
-          </TabsContent>
+              </div>
+            )}
 
-          <TabsContent value="data" className="space-y-4">
+            {activeTab === "data" && (
+              <div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Gestion des données</CardTitle>
@@ -901,8 +919,166 @@ const Parametres = () => {
                 <Button variant="outline" className="w-full">Exporter les données</Button>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+              </div>
+            )}
+
+            {activeTab === "statistics" && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Statistiques système</CardTitle>
+                    <CardDescription>Indicateurs de performance et activité</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* KPIs globaux */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                        <CardContent className="pt-6 text-center">
+                          <div className="text-4xl font-bold text-blue-600">1,247</div>
+                          <p className="text-sm text-muted-foreground mt-1">Produits en stock</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                        <CardContent className="pt-6 text-center">
+                          <div className="text-4xl font-bold text-green-600">342</div>
+                          <p className="text-sm text-muted-foreground mt-1">Commandes ce mois</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                        <CardContent className="pt-6 text-center">
+                          <div className="text-4xl font-bold text-purple-600">78%</div>
+                          <p className="text-sm text-muted-foreground mt-1">Taux remplissage entrepôt</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Utilisation stockage */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">📦 Utilisation du stockage</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span>Zone A (Picking)</span>
+                              <span className="font-semibold">85%</span>
+                            </div>
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div className="h-full bg-gradient-to-r from-primary to-primary/80" style={{ width: '85%' }} />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span>Zone B (Réserve)</span>
+                              <span className="font-semibold">62%</span>
+                            </div>
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div className="h-full bg-gradient-to-r from-blue-500 to-blue-400" style={{ width: '62%' }} />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span>Zone C (Longue durée)</span>
+                              <span className="font-semibold">41%</span>
+                            </div>
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div className="h-full bg-gradient-to-r from-green-500 to-green-400" style={{ width: '41%' }} />
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Activité utilisateurs */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">👥 Activité des utilisateurs (30 derniers jours)</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                            <div>
+                              <p className="font-medium">Opérateurs</p>
+                              <p className="text-sm text-muted-foreground">Réceptions, pickings</p>
+                            </div>
+                            <div className="text-2xl font-bold text-primary">456</div>
+                          </div>
+                          <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                            <div>
+                              <p className="font-medium">Gestionnaires</p>
+                              <p className="text-sm text-muted-foreground">Approbations, réappros</p>
+                            </div>
+                            <div className="text-2xl font-bold text-blue-600">127</div>
+                          </div>
+                          <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                            <div>
+                              <p className="font-medium">Administrateurs</p>
+                              <p className="text-sm text-muted-foreground">Configurations, imports</p>
+                            </div>
+                            <div className="text-2xl font-bold text-purple-600">34</div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Performances import/export */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">📊 Performances Import/Export</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                            <div className="text-3xl font-bold text-green-600">12</div>
+                            <p className="text-sm text-muted-foreground mt-1">Imports réussis</p>
+                            <p className="text-xs text-muted-foreground">Taux succès: 92%</p>
+                          </div>
+                          <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="text-3xl font-bold text-blue-600">3.2s</div>
+                            <p className="text-sm text-muted-foreground mt-1">Temps moyen</p>
+                            <p className="text-xs text-muted-foreground">Par lot de 100 lignes</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Top 5 produits */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">🏆 Top 5 produits (rotations)</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {[
+                            { ref: "PROD-A123", nom: "Smartphone XR Pro", rotations: 234 },
+                            { ref: "PROD-B456", nom: "Casque Bluetooth", rotations: 189 },
+                            { ref: "PROD-C789", nom: "Chargeur USB-C", rotations: 156 },
+                            { ref: "PROD-D012", nom: "Câble HDMI 2m", rotations: 143 },
+                            { ref: "PROD-E345", nom: "Écouteurs sans fil", rotations: 127 },
+                          ].map((item, index) => (
+                            <div key={item.ref} className="flex items-center justify-between p-2 border rounded">
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary font-bold text-sm">
+                                  {index + 1}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-sm">{item.nom}</p>
+                                  <p className="text-xs text-muted-foreground">{item.ref}</p>
+                                </div>
+                              </div>
+                              <div className="text-lg font-bold text-primary">{item.rotations}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
       
       {/* Duplicate Confirmation Dialog */}
