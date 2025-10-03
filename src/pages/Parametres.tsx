@@ -5,20 +5,44 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Settings, Users, Bell, Database, FileSpreadsheet, Upload, Download, FileText } from "lucide-react";
+import { Settings, Users, Bell, Database, FileSpreadsheet, Upload, Download, FileText, FileDown, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+interface ValidationResult {
+  valid: any[];
+  duplicates: any[];
+  errors: Array<{ _lineNumber: number; reference: string; nom: string; erreur: string }>;
+}
+
+interface ImportReport {
+  created: number;
+  updated: number;
+  errors: number;
+  errorRows: Array<{ ligne: number; reference: string; nom: string; erreur: string }>;
+  executionTime: number;
+}
 
 const Parametres = () => {
   const { toast } = useToast();
   const [importType, setImportType] = useState<"produits" | "commandes" | "emplacements">("produits");
   const [csvData, setCsvData] = useState<any[]>([]);
+  const [validatedData, setValidatedData] = useState<ValidationResult | null>(null);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [importReport, setImportReport] = useState<ImportReport | null>(null);
+  const [importProgress, setImportProgress] = useState(0);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -43,6 +67,110 @@ const Parametres = () => {
     });
   };
 
+  const validateCSVData = async (): Promise<ValidationResult> => {
+    const errors: Array<{ _lineNumber: number; reference: string; nom: string; erreur: string }> = [];
+    const validRows: any[] = [];
+    
+    // Helper functions for type conversion
+    const parseBoolean = (value: any): boolean => {
+      if (typeof value === 'boolean') return value;
+      const str = String(value).toLowerCase().trim();
+      return ['true', '1', 'oui', 'yes'].includes(str);
+    };
+    
+    const parseArray = (value: any): string[] => {
+      if (!value) return [];
+      return String(value).split(';').map(s => s.trim()).filter(Boolean);
+    };
+    
+    const parseNumber = (value: any, decimals = 2): number | null => {
+      if (!value || value === '') return null;
+      const parsed = parseFloat(String(value).replace(',', '.'));
+      return isNaN(parsed) ? null : Number(parsed.toFixed(decimals));
+    };
+    
+    // Process each row
+    for (let i = 0; i < csvData.length; i++) {
+      const row = csvData[i];
+      const lineNumber = i + 2; // +2 because line 1 is headers, index starts at 0
+      
+      // Validate mandatory fields
+      if (!row.reference || String(row.reference).trim() === '') {
+        errors.push({ _lineNumber: lineNumber, reference: 'N/A', nom: row.nom || 'N/A', erreur: "Champ 'reference' obligatoire" });
+        continue;
+      }
+      
+      if (!row.nom || String(row.nom).trim() === '') {
+        errors.push({ _lineNumber: lineNumber, reference: row.reference, nom: 'N/A', erreur: "Champ 'nom' obligatoire" });
+        continue;
+      }
+      
+      // Build validated row with defaults and conversions
+      const validatedRow: any = {
+        reference: String(row.reference).trim(),
+        nom: String(row.nom).trim(),
+        description: row.description || null,
+        code_barre_ean: row.code_barre_ean || null,
+        marque: row.marque || null,
+        fournisseur: row.fournisseur || null,
+        categorie_emballage: parseInt(row.categorie_emballage) || 1,
+        prix_unitaire: parseNumber(row.prix_unitaire),
+        stock_minimum: parseInt(row.stock_minimum) || 0,
+        stock_maximum: parseInt(row.stock_maximum) || null,
+        image_url: row.image_url || null,
+        longueur_cm: parseNumber(row.longueur_cm),
+        largeur_cm: parseNumber(row.largeur_cm),
+        hauteur_cm: parseNumber(row.hauteur_cm),
+        poids_unitaire: parseNumber(row.poids_unitaire),
+        valeur_douaniere: parseNumber(row.valeur_douaniere),
+        taux_tva: parseNumber(row.taux_tva) || 20.00,
+        code_sh: row.code_sh || null,
+        pays_origine: row.pays_origine || null,
+        temperature_stockage: row.temperature_stockage || 'ambiante',
+        matieres_dangereuses: parseBoolean(row.matieres_dangereuses),
+        classe_danger: row.classe_danger || null,
+        numero_onu: row.numero_onu || null,
+        conditions_speciales: parseArray(row.conditions_speciales),
+        gestion_lots: parseBoolean(row.gestion_lots),
+        gestion_serie: parseBoolean(row.gestion_serie),
+        duree_vie_jours: parseInt(row.duree_vie_jours) || null,
+        delai_peremption_alerte_jours: parseInt(row.delai_peremption_alerte_jours) || null,
+        instructions_picking: row.instructions_picking || null,
+        instructions_stockage: row.instructions_stockage || null,
+        statut_actif: row.statut_actif === undefined ? true : parseBoolean(row.statut_actif),
+        _lineNumber: lineNumber
+      };
+      
+      // Auto-calculate volume_m3
+      if (validatedRow.longueur_cm && validatedRow.largeur_cm && validatedRow.hauteur_cm) {
+        validatedRow.volume_m3 = parseNumber(
+          (validatedRow.longueur_cm * validatedRow.largeur_cm * validatedRow.hauteur_cm) / 1000000,
+          6
+        );
+      }
+      
+      validRows.push(validatedRow);
+    }
+    
+    // Check for duplicates in database
+    const references = validRows.map(r => r.reference);
+    const { data: existingProducts } = await supabase
+      .from('produit')
+      .select('id, reference, nom, prix_unitaire, stock_actuel')
+      .in('reference', references);
+    
+    const existingMap = new Map((existingProducts || []).map(p => [p.reference, p]));
+    
+    const duplicates = validRows.filter(r => existingMap.has(r.reference)).map(r => ({
+      ...r,
+      _existing: existingMap.get(r.reference)
+    }));
+    
+    const newProducts = validRows.filter(r => !existingMap.has(r.reference));
+    
+    return { valid: newProducts, duplicates, errors };
+  };
+  
   const handleImport = async () => {
     if (csvData.length === 0) {
       toast({
@@ -52,49 +180,125 @@ const Parametres = () => {
       });
       return;
     }
-
+    
     setImporting(true);
-    let successCount = 0;
-    let errorCount = 0;
-
     try {
-      for (const row of csvData) {
-        try {
-          if (importType === "produits") {
-            const { error } = await supabase.from("produit").insert({
-              reference: row.reference,
-              nom: row.nom,
-              code_barre_ean: row.code_barre_ean,
-              description: row.description,
-              poids_unitaire: parseFloat(row.poids_unitaire) || null,
-              prix_unitaire: parseFloat(row.prix_unitaire) || null,
-              stock_minimum: parseInt(row.stock_minimum) || 0,
-              stock_actuel: parseInt(row.stock_actuel) || 0,
-              statut_actif: row.statut_actif !== "false",
-            });
-            if (error) throw error;
-          } else if (importType === "emplacements") {
-            const { error } = await supabase.from("emplacement").insert({
-              code_emplacement: row.code_emplacement,
-              zone: row.zone,
-              type_emplacement: row.type_emplacement,
-              capacite_maximale: parseFloat(row.capacite_maximale) || null,
-              statut_actuel: row.statut_actuel || "disponible",
-            });
-            if (error) throw error;
-          }
-          successCount++;
-        } catch (err) {
-          errorCount++;
-          console.error("Erreur import ligne:", err);
-        }
+      const result = await validateCSVData();
+      setValidatedData(result);
+      
+      if (result.errors.length > 0) {
+        toast({
+          title: "⚠️ Erreurs de validation",
+          description: `${result.errors.length} ligne(s) avec erreurs. Consultez l'aperçu.`,
+          variant: "destructive",
+        });
       }
-
+      
+      if (result.duplicates.length > 0) {
+        setShowDuplicateDialog(true);
+      } else if (result.valid.length > 0) {
+        await executeImport(result.valid, []);
+      } else {
+        toast({
+          title: "Aucune donnée valide",
+          description: "Corrigez les erreurs et réessayez",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
-        title: "Import terminé",
-        description: `${successCount} lignes importées, ${errorCount} erreurs`,
+        title: "Erreur",
+        description: "Erreur lors de la validation",
+        variant: "destructive",
       });
+    } finally {
+      setImporting(false);
+    }
+  };
+  
+  const executeImport = async (newProducts: any[], duplicatesToUpdate: any[]) => {
+    const startTime = Date.now();
+    let createdCount = 0;
+    let updatedCount = 0;
+    const errorRows: Array<{ ligne: number; reference: string; nom: string; erreur: string }> = [];
+    
+    setImporting(true);
+    setImportProgress(0);
+    
+    try {
+      const totalItems = newProducts.length + duplicatesToUpdate.length;
+      let processedItems = 0;
+      
+      // Insert new products with stock_actuel = 0
+      for (const product of newProducts) {
+        try {
+          const { _lineNumber, _existing, ...productData } = product;
+          const { error } = await supabase
+            .from('produit')
+            .insert({ ...productData, stock_actuel: 0 });
+          
+          if (error) throw error;
+          createdCount++;
+        } catch (err: any) {
+          errorRows.push({
+            ligne: product._lineNumber,
+            reference: product.reference,
+            nom: product.nom,
+            erreur: err.message || 'Erreur insertion'
+          });
+        }
+        processedItems++;
+        setImportProgress(Math.round((processedItems / totalItems) * 100));
+      }
+      
+      // Update existing products (without touching stock_actuel)
+      for (const product of duplicatesToUpdate) {
+        try {
+          const { _lineNumber, _existing, ...productData } = product;
+          const { stock_actuel, ...updateData } = productData; // Exclude stock_actuel
+          
+          const { error } = await supabase
+            .from('produit')
+            .update(updateData)
+            .eq('reference', product.reference);
+          
+          if (error) throw error;
+          updatedCount++;
+        } catch (err: any) {
+          errorRows.push({
+            ligne: product._lineNumber,
+            reference: product.reference,
+            nom: product.nom,
+            erreur: err.message || 'Erreur mise à jour'
+          });
+        }
+        processedItems++;
+        setImportProgress(Math.round((processedItems / totalItems) * 100));
+      }
+      
+      const executionTime = ((Date.now() - startTime) / 1000).toFixed(2);
+      
+      setImportReport({
+        created: createdCount,
+        updated: updatedCount,
+        errors: errorRows.length,
+        errorRows,
+        executionTime: parseFloat(executionTime)
+      });
+      
+      // Show toast notification
+      toast({
+        title: "✅ Import terminé",
+        description: `${createdCount} créés, ${updatedCount} mis à jour, ${errorRows.length} erreurs`,
+      });
+      
+      // Show detailed modal
+      setShowReportModal(true);
+      
+      // Clear CSV data
       setCsvData([]);
+      setValidatedData(null);
+      
     } catch (error) {
       toast({
         title: "Erreur",
@@ -103,7 +307,24 @@ const Parametres = () => {
       });
     } finally {
       setImporting(false);
+      setImportProgress(0);
     }
+  };
+  
+  const exportErrorsToCSV = () => {
+    if (!importReport || importReport.errorRows.length === 0) return;
+    
+    const csv = Papa.unparse(importReport.errorRows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'erreurs_import_produits.csv';
+    link.click();
+    
+    toast({
+      title: "📥 Export erreurs",
+      description: `${importReport.errorRows.length} erreurs exportées`,
+    });
   };
 
   const handleExport = async (type: "stock" | "commandes" | "mouvements") => {
@@ -170,8 +391,18 @@ const Parametres = () => {
     let filename = "";
 
     if (type === "produits") {
-      headers = ["reference", "nom", "code_barre_ean", "description", "poids_unitaire", "prix_unitaire", "stock_minimum", "stock_actuel", "statut_actif"];
-      filename = "template_produits.csv";
+      headers = [
+        "reference", "nom", "description", "code_barre_ean", "marque", "fournisseur",
+        "categorie_emballage", "prix_unitaire", "stock_minimum", "stock_maximum", "image_url",
+        "longueur_cm", "largeur_cm", "hauteur_cm", "poids_unitaire",
+        "valeur_douaniere", "taux_tva",
+        "code_sh", "pays_origine",
+        "temperature_stockage", "matieres_dangereuses", "classe_danger", "numero_onu", "conditions_speciales",
+        "gestion_lots", "gestion_serie", "duree_vie_jours", "delai_peremption_alerte_jours",
+        "instructions_picking", "instructions_stockage",
+        "statut_actif"
+      ];
+      filename = "template_produits_complet.csv";
     } else if (type === "emplacements") {
       headers = ["code_emplacement", "zone", "type_emplacement", "capacite_maximale", "statut_actuel"];
       filename = "template_emplacements.csv";
@@ -188,8 +419,124 @@ const Parametres = () => {
     link.click();
 
     toast({
-      title: "Template téléchargé",
+      title: "📥 Template téléchargé",
       description: filename,
+    });
+  };
+  
+  const downloadExempleProduits = () => {
+    const exampleData = [
+      {
+        reference: "REF-001",
+        nom: "Smartphone XR Pro",
+        description: "Téléphone haute performance 128GB",
+        code_barre_ean: "3760123456789",
+        marque: "TechCorp",
+        fournisseur: "FournisseurA",
+        categorie_emballage: 1,
+        prix_unitaire: 299.99,
+        stock_minimum: 10,
+        stock_maximum: 500,
+        image_url: "https://example.com/img1.jpg",
+        longueur_cm: 15.5,
+        largeur_cm: 7.8,
+        hauteur_cm: 0.9,
+        poids_unitaire: 0.175,
+        valeur_douaniere: 250.00,
+        taux_tva: 20.00,
+        code_sh: "8517.12.00",
+        pays_origine: "CN",
+        temperature_stockage: "ambiante",
+        matieres_dangereuses: "FALSE",
+        classe_danger: "",
+        numero_onu: "",
+        conditions_speciales: "Fragile;Électronique",
+        gestion_lots: "FALSE",
+        gestion_serie: "TRUE",
+        duree_vie_jours: "",
+        delai_peremption_alerte_jours: "",
+        instructions_picking: "Manipuler avec soin",
+        instructions_stockage: "Stocker à l'abri de l'humidité",
+        statut_actif: "TRUE"
+      },
+      {
+        reference: "REF-002",
+        nom: "Casque Audio Bluetooth",
+        description: "Casque sans fil avec réduction de bruit",
+        code_barre_ean: "3760987654321",
+        marque: "AudioMax",
+        fournisseur: "FournisseurB",
+        categorie_emballage: 2,
+        prix_unitaire: 79.99,
+        stock_minimum: 20,
+        stock_maximum: 300,
+        image_url: "",
+        longueur_cm: 12.0,
+        largeur_cm: 10.0,
+        hauteur_cm: 8.5,
+        poids_unitaire: 0.250,
+        valeur_douaniere: 60.00,
+        taux_tva: 20.00,
+        code_sh: "8518.30.00",
+        pays_origine: "DE",
+        temperature_stockage: "ambiante",
+        matieres_dangereuses: "FALSE",
+        classe_danger: "",
+        numero_onu: "",
+        conditions_speciales: "Fragile",
+        gestion_lots: "FALSE",
+        gestion_serie: "FALSE",
+        duree_vie_jours: "",
+        delai_peremption_alerte_jours: "",
+        instructions_picking: "Éviter chocs",
+        instructions_stockage: "Ranger dans boîte d'origine",
+        statut_actif: "TRUE"
+      },
+      {
+        reference: "REF-003",
+        nom: "Chargeur USB-C 65W",
+        description: "Adaptateur secteur rapide compatible MacBook",
+        code_barre_ean: "3760111222333",
+        marque: "ChargePro",
+        fournisseur: "FournisseurA",
+        categorie_emballage: 1,
+        prix_unitaire: 29.99,
+        stock_minimum: 50,
+        stock_maximum: 1000,
+        image_url: "",
+        longueur_cm: 8.5,
+        largeur_cm: 5.2,
+        hauteur_cm: 3.0,
+        poids_unitaire: 0.120,
+        valeur_douaniere: 18.00,
+        taux_tva: 20.00,
+        code_sh: "8504.40.90",
+        pays_origine: "FR",
+        temperature_stockage: "ambiante",
+        matieres_dangereuses: "FALSE",
+        classe_danger: "",
+        numero_onu: "",
+        conditions_speciales: "Électronique",
+        gestion_lots: "FALSE",
+        gestion_serie: "FALSE",
+        duree_vie_jours: "",
+        delai_peremption_alerte_jours: "",
+        instructions_picking: "Vérifier câble fourni",
+        instructions_stockage: "Stocker au sec",
+        statut_actif: "TRUE"
+      }
+    ];
+    
+    const csv = Papa.unparse(exampleData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'exemple_produits.csv';
+    link.click();
+    
+    toast({
+      title: "📄 Exemple téléchargé",
+      description: "3 produits pré-remplis",
     });
   };
 
@@ -351,30 +698,87 @@ const Parametres = () => {
                   </div>
 
                   {csvData.length > 0 && (
-                    <div className="border rounded-lg p-4 max-h-64 overflow-auto">
-                      <p className="text-sm font-medium mb-2">
-                        Aperçu: {csvData.length} lignes
-                      </p>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            {Object.keys(csvData[0] || {}).map((key) => (
-                              <TableHead key={key}>{key}</TableHead>
-                            ))}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {csvData.slice(0, 3).map((row, i) => (
-                            <TableRow key={i}>
-                              {Object.values(row).map((val: any, j) => (
-                                <TableCell key={j} className="text-xs">
-                                  {String(val).substring(0, 20)}
-                                </TableCell>
+                    <div className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">
+                          📊 Aperçu: {csvData.length} lignes chargées
+                        </p>
+                        {validatedData && (
+                          <div className="flex gap-2 text-xs">
+                            <Badge variant="default" className="bg-green-100 text-green-700">
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              {validatedData.valid.length} valides
+                            </Badge>
+                            {validatedData.duplicates.length > 0 && (
+                              <Badge variant="default" className="bg-blue-100 text-blue-700">
+                                <RefreshCw className="h-3 w-3 mr-1" />
+                                {validatedData.duplicates.length} doublons
+                              </Badge>
+                            )}
+                            {validatedData.errors.length > 0 && (
+                              <Badge variant="destructive">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                {validatedData.errors.length} erreurs
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <ScrollArea className="h-64 border rounded">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-12">#</TableHead>
+                              {Object.keys(csvData[0] || {}).slice(0, 5).map((key) => (
+                                <TableHead key={key}>{key}</TableHead>
                               ))}
+                              {validatedData && <TableHead>Statut</TableHead>}
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {csvData.slice(0, 10).map((row, i) => {
+                              const lineNumber = i + 2;
+                              const isError = validatedData?.errors.some(e => e._lineNumber === lineNumber);
+                              const isDuplicate = validatedData?.duplicates.some((d: any) => d._lineNumber === lineNumber);
+                              
+                              return (
+                                <TableRow key={i} className={isError ? "bg-red-50" : isDuplicate ? "bg-blue-50" : "bg-green-50"}>
+                                  <TableCell className="text-xs font-mono">{lineNumber}</TableCell>
+                                  {Object.values(row).slice(0, 5).map((val: any, j) => (
+                                    <TableCell key={j} className="text-xs">
+                                      {String(val).substring(0, 30)}
+                                    </TableCell>
+                                  ))}
+                                  {validatedData && (
+                                    <TableCell className="text-xs">
+                                      {isError && <Badge variant="destructive" className="text-xs">❌ Erreur</Badge>}
+                                      {isDuplicate && <Badge variant="default" className="bg-blue-500 text-xs">🔄 Doublon</Badge>}
+                                      {!isError && !isDuplicate && <Badge variant="default" className="bg-green-500 text-xs">✅ Valide</Badge>}
+                                    </TableCell>
+                                  )}
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
+                      
+                      {csvData.length > 10 && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          ... et {csvData.length - 10} lignes supplémentaires
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {importing && importProgress > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Import en cours...</span>
+                        <span>{importProgress}%</span>
+                      </div>
+                      <Progress value={importProgress} />
                     </div>
                   )}
 
@@ -497,6 +901,148 @@ const Parametres = () => {
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Duplicate Confirmation Dialog */}
+      <AlertDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+        <AlertDialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              🔄 {validatedData?.duplicates.length || 0} produits existants détectés
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Les produits suivants existent déjà dans la base. Les données CSV remplaceront les valeurs actuelles.
+              <br />
+              <strong className="text-orange-600">⚠️ Le stock actuel ne sera PAS modifié.</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <ScrollArea className="max-h-96">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Référence</TableHead>
+                  <TableHead>Nom actuel</TableHead>
+                  <TableHead>Nouveau nom</TableHead>
+                  <TableHead>Prix actuel</TableHead>
+                  <TableHead>Nouveau prix</TableHead>
+                  <TableHead>Stock actuel</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {validatedData?.duplicates.map((dup: any, i: number) => (
+                  <TableRow key={i}>
+                    <TableCell className="font-mono text-xs">{dup.reference}</TableCell>
+                    <TableCell>{dup._existing.nom}</TableCell>
+                    <TableCell className="font-semibold text-blue-600">{dup.nom}</TableCell>
+                    <TableCell>{dup._existing.prix_unitaire ? `${dup._existing.prix_unitaire}€` : '-'}</TableCell>
+                    <TableCell className="font-semibold text-blue-600">
+                      {dup.prix_unitaire ? `${dup.prix_unitaire}€` : '-'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {dup._existing.stock_actuel} <span className="text-xs">(inchangé)</span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDuplicateDialog(false)}>
+              ❌ Annuler l'import
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setShowDuplicateDialog(false);
+                executeImport(validatedData?.valid || [], validatedData?.duplicates || []);
+              }}
+            >
+              ✅ Confirmer et mettre à jour ({validatedData?.duplicates.length || 0} produits)
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Import Report Modal */}
+      <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>📊 Rapport d'import terminé</DialogTitle>
+            <DialogDescription>
+              Résumé des opérations effectuées
+            </DialogDescription>
+          </DialogHeader>
+          
+          {importReport && (
+            <div className="space-y-4">
+              {/* Statistics Cards */}
+              <div className="grid grid-cols-3 gap-4">
+                <Card className="bg-green-50 border-green-200">
+                  <CardContent className="pt-6 text-center">
+                    <div className="text-3xl font-bold text-green-600">{importReport.created}</div>
+                    <p className="text-sm text-muted-foreground mt-1">✅ Produits créés</p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="pt-6 text-center">
+                    <div className="text-3xl font-bold text-blue-600">{importReport.updated}</div>
+                    <p className="text-sm text-muted-foreground mt-1">🔄 Produits mis à jour</p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="bg-red-50 border-red-200">
+                  <CardContent className="pt-6 text-center">
+                    <div className="text-3xl font-bold text-red-600">{importReport.errors}</div>
+                    <p className="text-sm text-muted-foreground mt-1">❌ Erreurs détectées</p>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {/* Error Details */}
+              {importReport.errors > 0 && (
+                <Card className="border-red-200">
+                  <CardHeader>
+                    <CardTitle className="text-red-600 text-base">⚠️ Détail des erreurs</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-32">
+                      <div className="space-y-1">
+                        {importReport.errorRows.map((err, i) => (
+                          <div key={i} className="text-sm py-1 border-b last:border-0">
+                            <span className="font-mono text-xs text-muted-foreground">Ligne {err.ligne}</span>
+                            {' - '}
+                            <span className="font-semibold">{err.reference}</span>
+                            {': '}
+                            <span className="text-red-600">{err.erreur}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                    <Button 
+                      variant="outline" 
+                      className="mt-3 w-full"
+                      onClick={exportErrorsToCSV}
+                    >
+                      <FileDown className="h-4 w-4 mr-2" />
+                      📥 Télécharger erreurs (CSV)
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Execution Time */}
+              <div className="text-sm text-muted-foreground text-center pt-2 border-t">
+                ⏱️ Import terminé en {importReport.executionTime}s
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button onClick={() => setShowReportModal(false)}>Fermer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
