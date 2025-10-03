@@ -234,7 +234,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 bg-card border-r border-border transition-all duration-300",
-          sidebarOpen ? "w-64" : "w-20"
+          sidebarOpen ? "w-64" : "w-24"
         )}
       >
         <div className="flex h-16 items-center justify-between px-6 border-b border-border">
@@ -264,8 +264,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   <div className="space-y-1">
                     <button
                       onClick={() => toggleMenu(item.name)}
-                      className={cn(
-                        "w-full flex items-center gap-3 rounded-lg px-4 py-3.5 text-sm font-medium transition-all duration-200 border-l-4",
+                    className={cn(
+                        "w-full flex items-center rounded-lg text-sm font-medium transition-all duration-200 border-l-4 h-11",
+                        sidebarOpen ? "px-4 gap-3 justify-start" : "px-0 gap-0 justify-center",
                         isActive
                           ? "bg-primary/10 text-primary border-primary shadow-sm"
                           : "text-muted-foreground hover:bg-secondary hover:text-foreground hover:border-primary/50 border-transparent"
@@ -303,7 +304,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   <Link
                     to={item.href!}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-4 py-3.5 text-sm font-medium transition-all duration-200 border-l-4",
+                      "flex items-center rounded-lg text-sm font-medium transition-all duration-200 border-l-4 h-11",
+                      sidebarOpen ? "px-4 gap-3 justify-start" : "px-0 gap-0 justify-center",
                       location.pathname === item.href
                         ? "bg-primary text-primary-foreground shadow-lg border-primary"
                         : "text-muted-foreground hover:bg-secondary hover:text-foreground hover:border-primary/50 border-transparent"
@@ -323,7 +325,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div
         className={cn(
           "transition-all duration-300",
-          sidebarOpen ? "ml-64" : "ml-20"
+          sidebarOpen ? "ml-64" : "ml-24"
         )}
       >
         {/* Header */}
