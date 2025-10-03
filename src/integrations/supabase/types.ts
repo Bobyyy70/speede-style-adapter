@@ -633,6 +633,7 @@ export type Database = {
           pays_origine: string | null
           poids_unitaire: number | null
           prix_unitaire: number | null
+          protection_individuelle: boolean | null
           reference: string
           statut_actif: boolean | null
           stock_actuel: number | null
@@ -671,6 +672,7 @@ export type Database = {
           pays_origine?: string | null
           poids_unitaire?: number | null
           prix_unitaire?: number | null
+          protection_individuelle?: boolean | null
           reference: string
           statut_actif?: boolean | null
           stock_actuel?: number | null
@@ -709,6 +711,7 @@ export type Database = {
           pays_origine?: string | null
           poids_unitaire?: number | null
           prix_unitaire?: number | null
+          protection_individuelle?: boolean | null
           reference?: string
           statut_actif?: boolean | null
           stock_actuel?: number | null

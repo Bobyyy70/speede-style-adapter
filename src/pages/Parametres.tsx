@@ -113,7 +113,7 @@ const Parametres = () => {
         code_barre_ean: row.code_barre_ean || null,
         marque: row.marque || null,
         fournisseur: row.fournisseur || null,
-        categorie_emballage: parseInt(row.categorie_emballage) || 1,
+        protection_individuelle: parseBoolean(row.protection_individuelle),
         prix_unitaire: parseNumber(row.prix_unitaire),
         stock_minimum: parseInt(row.stock_minimum) || 0,
         stock_maximum: parseInt(row.stock_maximum) || null,
@@ -148,6 +148,9 @@ const Parametres = () => {
           6
         );
       }
+      
+      // Auto-calculate categorie_emballage based on protection_individuelle
+      validatedRow.categorie_emballage = validatedRow.protection_individuelle ? 2 : 1;
       
       validRows.push(validatedRow);
     }
@@ -393,7 +396,7 @@ const Parametres = () => {
     if (type === "produits") {
       headers = [
         "reference", "nom", "description", "code_barre_ean", "marque", "fournisseur",
-        "categorie_emballage", "prix_unitaire", "stock_minimum", "stock_maximum", "image_url",
+        "protection_individuelle", "prix_unitaire", "stock_minimum", "stock_maximum", "image_url",
         "longueur_cm", "largeur_cm", "hauteur_cm", "poids_unitaire",
         "valeur_douaniere", "taux_tva",
         "code_sh", "pays_origine",
@@ -433,7 +436,7 @@ const Parametres = () => {
         code_barre_ean: "3760123456789",
         marque: "TechCorp",
         fournisseur: "FournisseurA",
-        categorie_emballage: 1,
+        protection_individuelle: "non",
         prix_unitaire: 299.99,
         stock_minimum: 10,
         stock_maximum: 500,
@@ -466,7 +469,7 @@ const Parametres = () => {
         code_barre_ean: "3760987654321",
         marque: "AudioMax",
         fournisseur: "FournisseurB",
-        categorie_emballage: 2,
+        protection_individuelle: "oui",
         prix_unitaire: 79.99,
         stock_minimum: 20,
         stock_maximum: 300,
@@ -499,7 +502,7 @@ const Parametres = () => {
         code_barre_ean: "3760111222333",
         marque: "ChargePro",
         fournisseur: "FournisseurA",
-        categorie_emballage: 1,
+        protection_individuelle: "non",
         prix_unitaire: 29.99,
         stock_minimum: 50,
         stock_maximum: 1000,

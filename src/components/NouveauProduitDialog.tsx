@@ -30,7 +30,7 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
     largeur_cm: "",
     hauteur_cm: "",
     poids_unitaire: "",
-    categorie_emballage: "",
+    protection_individuelle: false,
     // Stock
     stock_minimum: "0",
     stock_maximum: "",
@@ -73,7 +73,8 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
           largeur_cm: formData.largeur_cm ? parseFloat(formData.largeur_cm) : null,
           hauteur_cm: formData.hauteur_cm ? parseFloat(formData.hauteur_cm) : null,
           poids_unitaire: formData.poids_unitaire ? parseFloat(formData.poids_unitaire) : null,
-          categorie_emballage: formData.categorie_emballage ? parseInt(formData.categorie_emballage) : null,
+          protection_individuelle: formData.protection_individuelle,
+          categorie_emballage: formData.protection_individuelle ? 2 : 1,
           // Stock
           prix_unitaire: formData.prix_unitaire ? parseFloat(formData.prix_unitaire) : null,
           valeur_douaniere: formData.valeur_douaniere ? parseFloat(formData.valeur_douaniere) : null,
@@ -120,7 +121,7 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
         largeur_cm: "",
         hauteur_cm: "",
         poids_unitaire: "",
-        categorie_emballage: "",
+        protection_individuelle: false,
         stock_minimum: "0",
         stock_maximum: "",
         prix_unitaire: "",
@@ -366,13 +367,13 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="protection_individuelle"
-                    checked={formData.categorie_emballage === "2"}
+                    checked={formData.protection_individuelle}
                     onCheckedChange={(checked) => 
-                      setFormData({ ...formData, categorie_emballage: checked ? "2" : "1" })
+                      setFormData({ ...formData, protection_individuelle: checked as boolean })
                     }
                   />
                   <Label htmlFor="protection_individuelle" className="cursor-pointer">
-                    Protection individuelle
+                    Protection individuelle (catégorie 2)
                   </Label>
                 </div>
               </div>
