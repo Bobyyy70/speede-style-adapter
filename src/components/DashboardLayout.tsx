@@ -171,6 +171,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarPinned, setSidebarPinned] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
@@ -246,7 +247,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={() => {
+              setSidebarOpen(!sidebarOpen);
+              if (sidebarOpen) {
+                setSidebarPinned(false);
+              }
+            }}
             className="ml-auto"
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -263,10 +269,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 {item.children ? (
                   <div className="space-y-1">
                     <button
-                      onClick={() => toggleMenu(item.name)}
-                    className={cn(
-                        "w-full flex items-center rounded-lg text-sm font-medium transition-all duration-200 border-l-4 h-11",
-                        sidebarOpen ? "px-4 gap-3 justify-start" : "px-0 gap-0 justify-center",
+                      onClick={() => {
+                        if (sidebarOpen) {
+                          toggleMenu(item.name);
+                        } else if (!sidebarPinned) {
+                          setSidebarOpen(true);
+                          toggleMenu(item.name);
+                        }
+                      }}
+                      className={cn(
+                        "w-full flex items-center rounded-lg text-sm font-medium transition-all duration-200 h-11",
+                        sidebarOpen ? "px-4 gap-3 justify-start border-l-4" : "px-2 gap-0 justify-center border-l-[5px]",
                         isActive
                           ? "bg-primary/10 text-primary border-primary shadow-sm"
                           : "text-muted-foreground hover:bg-secondary hover:text-foreground hover:border-primary/50 border-transparent"
@@ -303,9 +316,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 ) : (
                   <Link
                     to={item.href!}
+                    onClick={(e) => {
+                      if (!sidebarOpen && !sidebarPinned) {
+                        e.preventDefault();
+                        setSidebarOpen(true);
+                        setTimeout(() => navigate(item.href!), 300);
+                      }
+                    }}
                     className={cn(
-                      "flex items-center rounded-lg text-sm font-medium transition-all duration-200 border-l-4 h-11",
-                      sidebarOpen ? "px-4 gap-3 justify-start" : "px-0 gap-0 justify-center",
+                      "flex items-center rounded-lg text-sm font-medium transition-all duration-200 h-11",
+                      sidebarOpen ? "px-4 gap-3 justify-start border-l-4" : "px-2 gap-0 justify-center border-l-[5px]",
                       location.pathname === item.href
                         ? "bg-primary text-primary-foreground shadow-lg border-primary"
                         : "text-muted-foreground hover:bg-secondary hover:text-foreground hover:border-primary/50 border-transparent"
