@@ -18,6 +18,7 @@ import Facturation from "./pages/Facturation";
 import Retours from "./pages/Retours";
 import Parametres from "./pages/Parametres";
 import Preparation from "./pages/Preparation";
+import PreparationDetails from "./pages/PreparationDetails";
 import Connecteurs from "./pages/Connecteurs";
 import ServicesLogistiques from "./pages/ServicesLogistiques";
 import BacsAdresses from "./pages/BacsAdresses";
@@ -103,6 +104,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur']}>
                   <Preparation />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/preparation/:sessionId"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur']}>
+                  <PreparationDetails />
                 </ProtectedRoute>
               }
             />

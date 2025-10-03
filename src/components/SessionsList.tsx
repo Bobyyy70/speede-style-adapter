@@ -226,7 +226,15 @@ export function SessionsList() {
                       {new Date(session.date_creation).toLocaleDateString("fr-FR")}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.location.href = `/preparation/${session.id}`}
+                        >
+                          <FolderOpen className="h-4 w-4 mr-1" />
+                          Ouvrir
+                        </Button>
                         {session.statut === "active" && (
                           <>
                             <Button
