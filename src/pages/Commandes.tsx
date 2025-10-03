@@ -2,6 +2,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, ClipboardList, TruckIcon, FileCheck } from "lucide-react";
+import { CommandesList } from "@/components/CommandesList";
 
 export default function Commandes() {
   return (
@@ -35,19 +36,7 @@ export default function Commandes() {
           </TabsList>
 
           <TabsContent value="liste" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Liste des commandes</CardTitle>
-                <CardDescription>
-                  Vue d'ensemble de toutes les commandes
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Interface de gestion des commandes à venir
-                </p>
-              </CardContent>
-            </Card>
+            <CommandesList />
           </TabsContent>
 
           <TabsContent value="preparation" className="space-y-4">
