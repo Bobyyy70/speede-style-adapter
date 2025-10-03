@@ -1,7 +1,7 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, ClipboardList, TruckIcon, FileCheck } from "lucide-react";
+import { Package, ClipboardList, TruckIcon } from "lucide-react";
 import { CommandesList } from "@/components/CommandesList";
 
 export default function Commandes() {
@@ -25,10 +25,6 @@ export default function Commandes() {
               <ClipboardList className="mr-2 h-4 w-4" />
               Préparation
             </TabsTrigger>
-            <TabsTrigger value="statuts">
-              <FileCheck className="mr-2 h-4 w-4" />
-              Statuts et suivi
-            </TabsTrigger>
             <TabsTrigger value="expedition">
               <TruckIcon className="mr-2 h-4 w-4" />
               Expédition
@@ -50,22 +46,6 @@ export default function Commandes() {
               <CardContent>
                 <p className="text-sm text-muted-foreground">
                   Interface de préparation à venir
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="statuts" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Statuts et suivi</CardTitle>
-                <CardDescription>
-                  Workflow et traçabilité des commandes
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Interface de suivi à venir
                 </p>
               </CardContent>
             </Card>
