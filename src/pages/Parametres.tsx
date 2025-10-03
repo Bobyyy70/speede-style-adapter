@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Sliders, UserCog, BellRing, HardDrive, ArrowUpDown, Upload, Download, FileText, FileDown, CheckCircle2, AlertCircle, RefreshCw, BarChart3 } from "lucide-react";
+import { Settings, Users, BellDot, Database, Server, TrendingUp, Upload, Download, FileText, FileDown, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import Papa from "papaparse";
@@ -46,14 +46,14 @@ const Parametres = () => {
   const [importProgress, setImportProgress] = useState(0);
 
   const mainTabs = [
-    { id: "general" as const, label: "Général", icon: Sliders },
-    { id: "users" as const, label: "Utilisateurs", icon: UserCog },
-    { id: "notifications" as const, label: "Notifications", icon: BellRing },
-    { id: "import-export" as const, label: "Import/Export", icon: ArrowUpDown },
-    { id: "data" as const, label: "Données", icon: HardDrive },
+    { id: "general" as const, label: "Général", icon: Settings },
+    { id: "users" as const, label: "Utilisateurs", icon: Users },
+    { id: "notifications" as const, label: "Notifications", icon: BellDot },
+    { id: "import-export" as const, label: "Import/Export", icon: Database },
+    { id: "data" as const, label: "Données", icon: Server },
   ];
 
-  const statisticsTab = { id: "statistics" as const, label: "Statistiques", icon: BarChart3 };
+  const statisticsTab = { id: "statistics" as const, label: "Statistiques", icon: TrendingUp };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -564,45 +564,47 @@ const Parametres = () => {
           </p>
         </div>
 
-        {/* Navigation horizontale */}
-        <nav className="bg-card border rounded-lg p-2">
-          <div className="flex gap-1">
+        <div className="flex gap-4 flex-1 min-h-0">
+          {/* Navigation verticale */}
+          <nav className="w-56 bg-card border rounded-lg p-3 flex flex-col gap-2">
             {mainTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-2 px-6 py-3 rounded-lg transition-all flex-1",
+                  "flex flex-col items-center justify-center gap-3 p-6 rounded-lg transition-all min-h-[120px]",
                   "hover:bg-accent hover:text-accent-foreground",
                   activeTab === tab.id
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "bg-transparent"
                 )}
               >
-                <tab.icon className="h-5 w-5" />
-                <span className="text-sm font-medium">{tab.label}</span>
+                <tab.icon className="h-10 w-10" />
+                <span className="text-base font-semibold text-center">{tab.label}</span>
               </button>
             ))}
-          </div>
-        </nav>
+            
+            {/* Séparateur visuel */}
+            <div className="border-t my-2" />
+            
+            {/* Onglet Statistiques */}
+            <button
+              onClick={() => setActiveTab("statistics")}
+              className={cn(
+                "flex flex-col items-center justify-center gap-3 p-6 rounded-lg transition-all min-h-[120px]",
+                "hover:bg-accent hover:text-accent-foreground",
+                activeTab === "statistics"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-transparent"
+              )}
+            >
+              <statisticsTab.icon className="h-10 w-10" />
+              <span className="text-base font-semibold text-center">{statisticsTab.label}</span>
+            </button>
+          </nav>
 
-        {/* Onglet Statistiques séparé */}
-        <button
-          onClick={() => setActiveTab("statistics")}
-          className={cn(
-            "flex items-center justify-center gap-3 px-6 py-4 rounded-lg transition-all bg-card border",
-            "hover:bg-accent hover:text-accent-foreground",
-            activeTab === "statistics"
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "bg-transparent"
-          )}
-        >
-          <statisticsTab.icon className="h-5 w-5" />
-          <span className="text-sm font-medium">{statisticsTab.label}</span>
-        </button>
-
-        {/* Contenu */}
-        <div className="flex-1 bg-card border rounded-lg p-6 overflow-auto">
+          {/* Contenu */}
+          <div className="flex-1 bg-card border rounded-lg p-6 overflow-auto">
             {activeTab === "general" && (
               <div className="space-y-4">
             <Card>
@@ -1096,6 +1098,7 @@ const Parametres = () => {
             )}
           </div>
         </div>
+      </div>
       
       {/* Duplicate Confirmation Dialog */}
       <AlertDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>

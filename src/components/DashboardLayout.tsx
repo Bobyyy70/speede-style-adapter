@@ -249,7 +249,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <nav className="flex-1 space-y-3 p-6 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = isMenuActive(item);
-            const isExpanded = expandedMenus.includes(item.name);
+            const isExpanded = true; // Toujours déroulé
             
             return (
               <div key={item.name}>
@@ -266,14 +266,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     >
                       <item.icon className="w-5 h-5 flex-shrink-0" />
                       {sidebarOpen && (
-                        <>
-                          <span className="flex-1 text-left">{item.name}</span>
-                          {isExpanded ? (
-                            <ChevronDown className="w-4 h-4" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4" />
-                          )}
-                        </>
+                        <span className="flex-1 text-left">{item.name}</span>
                       )}
                     </button>
                     {sidebarOpen && isExpanded && (
