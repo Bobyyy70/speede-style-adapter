@@ -249,7 +249,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <nav className="flex-1 space-y-3 p-6 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = isMenuActive(item);
-            const isExpanded = true; // Toujours déroulé
+            const isExpanded = expandedMenus.includes(item.name);
             
             return (
               <div key={item.name}>
