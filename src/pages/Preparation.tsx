@@ -1,5 +1,5 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { SessionsList } from "@/components/SessionsList";
 import { ClipboardList } from "lucide-react";
 
 export default function Preparation() {
@@ -13,24 +13,12 @@ export default function Preparation() {
           <div>
             <h1 className="text-3xl font-bold">Préparation de Commandes</h1>
             <p className="text-muted-foreground">
-              Gestion des ordres de picking et préparation
+              Gestion des sessions de préparation et picking
             </p>
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Ordres de Préparation</CardTitle>
-            <CardDescription>
-              Liste des commandes à préparer
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Interface de préparation de commandes à venir
-            </p>
-          </CardContent>
-        </Card>
+        <SessionsList />
       </div>
     </DashboardLayout>
   );

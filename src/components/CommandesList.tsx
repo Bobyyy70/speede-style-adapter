@@ -23,6 +23,7 @@ import {
 import { Search, Plus, TrendingUp, Package, Clock, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CreateSessionDialog } from "./CreateSessionDialog";
 
 interface Commande {
   id: string;
@@ -74,6 +75,7 @@ export function CommandesList() {
   const [selectedStatut, setSelectedStatut] = useState("all");
   const [selectedSource, setSelectedSource] = useState("all");
   const [selectedCommandes, setSelectedCommandes] = useState<string[]>([]);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchCommandes();
@@ -170,7 +172,12 @@ export function CommandesList() {
       toast.error("Veuillez sélectionner au moins une commande");
       return;
     }
-    toast.info("Création de session - À implémenter en Phase 2");
+    setCreateDialogOpen(true);
+  };
+
+  const handleSessionCreated = () => {
+    setSelectedCommandes([]);
+    fetchCommandes();
   };
 
   if (loading) {
@@ -367,6 +374,13 @@ export function CommandesList() {
           )}
         </CardContent>
       </Card>
+
+      <CreateSessionDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        selectedCommandeIds={selectedCommandes}
+        onSuccess={handleSessionCreated}
+      />
     </div>
   );
 }
