@@ -885,6 +885,157 @@ export type Database = {
         }
         Relationships: []
       }
+      session_commande: {
+        Row: {
+          commande_id: string
+          date_creation: string | null
+          date_prise: string | null
+          id: string
+          pris_par: string | null
+          session_id: string
+          statut_session: string | null
+        }
+        Insert: {
+          commande_id: string
+          date_creation?: string | null
+          date_prise?: string | null
+          id?: string
+          pris_par?: string | null
+          session_id: string
+          statut_session?: string | null
+        }
+        Update: {
+          commande_id?: string
+          date_creation?: string | null
+          date_prise?: string | null
+          id?: string
+          pris_par?: string | null
+          session_id?: string
+          statut_session?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_commande_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_preparation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_picking_consolidee: {
+        Row: {
+          date_creation: string | null
+          date_modification: string | null
+          emplacements: Json | null
+          id: string
+          nombre_commandes: number
+          produit_id: string
+          quantite_totale: number
+          session_id: string
+          statut_picking: string | null
+        }
+        Insert: {
+          date_creation?: string | null
+          date_modification?: string | null
+          emplacements?: Json | null
+          id?: string
+          nombre_commandes?: number
+          produit_id: string
+          quantite_totale?: number
+          session_id: string
+          statut_picking?: string | null
+        }
+        Update: {
+          date_creation?: string | null
+          date_modification?: string | null
+          emplacements?: Json | null
+          id?: string
+          nombre_commandes?: number
+          produit_id?: string
+          quantite_totale?: number
+          session_id?: string
+          statut_picking?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_picking_consolidee_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_picking_consolidee_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "stock_disponible"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "session_picking_consolidee_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_preparation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_preparation: {
+        Row: {
+          created_by: string | null
+          cron_enabled: boolean | null
+          cron_expression: string | null
+          date_creation: string | null
+          date_modification: string | null
+          derniere_execution: string | null
+          description: string | null
+          filtres: Json
+          id: string
+          max_commandes: number | null
+          nom_session: string
+          ordre_priorite: number
+          statut: string | null
+        }
+        Insert: {
+          created_by?: string | null
+          cron_enabled?: boolean | null
+          cron_expression?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          derniere_execution?: string | null
+          description?: string | null
+          filtres?: Json
+          id?: string
+          max_commandes?: number | null
+          nom_session: string
+          ordre_priorite?: number
+          statut?: string | null
+        }
+        Update: {
+          created_by?: string | null
+          cron_enabled?: boolean | null
+          cron_expression?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          derniere_execution?: string | null
+          description?: string | null
+          filtres?: Json
+          id?: string
+          max_commandes?: number | null
+          nom_session?: string
+          ordre_priorite?: number
+          statut?: string | null
+        }
+        Relationships: []
+      }
       sku_variante: {
         Row: {
           actif: boolean | null
