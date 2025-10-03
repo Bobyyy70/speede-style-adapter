@@ -6,6 +6,7 @@ import { useGlobalSearch } from "@/hooks/useGlobalSearch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import logo from "@/assets/logo.jpg";
 import {
   LayoutDashboard,
   Package,
@@ -231,11 +232,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         <div className="flex h-16 items-center justify-between px-6 border-b border-border">
           {sidebarOpen && (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <Package className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <span className="text-lg font-semibold">Speed E-Log</span>
+            <div className="flex items-center gap-3">
+              <img src={logo} alt="Speed E-Log" className="h-10 w-auto object-contain" />
             </div>
           )}
           <Button
@@ -248,7 +246,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </Button>
         </div>
 
-        <nav className="flex-1 space-y-1 p-4">
+        <nav className="flex-1 space-y-3 p-6 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = isMenuActive(item);
             const isExpanded = expandedMenus.includes(item.name);
@@ -260,7 +258,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     <button
                       onClick={() => toggleMenu(item.name)}
                       className={cn(
-                        "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                        "w-full flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors",
                         isActive
                           ? "bg-primary/10 text-primary"
                           : "text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -279,7 +277,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       )}
                     </button>
                     {sidebarOpen && isExpanded && (
-                      <div className="ml-6 space-y-1 mt-1">
+                      <div className="ml-6 space-y-2 mt-2">
                         {item.children.map((child) => {
                           const isChildActive = location.pathname === child.href;
                           return (
@@ -287,7 +285,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                               key={child.name}
                               to={child.href}
                               className={cn(
-                                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                                "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
                                 isChildActive
                                   ? "bg-primary text-primary-foreground shadow-md"
                                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -305,7 +303,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   <Link
                     to={item.href!}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors",
                       location.pathname === item.href
                         ? "bg-primary text-primary-foreground shadow-md"
                         : "text-muted-foreground hover:bg-secondary hover:text-foreground"
