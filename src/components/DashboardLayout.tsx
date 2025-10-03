@@ -58,7 +58,7 @@ type NavigationItem = {
   children?: Array<{ name: string; href: string; icon: any }>;
 };
 
-// Navigation V3 - Structure avec menus déroulants hiérarchiques
+// Navigation restructurée selon les spécifications - Janvier 2025
 const getNavigationForRole = (role: string | null): NavigationItem[] => {
   const baseNavigation: NavigationItem[] = [
     { name: "Tableau de Bord", href: "/", icon: LayoutDashboard },
@@ -67,25 +67,19 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
   if (role === "admin") {
     return [
       ...baseNavigation,
+      { name: "Commandes", href: "/commandes", icon: ClipboardList },
+      { name: "Préparation", href: "/commandes/preparation", icon: PackageCheck },
+      { name: "Expédition", href: "/expedition", icon: TruckIcon },
+      { name: "Retours", href: "/commandes/retours", icon: Undo2 },
+      { name: "Produits", href: "/stock/produits", icon: Package },
+      { name: "Réception", href: "/stock/reception", icon: PackageCheck },
       { 
         name: "Stock", 
         icon: Package,
         children: [
-          { name: "Produits", href: "/stock/produits", icon: Package },
           { name: "Emplacements", href: "/stock/emplacements", icon: MapPin },
-          { name: "Réappro", href: "/stock/reappro", icon: RefreshCw },
+          { name: "Réappro", href: "/commandes/reappro", icon: RefreshCw },
           { name: "Mouvements", href: "/stock/mouvements", icon: ArrowRightLeft },
-          { name: "Réception", href: "/stock/reception", icon: PackageCheck },
-        ]
-      },
-      { 
-        name: "Commandes", 
-        href: "/commandes",
-        icon: ClipboardList,
-        children: [
-          { name: "Toutes les commandes", href: "/commandes", icon: ClipboardList },
-          { name: "Préparation", href: "/commandes/preparation", icon: ClipboardList },
-          { name: "Retours", href: "/commandes/retours", icon: Undo2 },
         ]
       },
       { 
@@ -97,36 +91,38 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
         ]
       },
       { 
-        name: "Administratif", 
+        name: "Gestion Données", 
         icon: FolderTree,
         children: [
+          { name: "Import/Export", href: "/gestion-donnees/import-export", icon: FileText },
+        ]
+      },
+      { 
+        name: "Paramètres", 
+        icon: Settings,
+        children: [
+          { name: "Utilisateurs", href: "/parametres/utilisateurs", icon: Settings },
+          { name: "Notifications", href: "/parametres/notifications", icon: Bell },
           { name: "Facturation", href: "/administratif/facturation", icon: FileText },
         ]
       },
-      { name: "Paramètres", href: "/parametres", icon: Settings },
     ];
   }
 
   if (role === "operateur") {
     return [
       ...baseNavigation,
+      { name: "Commandes", href: "/commandes", icon: ClipboardList },
+      { name: "Préparation", href: "/commandes/preparation", icon: PackageCheck },
+      { name: "Expédition", href: "/expedition", icon: TruckIcon },
+      { name: "Produits", href: "/stock/produits", icon: Package },
+      { name: "Réception", href: "/stock/reception", icon: PackageCheck },
       { 
         name: "Stock", 
         icon: Package,
         children: [
-          { name: "Produits", href: "/stock/produits", icon: Package },
           { name: "Emplacements", href: "/stock/emplacements", icon: MapPin },
           { name: "Mouvements", href: "/stock/mouvements", icon: ArrowRightLeft },
-          { name: "Réception", href: "/stock/reception", icon: PackageCheck },
-        ]
-      },
-      { 
-        name: "Commandes", 
-        href: "/commandes",
-        icon: ClipboardList,
-children: [
-          { name: "Toutes les commandes", href: "/commandes", icon: ClipboardList },
-          { name: "Préparation", href: "/commandes/preparation", icon: ClipboardList },
         ]
       },
     ];
@@ -135,30 +131,22 @@ children: [
   if (role === "gestionnaire") {
     return [
       ...baseNavigation,
+      { name: "Commandes", href: "/commandes", icon: ClipboardList },
+      { name: "Retours", href: "/commandes/retours", icon: Undo2 },
       { 
         name: "Stock", 
         icon: Package,
         children: [
-          { name: "Réappro", href: "/stock/reappro", icon: RefreshCw },
+          { name: "Réappro", href: "/commandes/reappro", icon: RefreshCw },
         ]
       },
       { 
-        name: "Commandes", 
-        href: "/commandes",
-        icon: ClipboardList,
-children: [
-           { name: "Toutes les commandes", href: "/commandes", icon: ClipboardList },
-           { name: "Retours", href: "/commandes/retours", icon: Undo2 },
-         ]
-      },
-      { 
-        name: "Administratif", 
-        icon: FolderTree,
+        name: "Paramètres", 
+        icon: Settings,
         children: [
           { name: "Facturation", href: "/administratif/facturation", icon: FileText },
         ]
       },
-      { name: "Paramètres", href: "/parametres", icon: Settings },
     ];
   }
 

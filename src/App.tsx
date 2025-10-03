@@ -22,6 +22,10 @@ import PreparationDetails from "./pages/PreparationDetails";
 import Connecteurs from "./pages/Connecteurs";
 import ServicesLogistiques from "./pages/ServicesLogistiques";
 import BacsAdresses from "./pages/BacsAdresses";
+import Expedition from "./pages/Expedition";
+import ImportExport from "./pages/ImportExport";
+import Utilisateurs from "./pages/Utilisateurs";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -160,6 +164,38 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Parametres />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/expedition"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur']}>
+                  <Expedition />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/gestion-donnees/import-export"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ImportExport />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parametres/utilisateurs"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Utilisateurs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parametres/notifications"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <Notifications />
                 </ProtectedRoute>
               }
             />

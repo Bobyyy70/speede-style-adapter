@@ -16,12 +16,17 @@ const routeLabels: Record<string, string> = {
   "/commandes": "Commandes",
   "/commandes/preparation": "Préparation",
   "/commandes/retours": "Retours",
+  "/expedition": "Expédition",
   "/integrations": "Intégrations",
   "/integrations/transporteurs": "Transporteurs",
   "/integrations/connecteurs": "Connecteurs",
+  "/gestion-donnees": "Gestion Données",
+  "/gestion-donnees/import-export": "Import/Export",
   "/administratif": "Administratif",
   "/administratif/facturation": "Facturation",
   "/parametres": "Paramètres",
+  "/parametres/utilisateurs": "Utilisateurs",
+  "/parametres/notifications": "Notifications",
 };
 
 export const useBreadcrumbs = (): Breadcrumb[] => {
