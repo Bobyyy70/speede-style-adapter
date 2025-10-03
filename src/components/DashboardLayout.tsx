@@ -80,6 +80,7 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
       },
       { 
         name: "Commandes", 
+        href: "/commandes",
         icon: ClipboardList,
         children: [
           { name: "Préparation", href: "/commandes/preparation", icon: ClipboardList },
@@ -120,6 +121,7 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
       },
       { 
         name: "Commandes", 
+        href: "/commandes",
         icon: ClipboardList,
         children: [
           { name: "Préparation", href: "/commandes/preparation", icon: ClipboardList },
@@ -140,6 +142,7 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
       },
       { 
         name: "Commandes", 
+        href: "/commandes",
         icon: ClipboardList,
         children: [
           { name: "Retours", href: "/commandes/retours", icon: Undo2 },

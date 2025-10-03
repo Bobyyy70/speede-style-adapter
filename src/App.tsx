@@ -59,6 +59,14 @@ const App = () => (
               }
             />
             <Route
+              path="/commandes"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <Commandes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/commandes/reappro"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
