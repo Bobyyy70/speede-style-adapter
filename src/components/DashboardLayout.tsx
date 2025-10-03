@@ -26,8 +26,15 @@ import {
   FileText,
   Plug,
   FolderTree,
-  ChevronDown,
-  ChevronRight,
+  Boxes,
+  Warehouse,
+  PackageOpen,
+  PackagePlus,
+  UserCog,
+  Receipt,
+  ArrowDownUp,
+  ShipWheel,
+  Cable,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -69,14 +76,14 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
     return [
       ...baseNavigation,
       { name: "Commandes", href: "/commandes", icon: ClipboardList },
-      { name: "Préparation", href: "/commandes/preparation", icon: PackageCheck },
+      { name: "Préparation", href: "/commandes/preparation", icon: PackagePlus },
       { name: "Expédition", href: "/expedition", icon: TruckIcon },
       { name: "Retours", href: "/commandes/retours", icon: Undo2 },
-      { name: "Produits", href: "/stock/produits", icon: Package },
-      { name: "Réception", href: "/stock/reception", icon: PackageCheck },
+      { name: "Produits", href: "/stock/produits", icon: Boxes },
+      { name: "Réception", href: "/stock/reception", icon: PackageOpen },
       { 
         name: "Stock", 
-        icon: Package,
+        icon: Warehouse,
         children: [
           { name: "Emplacements", href: "/stock/emplacements", icon: MapPin },
           { name: "Réappro", href: "/commandes/reappro", icon: RefreshCw },
@@ -87,24 +94,24 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
         name: "Intégrations", 
         icon: Plug,
         children: [
-          { name: "Transporteurs", href: "/integrations/transporteurs", icon: TruckIcon },
-          { name: "Connecteurs", href: "/integrations/connecteurs", icon: Plug },
+          { name: "Transporteurs", href: "/integrations/transporteurs", icon: ShipWheel },
+          { name: "Connecteurs", href: "/integrations/connecteurs", icon: Cable },
         ]
       },
       { 
         name: "Gestion Données", 
         icon: FolderTree,
         children: [
-          { name: "Import/Export", href: "/gestion-donnees/import-export", icon: FileText },
+          { name: "Import/Export", href: "/gestion-donnees/import-export", icon: ArrowDownUp },
         ]
       },
       { 
         name: "Paramètres", 
         icon: Settings,
         children: [
-          { name: "Utilisateurs", href: "/parametres/utilisateurs", icon: Settings },
+          { name: "Utilisateurs", href: "/parametres/utilisateurs", icon: UserCog },
           { name: "Notifications", href: "/parametres/notifications", icon: Bell },
-          { name: "Facturation", href: "/administratif/facturation", icon: FileText },
+          { name: "Facturation", href: "/administratif/facturation", icon: Receipt },
         ]
       },
     ];
@@ -114,13 +121,13 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
     return [
       ...baseNavigation,
       { name: "Commandes", href: "/commandes", icon: ClipboardList },
-      { name: "Préparation", href: "/commandes/preparation", icon: PackageCheck },
+      { name: "Préparation", href: "/commandes/preparation", icon: PackagePlus },
       { name: "Expédition", href: "/expedition", icon: TruckIcon },
-      { name: "Produits", href: "/stock/produits", icon: Package },
-      { name: "Réception", href: "/stock/reception", icon: PackageCheck },
+      { name: "Produits", href: "/stock/produits", icon: Boxes },
+      { name: "Réception", href: "/stock/reception", icon: PackageOpen },
       { 
         name: "Stock", 
-        icon: Package,
+        icon: Warehouse,
         children: [
           { name: "Emplacements", href: "/stock/emplacements", icon: MapPin },
           { name: "Mouvements", href: "/stock/mouvements", icon: ArrowRightLeft },
@@ -136,7 +143,7 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
       { name: "Retours", href: "/commandes/retours", icon: Undo2 },
       { 
         name: "Stock", 
-        icon: Package,
+        icon: Warehouse,
         children: [
           { name: "Réappro", href: "/commandes/reappro", icon: RefreshCw },
         ]
@@ -145,7 +152,7 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
         name: "Paramètres", 
         icon: Settings,
         children: [
-          { name: "Facturation", href: "/administratif/facturation", icon: FileText },
+          { name: "Facturation", href: "/administratif/facturation", icon: Receipt },
         ]
       },
     ];
@@ -246,7 +253,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </Button>
         </div>
 
-        <nav className="flex-1 space-y-3 p-6 overflow-y-auto">
+        <nav className="flex-1 space-y-4 p-6 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = isMenuActive(item);
             const isExpanded = expandedMenus.includes(item.name);
@@ -258,19 +265,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     <button
                       onClick={() => toggleMenu(item.name)}
                       className={cn(
-                        "w-full flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors",
+                        "w-full flex items-center gap-3 rounded-lg px-4 py-3.5 text-sm font-medium transition-all duration-200 border-l-4",
                         isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                          ? "bg-primary/10 text-primary border-primary shadow-sm"
+                          : "text-muted-foreground hover:bg-secondary hover:text-foreground hover:border-primary/50 border-transparent"
                       )}
                     >
-                      <item.icon className="w-5 h-5 flex-shrink-0" />
+                      <item.icon className="w-6 h-6 flex-shrink-0" />
                       {sidebarOpen && (
                         <span className="flex-1 text-left">{item.name}</span>
                       )}
                     </button>
                     {sidebarOpen && isExpanded && (
-                      <div className="ml-6 space-y-2 mt-2">
+                      <div className="ml-8 space-y-2 mt-2">
                         {item.children.map((child) => {
                           const isChildActive = location.pathname === child.href;
                           return (
@@ -278,13 +285,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                               key={child.name}
                               to={child.href}
                               className={cn(
-                                "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors",
+                                "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200",
                                 isChildActive
-                                  ? "bg-primary text-primary-foreground shadow-md"
-                                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                                  ? "bg-primary text-primary-foreground shadow-lg scale-105"
+                                  : "text-muted-foreground hover:bg-secondary hover:text-foreground hover:scale-102"
                               )}
                             >
-                              <child.icon className="w-4 h-4 flex-shrink-0" />
+                              <child.icon className="w-5 h-5 flex-shrink-0" />
                               <span>{child.name}</span>
                             </Link>
                           );
@@ -296,13 +303,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   <Link
                     to={item.href!}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors",
+                      "flex items-center gap-3 rounded-lg px-4 py-3.5 text-sm font-medium transition-all duration-200 border-l-4",
                       location.pathname === item.href
-                        ? "bg-primary text-primary-foreground shadow-md"
-                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        ? "bg-primary text-primary-foreground shadow-lg border-primary"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground hover:border-primary/50 border-transparent"
                     )}
                   >
-                    <item.icon className="w-5 h-5 flex-shrink-0" />
+                    <item.icon className="w-6 h-6 flex-shrink-0" />
                     {sidebarOpen && <span>{item.name}</span>}
                   </Link>
                 )}
