@@ -20,7 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, TrendingUp, Package, Clock, CheckCircle2 } from "lucide-react";
+import { Search, Plus, TrendingUp, Package, Clock, CheckCircle2, Columns } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSessionDialog } from "./CreateSessionDialog";
@@ -33,7 +35,22 @@ interface Commande {
   statut_wms: string;
   source: string;
   valeur_totale: number;
-  nombre_produits?: number;
+  methode_expedition?: string;
+  transporteur?: string;
+  poids_total?: number;
+  sendcloud_id?: string;
+  numero_facture_commerciale?: string;
+  devise?: string;
+  date_modification?: string;
+  ville?: string;
+  code_postal?: string;
+  pays_code?: string;
+  adresse_ligne_1?: string;
+  adresse_ligne_2?: string;
+  adresse_nom?: string;
+  email_client?: string;
+  telephone_client?: string;
+  remarques?: string;
 }
 
 interface StatsData {
@@ -61,6 +78,35 @@ const SOURCES = [
   { value: "SupplyCo's", label: "SupplyCo's" },
 ];
 
+const ALL_COLUMNS = [
+  { key: "numero_commande", label: "N° Commande", defaultVisible: true },
+  { key: "nom_client", label: "Client", defaultVisible: true },
+  { key: "date_creation", label: "Date de création", defaultVisible: true },
+  { key: "statut_wms", label: "Statut", defaultVisible: true },
+  { key: "source", label: "Source", defaultVisible: true },
+  { key: "valeur_totale", label: "Valeur", defaultVisible: true },
+  { key: "methode_expedition", label: "Méthode d'expédition", defaultVisible: false },
+  { key: "transporteur", label: "Transporteur", defaultVisible: false },
+  { key: "poids_total", label: "Poids total", defaultVisible: false },
+  { key: "sendcloud_id", label: "SendCloud ID", defaultVisible: false },
+  { key: "numero_facture_commerciale", label: "N° Facture", defaultVisible: false },
+  { key: "devise", label: "Devise", defaultVisible: false },
+  { key: "date_modification", label: "Date de modification", defaultVisible: false },
+  { key: "ville", label: "Ville", defaultVisible: false },
+  { key: "code_postal", label: "Code postal", defaultVisible: false },
+  { key: "pays_code", label: "Pays", defaultVisible: false },
+  { key: "adresse_ligne_1", label: "Adresse ligne 1", defaultVisible: false },
+  { key: "adresse_ligne_2", label: "Adresse ligne 2", defaultVisible: false },
+  { key: "adresse_nom", label: "Adresse nom", defaultVisible: false },
+  { key: "email_client", label: "Email client", defaultVisible: false },
+  { key: "telephone_client", label: "Téléphone client", defaultVisible: false },
+  { key: "remarques", label: "Remarques", defaultVisible: false },
+];
+
+const DEFAULT_VISIBLE_COLUMNS = ALL_COLUMNS
+  .filter(col => col.defaultVisible)
+  .map(col => col.key);
+
 export function CommandesList() {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [stats, setStats] = useState<StatsData>({
@@ -76,6 +122,10 @@ export function CommandesList() {
   const [selectedSource, setSelectedSource] = useState("all");
   const [selectedCommandes, setSelectedCommandes] = useState<string[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
+    const saved = localStorage.getItem("commandes-visible-columns");
+    return saved ? JSON.parse(saved) : DEFAULT_VISIBLE_COLUMNS;
+  });
 
   useEffect(() => {
     fetchCommandes();
@@ -93,7 +143,23 @@ export function CommandesList() {
           date_creation,
           statut_wms,
           source,
-          valeur_totale
+          valeur_totale,
+          methode_expedition,
+          transporteur,
+          poids_total,
+          sendcloud_id,
+          numero_facture_commerciale,
+          devise,
+          date_modification,
+          ville,
+          code_postal,
+          pays_code,
+          adresse_ligne_1,
+          adresse_ligne_2,
+          adresse_nom,
+          email_client,
+          telephone_client,
+          remarques
         `)
         .order("date_creation", { ascending: false });
 
@@ -178,6 +244,46 @@ export function CommandesList() {
   const handleSessionCreated = () => {
     setSelectedCommandes([]);
     fetchCommandes();
+  };
+
+  const toggleColumnVisibility = (columnKey: string) => {
+    setVisibleColumns((prev) => {
+      const newColumns = prev.includes(columnKey)
+        ? prev.filter((k) => k !== columnKey)
+        : [...prev, columnKey];
+      localStorage.setItem("commandes-visible-columns", JSON.stringify(newColumns));
+      return newColumns;
+    });
+  };
+
+  const resetColumns = () => {
+    setVisibleColumns(DEFAULT_VISIBLE_COLUMNS);
+    localStorage.setItem("commandes-visible-columns", JSON.stringify(DEFAULT_VISIBLE_COLUMNS));
+  };
+
+  const isColumnVisible = (columnKey: string) => visibleColumns.includes(columnKey);
+
+  const renderCellContent = (commande: Commande, columnKey: string) => {
+    switch (columnKey) {
+      case "numero_commande":
+        return <span className="font-medium">{commande.numero_commande}</span>;
+      case "nom_client":
+        return commande.nom_client;
+      case "date_creation":
+        return new Date(commande.date_creation).toLocaleDateString("fr-FR");
+      case "statut_wms":
+        return <Badge variant={getStatutBadgeVariant(commande.statut_wms)}>{commande.statut_wms}</Badge>;
+      case "source":
+        return commande.source;
+      case "valeur_totale":
+        return <span className="text-right block">{commande.valeur_totale.toFixed(2)} €</span>;
+      case "date_modification":
+        return commande.date_modification ? new Date(commande.date_modification).toLocaleDateString("fr-FR") : "-";
+      case "poids_total":
+        return commande.poids_total ? `${commande.poids_total} kg` : "-";
+      default:
+        return (commande as any)[columnKey] || "-";
+    }
   };
 
   if (loading) {
@@ -294,14 +400,59 @@ export function CommandesList() {
               </Select>
             </div>
 
-            <Button
-              onClick={handleCreateSession}
-              disabled={selectedCommandes.length === 0}
-              className="w-full lg:w-auto"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Créer une session ({selectedCommandes.length})
-            </Button>
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Columns className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80" align="end">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-sm">Colonnes visibles</h4>
+                      <Badge variant="secondary">{visibleColumns.length}</Badge>
+                    </div>
+                    <ScrollArea className="h-[300px] pr-4">
+                      <div className="space-y-2">
+                        {ALL_COLUMNS.map((column) => (
+                          <div key={column.key} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={column.key}
+                              checked={isColumnVisible(column.key)}
+                              onCheckedChange={() => toggleColumnVisibility(column.key)}
+                            />
+                            <label
+                              htmlFor={column.key}
+                              className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {column.label}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={resetColumns}
+                      className="w-full"
+                    >
+                      Réinitialiser par défaut
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <Button
+                onClick={handleCreateSession}
+                disabled={selectedCommandes.length === 0}
+                className="w-full lg:w-auto"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Créer une session ({selectedCommandes.length})
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -319,18 +470,20 @@ export function CommandesList() {
                       onCheckedChange={toggleSelectAll}
                     />
                   </TableHead>
-                  <TableHead>N° Commande</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead className="text-right">Valeur</TableHead>
+                  {ALL_COLUMNS.filter(col => isColumnVisible(col.key)).map((column) => (
+                    <TableHead 
+                      key={column.key}
+                      className={column.key === "valeur_totale" ? "text-right" : ""}
+                    >
+                      {column.label}
+                    </TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredCommandes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    <TableCell colSpan={visibleColumns.length + 1} className="text-center text-muted-foreground">
                       Aucune commande trouvée
                     </TableCell>
                   </TableRow>
@@ -343,22 +496,11 @@ export function CommandesList() {
                           onCheckedChange={() => toggleCommandeSelection(commande.id)}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">
-                        {commande.numero_commande}
-                      </TableCell>
-                      <TableCell>{commande.nom_client}</TableCell>
-                      <TableCell>
-                        {new Date(commande.date_creation).toLocaleDateString("fr-FR")}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getStatutBadgeVariant(commande.statut_wms)}>
-                          {commande.statut_wms}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{commande.source}</TableCell>
-                      <TableCell className="text-right">
-                        {commande.valeur_totale.toFixed(2)} €
-                      </TableCell>
+                      {ALL_COLUMNS.filter(col => isColumnVisible(col.key)).map((column) => (
+                        <TableCell key={column.key}>
+                          {renderCellContent(commande, column.key)}
+                        </TableCell>
+                      ))}
                     </TableRow>
                   ))
                 )}
