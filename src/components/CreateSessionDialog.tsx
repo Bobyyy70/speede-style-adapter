@@ -12,9 +12,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+interface FilterCondition {
+  id: string;
+  field: string;
+  operator: string;
+  value: string;
+  logicOperator: "ET" | "OU";
+}
 
 interface CreateSessionDialogProps {
   open: boolean;
@@ -39,9 +49,63 @@ export function CreateSessionDialog({
       minute: "2-digit",
     })}`
   );
+  const [heureExecution, setHeureExecution] = useState("");
   const [maxCommandes, setMaxCommandes] = useState<string>("");
   const [cronEnabled, setCronEnabled] = useState(false);
   const [cronExpression, setCronExpression] = useState("0 9 * * *");
+  const [filterConditions, setFilterConditions] = useState<FilterCondition[]>([
+    {
+      id: crypto.randomUUID(),
+      field: "statut_wms",
+      operator: "equals",
+      value: "",
+      logicOperator: "ET"
+    }
+  ]);
+
+  const fieldOptions = [
+    { value: "statut_wms", label: "Statut WMS" },
+    { value: "source", label: "Source" },
+    { value: "nom_client", label: "Nom client" },
+    { value: "methode_expedition", label: "Méthode expédition" },
+    { value: "transporteur", label: "Transporteur" },
+    { value: "valeur_totale", label: "Valeur totale" },
+    { value: "poids_total", label: "Poids total" }
+  ];
+
+  const operatorOptions = [
+    { value: "equals", label: "Égal à" },
+    { value: "notEquals", label: "Différent de" },
+    { value: "contains", label: "Contient" },
+    { value: "notContains", label: "Ne contient pas" },
+    { value: "greaterThan", label: "Supérieur à" },
+    { value: "lessThan", label: "Inférieur à" },
+    { value: "greaterOrEqual", label: "Supérieur ou égal" },
+    { value: "lessOrEqual", label: "Inférieur ou égal" }
+  ];
+
+  const addFilterCondition = () => {
+    setFilterConditions([
+      ...filterConditions,
+      {
+        id: crypto.randomUUID(),
+        field: "statut_wms",
+        operator: "equals",
+        value: "",
+        logicOperator: "ET"
+      }
+    ]);
+  };
+
+  const removeFilterCondition = (id: string) => {
+    setFilterConditions(filterConditions.filter(f => f.id !== id));
+  };
+
+  const updateFilterCondition = (id: string, updates: Partial<FilterCondition>) => {
+    setFilterConditions(
+      filterConditions.map(f => f.id === id ? { ...f, ...updates } : f)
+    );
+  };
 
   const handleCreate = async () => {
     if (!sessionName.trim()) {
@@ -54,12 +118,19 @@ export function CreateSessionDialog({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
+      // Construire l'objet filtres avec toutes les données
+      const filtresData = {
+        commande_ids: selectedCommandeIds,
+        conditions: filterConditions.map(({ id, ...rest }) => rest),
+        heureExecution: heureExecution || null
+      };
+
       // Créer la session
       const { data: session, error: sessionError } = await supabase
         .from("session_preparation")
         .insert({
           nom_session: sessionName,
-          filtres: { commande_ids: selectedCommandeIds },
+          filtres: filtresData,
           statut: "active",
           ordre_priorite: 0,
           max_commandes: maxCommandes ? parseInt(maxCommandes) : null,
@@ -99,7 +170,7 @@ export function CreateSessionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Créer une session de préparation</DialogTitle>
           <DialogDescription>
@@ -107,60 +178,184 @@ export function CreateSessionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="session-name">Nom de la session</Label>
-            <Input
-              id="session-name"
-              value={sessionName}
-              onChange={(e) => setSessionName(e.target.value)}
-              placeholder="Session du..."
-            />
-          </div>
+        <ScrollArea className="max-h-[70vh] pr-4">
+          <div className="space-y-6 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="session-name">Nom de la session</Label>
+                <Input
+                  id="session-name"
+                  value={sessionName}
+                  onChange={(e) => setSessionName(e.target.value)}
+                  placeholder="Session du..."
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="max-commandes">
-              Nombre max de commandes (optionnel)
-            </Label>
-            <Input
-              id="max-commandes"
-              type="number"
-              min="1"
-              value={maxCommandes}
-              onChange={(e) => setMaxCommandes(e.target.value)}
-              placeholder="Illimité"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="cron-enabled">Création automatique (Cronjob)</Label>
-              <p className="text-sm text-muted-foreground">
-                Créer automatiquement cette session de manière récurrente
-              </p>
+              <div className="space-y-2">
+                <Label htmlFor="heure-execution">Heure d'exécution</Label>
+                <Input
+                  id="heure-execution"
+                  type="time"
+                  value={heureExecution}
+                  onChange={(e) => setHeureExecution(e.target.value)}
+                />
+              </div>
             </div>
-            <Switch
-              id="cron-enabled"
-              checked={cronEnabled}
-              onCheckedChange={setCronEnabled}
-            />
-          </div>
 
-          {cronEnabled && (
             <div className="space-y-2">
-              <Label htmlFor="cron-expression">Expression Cron</Label>
+              <Label htmlFor="max-commandes">
+                Nombre maximum de commandes
+              </Label>
               <Input
-                id="cron-expression"
-                value={cronExpression}
-                onChange={(e) => setCronExpression(e.target.value)}
-                placeholder="0 9 * * *"
+                id="max-commandes"
+                type="number"
+                min="1"
+                value={maxCommandes}
+                onChange={(e) => setMaxCommandes(e.target.value)}
+                placeholder="Illimité si vide"
               />
-              <p className="text-xs text-muted-foreground">
-                Exemple: "0 9 * * *" = tous les jours à 9h00
-              </p>
             </div>
-          )}
-        </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">Conditions de filtrage</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addFilterCondition}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter une condition
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {filterConditions.map((condition, index) => (
+                  <div key={condition.id} className="space-y-3 p-4 border rounded-lg bg-muted/50">
+                    {index > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm">Opérateur logique:</Label>
+                        <Select
+                          value={condition.logicOperator}
+                          onValueChange={(value: "ET" | "OU") =>
+                            updateFilterCondition(condition.id, { logicOperator: value })
+                          }
+                        >
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ET">ET</SelectItem>
+                            <SelectItem value="OU">OU</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-[1fr,1fr,1fr,auto] gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-sm">Champ</Label>
+                        <Select
+                          value={condition.field}
+                          onValueChange={(value) =>
+                            updateFilterCondition(condition.id, { field: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {fieldOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm">Opérateur</Label>
+                        <Select
+                          value={condition.operator}
+                          onValueChange={(value) =>
+                            updateFilterCondition(condition.id, { operator: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {operatorOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm">Valeur</Label>
+                        <Input
+                          value={condition.value}
+                          onChange={(e) =>
+                            updateFilterCondition(condition.id, { value: e.target.value })
+                          }
+                          placeholder="Valeur à comparer"
+                        />
+                      </div>
+
+                      <div className="flex items-end">
+                        {filterConditions.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeFilterCondition(condition.id)}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="cron-enabled">Création automatique (Cronjob)</Label>
+                <p className="text-sm text-muted-foreground">
+                  Créer automatiquement cette session de manière récurrente
+                </p>
+              </div>
+              <Switch
+                id="cron-enabled"
+                checked={cronEnabled}
+                onCheckedChange={setCronEnabled}
+              />
+            </div>
+
+            {cronEnabled && (
+              <div className="space-y-2">
+                <Label htmlFor="cron-expression">Expression Cron</Label>
+                <Input
+                  id="cron-expression"
+                  value={cronExpression}
+                  onChange={(e) => setCronExpression(e.target.value)}
+                  placeholder="0 9 * * *"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Exemple: "0 9 * * *" = tous les jours à 9h00
+                </p>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
 
         <DialogFooter>
           <Button
