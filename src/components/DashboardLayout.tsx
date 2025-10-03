@@ -159,7 +159,13 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
   }
 
   if (role === "client") {
-    return baseNavigation;
+    return [
+      { name: "Tableau de Bord", href: "/client/dashboard", icon: LayoutDashboard },
+      { name: "Mes Commandes", href: "/client/commandes", icon: ClipboardList },
+      { name: "Mes Produits", href: "/client/produits", icon: Boxes },
+      { name: "Mes Retours", href: "/client/retours", icon: Undo2 },
+      { name: "Ma Facturation", href: "/client/facturation", icon: Receipt },
+    ];
   }
 
   return baseNavigation;

@@ -96,7 +96,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "Bienvenue dans le WMS Speed E-Log",
       });
 
-      navigate('/');
+      // Get user role to redirect appropriately
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      // Redirect based on role
+      if (roleData?.role === 'client') {
+        navigate('/client/dashboard');
+      } else {
+        navigate('/');
+      }
     } catch (error: any) {
       toast({
         title: "Erreur de connexion",

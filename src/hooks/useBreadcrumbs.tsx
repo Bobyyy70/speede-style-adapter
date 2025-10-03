@@ -27,6 +27,11 @@ const routeLabels: Record<string, string> = {
   "/parametres": "Paramètres",
   "/parametres/utilisateurs": "Utilisateurs",
   "/parametres/notifications": "Notifications",
+  "/client/dashboard": "Tableau de Bord",
+  "/client/commandes": "Mes Commandes",
+  "/client/produits": "Mes Produits",
+  "/client/retours": "Mes Retours",
+  "/client/facturation": "Ma Facturation",
 };
 
 export const useBreadcrumbs = (): Breadcrumb[] => {

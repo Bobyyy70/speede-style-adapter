@@ -174,6 +174,7 @@ export type Database = {
           adresse_ligne_1: string
           adresse_ligne_2: string | null
           adresse_nom: string
+          client_id: string | null
           code_postal: string
           date_creation: string
           date_modification: string
@@ -205,6 +206,7 @@ export type Database = {
           adresse_ligne_1: string
           adresse_ligne_2?: string | null
           adresse_nom: string
+          client_id?: string | null
           code_postal: string
           date_creation?: string
           date_modification?: string
@@ -236,6 +238,7 @@ export type Database = {
           adresse_ligne_1?: string
           adresse_ligne_2?: string | null
           adresse_nom?: string
+          client_id?: string | null
           code_postal?: string
           date_creation?: string
           date_modification?: string
@@ -263,7 +266,15 @@ export type Database = {
           valeur_totale?: number
           ville?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "commande_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["client_id"]
+          },
+        ]
       }
       emplacement: {
         Row: {
@@ -608,6 +619,7 @@ export type Database = {
         Row: {
           categorie_emballage: number | null
           classe_danger: string | null
+          client_id: string | null
           code_barre_ean: string | null
           code_sh: string | null
           conditions_speciales: string[] | null
@@ -647,6 +659,7 @@ export type Database = {
         Insert: {
           categorie_emballage?: number | null
           classe_danger?: string | null
+          client_id?: string | null
           code_barre_ean?: string | null
           code_sh?: string | null
           conditions_speciales?: string[] | null
@@ -686,6 +699,7 @@ export type Database = {
         Update: {
           categorie_emballage?: number | null
           classe_danger?: string | null
+          client_id?: string | null
           code_barre_ean?: string | null
           code_sh?: string | null
           conditions_speciales?: string[] | null
@@ -722,7 +736,15 @@ export type Database = {
           valeur_douaniere?: number | null
           volume_m3?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "produit_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["client_id"]
+          },
+        ]
       }
       produit_alertes_stock: {
         Row: {
@@ -801,6 +823,7 @@ export type Database = {
       }
       retour_produit: {
         Row: {
+          client_id: string | null
           client_nom: string
           commande_origine_id: string | null
           date_creation: string | null
@@ -814,6 +837,7 @@ export type Database = {
           valeur_totale: number | null
         }
         Insert: {
+          client_id?: string | null
           client_nom: string
           commande_origine_id?: string | null
           date_creation?: string | null
@@ -827,6 +851,7 @@ export type Database = {
           valeur_totale?: number | null
         }
         Update: {
+          client_id?: string | null
           client_nom?: string
           commande_origine_id?: string | null
           date_creation?: string | null
@@ -840,6 +865,13 @@ export type Database = {
           valeur_totale?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "retour_produit_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["client_id"]
+          },
           {
             foreignKeyName: "retour_produit_commande_origine_id_fkey"
             columns: ["commande_origine_id"]

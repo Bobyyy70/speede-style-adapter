@@ -27,6 +27,11 @@ import ImportExport from "./pages/ImportExport";
 import Utilisateurs from "./pages/Utilisateurs";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
+import ClientDashboard from "./pages/client/Dashboard";
+import ClientCommandes from "./pages/client/MesCommandes";
+import ClientProduits from "./pages/client/MesProduits";
+import ClientRetours from "./pages/client/MesRetours";
+import ClientFacturation from "./pages/client/MaFacturation";
 
 const queryClient = new QueryClient();
 
@@ -196,6 +201,47 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Notifications />
+                </ProtectedRoute>
+              }
+            />
+            {/* Client Routes */}
+            <Route
+              path="/client/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['client']}>
+                  <ClientDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/commandes"
+              element={
+                <ProtectedRoute allowedRoles={['client']}>
+                  <ClientCommandes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/produits"
+              element={
+                <ProtectedRoute allowedRoles={['client']}>
+                  <ClientProduits />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/retours"
+              element={
+                <ProtectedRoute allowedRoles={['client']}>
+                  <ClientRetours />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/facturation"
+              element={
+                <ProtectedRoute allowedRoles={['client']}>
+                  <ClientFacturation />
                 </ProtectedRoute>
               }
             />
