@@ -6,11 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, UserPlus, Mail, Shield, Building2 } from "lucide-react";
+import { Users, UserPlus, Mail, Shield, Building2, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { EditUserRoleDialog } from "@/components/EditUserRoleDialog";
 import { InviteUserDialog } from "@/components/InviteUserDialog";
 import { AssignClientDialog } from "@/components/AssignClientDialog";
+import { ResetPasswordDialog } from "@/components/ResetPasswordDialog";
 
 type AppRole = 'admin' | 'operateur' | 'gestionnaire' | 'client';
 
@@ -40,6 +41,10 @@ const Utilisateurs = () => {
     userEmail: string;
     currentClientId: string | null;
   }>({ open: false, userId: "", userEmail: "", currentClientId: null });
+  const [resetPasswordDialog, setResetPasswordDialog] = useState<{
+    open: boolean;
+    userEmail: string;
+  }>({ open: false, userEmail: "" });
 
   useEffect(() => {
     fetchUsers();
@@ -68,17 +73,24 @@ const Utilisateurs = () => {
 
       if (rolesError) throw rolesError;
 
-      // Récupérer les noms des clients
-      const { data: clients, error: clientsError } = await supabase
-        .from('client' as any)
-        .select('id, nom_entreprise');
+      // Récupérer les noms des clients (avec gestion d'erreur si table n'existe pas)
+      let clients: any[] = [];
+      try {
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('client' as any)
+          .select('id, nom_entreprise');
 
-      if (clientsError) throw clientsError;
+        if (!clientsError && clientsData) {
+          clients = clientsData;
+        }
+      } catch (clientError) {
+        console.warn('Table client non disponible - migration SQL requise:', clientError);
+      }
 
       // Combiner les données
       const usersData: UserData[] = (profiles || []).map(profile => {
         const userRole = roles?.find(r => r.user_id === profile.id);
-        const client = (clients as any)?.find((c: any) => c.id === profile.client_id);
+        const client = clients?.find((c: any) => c.id === profile.client_id);
         
         return {
           id: profile.id,
@@ -261,6 +273,17 @@ const Utilisateurs = () => {
                               Client
                             </Button>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setResetPasswordDialog({
+                              open: true,
+                              userEmail: user.email
+                            })}
+                          >
+                            <KeyRound className="h-4 w-4 mr-1" />
+                            Reset MDP
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -295,6 +318,12 @@ const Utilisateurs = () => {
         userEmail={assignClientDialog.userEmail}
         currentClientId={assignClientDialog.currentClientId}
         onSuccess={fetchUsers}
+      />
+
+      <ResetPasswordDialog
+        open={resetPasswordDialog.open}
+        onOpenChange={(open) => setResetPasswordDialog({ ...resetPasswordDialog, open })}
+        userEmail={resetPasswordDialog.userEmail}
       />
     </DashboardLayout>
   );

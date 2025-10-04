@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Warehouse } from 'lucide-react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
@@ -27,6 +29,8 @@ export default function Auth() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   // Redirect if already logged in
   if (user) {
@@ -94,6 +98,42 @@ export default function Auth() {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setErrors({});
+    setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+
+    try {
+      const validated = z.string().email().parse(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(validated, {
+        redirectTo: `${window.location.origin}/auth?mode=reset`,
+      });
+
+      if (error) throw error;
+
+      setResetEmailSent(true);
+      toast({
+        title: "Email envoyé",
+        description: "Vérifiez votre boîte mail pour réinitialiser votre mot de passe",
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setErrors({ email: "Email invalide" });
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Impossible d'envoyer l'email de réinitialisation",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-4">
       <Card className="w-full max-w-md shadow-lg">
@@ -116,36 +156,93 @@ export default function Auth() {
             </TabsList>
 
             <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
-                  <Input
-                    id="login-email"
-                    name="email"
-                    type="email"
-                    placeholder="votre@email.com"
-                    required
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-destructive">{errors.email}</p>
+              {forgotPasswordMode ? (
+                <div className="space-y-4">
+                  {resetEmailSent ? (
+                    <div className="text-center space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Un email de réinitialisation a été envoyé. Vérifiez votre boîte mail.
+                      </p>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          setForgotPasswordMode(false);
+                          setResetEmailSent(false);
+                        }}
+                      >
+                        Retour à la connexion
+                      </Button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleForgotPassword} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="reset-email">Email</Label>
+                        <Input
+                          id="reset-email"
+                          name="email"
+                          type="email"
+                          placeholder="votre@email.com"
+                          required
+                        />
+                        {errors.email && (
+                          <p className="text-sm text-destructive">{errors.email}</p>
+                        )}
+                      </div>
+                      <Button type="submit" className="w-full" disabled={loading}>
+                        {loading ? "Envoi..." : "Réinitialiser le mot de passe"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="w-full"
+                        onClick={() => setForgotPasswordMode(false)}
+                      >
+                        Retour à la connexion
+                      </Button>
+                    </form>
                   )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Mot de passe</Label>
-                  <Input
-                    id="login-password"
-                    name="password"
-                    type="password"
-                    required
-                  />
-                  {errors.password && (
-                    <p className="text-sm text-destructive">{errors.password}</p>
-                  )}
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Connexion..." : "Se connecter"}
-                </Button>
-              </form>
+              ) : (
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">Email</Label>
+                    <Input
+                      id="login-email"
+                      name="email"
+                      type="email"
+                      placeholder="votre@email.com"
+                      required
+                    />
+                    {errors.email && (
+                      <p className="text-sm text-destructive">{errors.email}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Mot de passe</Label>
+                    <Input
+                      id="login-password"
+                      name="password"
+                      type="password"
+                      required
+                    />
+                    {errors.password && (
+                      <p className="text-sm text-destructive">{errors.password}</p>
+                    )}
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Connexion..." : "Se connecter"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="w-full text-sm"
+                    onClick={() => setForgotPasswordMode(true)}
+                  >
+                    Mot de passe oublié ?
+                  </Button>
+                </form>
+              )}
             </TabsContent>
 
             <TabsContent value="signup">

@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Info } from "lucide-react";
 
 type AppRole = 'admin' | 'operateur' | 'gestionnaire' | 'client';
 
@@ -90,6 +91,14 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
             Créer un nouveau compte utilisateur dans le système
           </DialogDescription>
         </DialogHeader>
+
+        <Alert className="my-4">
+          <Info className="h-4 w-4" />
+          <AlertDescription className="text-sm">
+            <strong>Important :</strong> L'utilisateur devra utiliser ce mot de passe temporaire pour sa première connexion.
+            Il pourra ensuite le changer via "Mot de passe oublié" ou vous pourrez lui envoyer un email de réinitialisation via le bouton "Reset MDP".
+          </AlertDescription>
+        </Alert>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
