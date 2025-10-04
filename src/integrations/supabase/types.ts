@@ -326,6 +326,60 @@ export type Database = {
           },
         ]
       }
+      document_commande: {
+        Row: {
+          categorie: string
+          commande_id: string
+          date_generation: string | null
+          format: string | null
+          genere_par: string | null
+          id: string
+          nom_fichier: string
+          taille_fichier: number | null
+          type_document: string
+          url_fichier: string
+        }
+        Insert: {
+          categorie: string
+          commande_id: string
+          date_generation?: string | null
+          format?: string | null
+          genere_par?: string | null
+          id?: string
+          nom_fichier: string
+          taille_fichier?: number | null
+          type_document: string
+          url_fichier: string
+        }
+        Update: {
+          categorie?: string
+          commande_id?: string
+          date_generation?: string | null
+          format?: string | null
+          genere_par?: string | null
+          id?: string
+          nom_fichier?: string
+          taille_fichier?: number | null
+          type_document?: string
+          url_fichier?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       emplacement: {
         Row: {
           capacite_maximale: number | null

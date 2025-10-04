@@ -20,12 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, TrendingUp, Package, Clock, CheckCircle2, Columns } from "lucide-react";
+import { Search, Plus, TrendingUp, Package, Clock, CheckCircle2, Columns, Eye } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSessionDialog } from "./CreateSessionDialog";
+import { CommandeDetailDialog } from "./CommandeDetailDialog";
 
 interface Commande {
   id: string;
@@ -127,6 +128,8 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
   const [selectedSource, setSelectedSource] = useState("all");
   const [selectedCommandes, setSelectedCommandes] = useState<string[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
     const saved = localStorage.getItem("commandes-visible-columns");
     return saved ? JSON.parse(saved) : DEFAULT_VISIBLE_COLUMNS;
@@ -277,6 +280,11 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
   };
 
   const isColumnVisible = (columnKey: string) => visibleColumns.includes(columnKey);
+
+  const handleViewDetails = (commandeId: string) => {
+    setSelectedCommandeId(commandeId);
+    setDetailDialogOpen(true);
+  };
 
   const renderCellContent = (commande: Commande, columnKey: string) => {
     switch (columnKey) {
@@ -493,12 +501,13 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
                       {column.label}
                     </TableHead>
                   ))}
+                  <TableHead className="w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredCommandes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={visibleColumns.length + 1} className="text-center text-muted-foreground">
+                    <TableCell colSpan={visibleColumns.length + 2} className="text-center text-muted-foreground">
                       Aucune commande trouvée
                     </TableCell>
                   </TableRow>
@@ -516,6 +525,15 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
                           {renderCellContent(commande, column.key)}
                         </TableCell>
                       ))}
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDetails(commande.id)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -538,6 +556,15 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
         selectedCommandeIds={selectedCommandes}
         onSuccess={handleSessionCreated}
       />
+      
+      {selectedCommandeId && (
+        <CommandeDetailDialog
+          commandeId={selectedCommandeId}
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          onSuccess={fetchCommandes}
+        />
+      )}
     </div>
   );
 }
