@@ -25,6 +25,7 @@ import BacsAdresses from "./pages/BacsAdresses";
 import Expedition from "./pages/Expedition";
 import ImportExport from "./pages/ImportExport";
 import Utilisateurs from "./pages/Utilisateurs";
+import GestionClients from "./pages/GestionClients";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import ClientDashboard from "./pages/client/Dashboard";
@@ -193,6 +194,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Utilisateurs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parametres/clients"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <GestionClients />
                 </ProtectedRoute>
               }
             />

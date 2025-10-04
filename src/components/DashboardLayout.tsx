@@ -35,6 +35,7 @@ import {
   ArrowDownUp,
   ShipWheel,
   Cable,
+  Building2,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -110,6 +111,7 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
         icon: Settings,
         children: [
           { name: "Utilisateurs", href: "/parametres/utilisateurs", icon: UserCog },
+          { name: "Clients", href: "/parametres/clients", icon: Building2 },
           { name: "Notifications", href: "/parametres/notifications", icon: Bell },
           { name: "Facturation", href: "/administratif/facturation", icon: Receipt },
         ]
