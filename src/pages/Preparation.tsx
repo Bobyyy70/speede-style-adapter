@@ -1,6 +1,7 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { SessionsList } from "@/components/SessionsList";
-import { ClipboardList } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ClipboardList, ScanLine } from "lucide-react";
 
 export default function Preparation() {
   return (
@@ -13,12 +14,33 @@ export default function Preparation() {
           <div>
             <h1 className="text-3xl font-bold">Préparation de Commandes</h1>
             <p className="text-muted-foreground">
-              Gestion des sessions de préparation et picking
+              Gestion des sessions de préparation et picking mobile
             </p>
           </div>
         </div>
 
-        <SessionsList />
+        <Tabs defaultValue="sessions" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="sessions">
+              <ClipboardList className="h-4 w-4 mr-2" />
+              Sessions de préparation
+            </TabsTrigger>
+            <TabsTrigger value="picking">
+              <ScanLine className="h-4 w-4 mr-2" />
+              Préparation de commandes
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="sessions">
+            <SessionsList />
+          </TabsContent>
+
+          <TabsContent value="picking">
+            <div className="text-center py-12 text-muted-foreground">
+              Sélectionnez une session dans l'onglet "Sessions de préparation" pour commencer le picking
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );

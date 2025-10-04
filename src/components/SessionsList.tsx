@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Play, FolderOpen, Archive, TrendingUp } from "lucide-react";
+import { Play, FolderOpen, Archive, TrendingUp, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -227,14 +227,14 @@ export function SessionsList() {
                     </TableCell>
                     <TableCell className="text-right">
                        <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.location.href = `/preparation/${session.id}`}
-                        >
-                          <FolderOpen className="h-4 w-4 mr-1" />
-                          Ouvrir
-                        </Button>
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    onClick={() => window.location.href = `/picking/${session.id}`}
+                  >
+                    <ScanLine className="h-4 w-4 mr-1" />
+                    Lancer picking
+                  </Button>
                         {session.statut === "active" && (
                           <>
                             <Button

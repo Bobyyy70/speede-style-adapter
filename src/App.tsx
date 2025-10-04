@@ -19,6 +19,7 @@ import Retours from "./pages/Retours";
 import Parametres from "./pages/Parametres";
 import Preparation from "./pages/Preparation";
 import PreparationDetails from "./pages/PreparationDetails";
+import PickingMobile from "./pages/PickingMobile";
 import Connecteurs from "./pages/Connecteurs";
 import ServicesLogistiques from "./pages/ServicesLogistiques";
 import BacsAdresses from "./pages/BacsAdresses";
@@ -123,6 +124,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur']}>
                   <PreparationDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/picking/:sessionId"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur']}>
+                  <PickingMobile />
                 </ProtectedRoute>
               }
             />

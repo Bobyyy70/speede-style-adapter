@@ -4,10 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, TruckIcon, MapPin, Clock, CheckCircle, AlertCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Package, Truck, CheckCircle2, Clock, ExternalLink, Scale, Tags } from "lucide-react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { CalculateurVolumetrique } from "@/components/expedition/CalculateurVolumetrique";
+import { GestionTransporteurs } from "@/components/expedition/GestionTransporteurs";
+import { GestionTags } from "@/components/expedition/GestionTags";
 
 interface Commande {
   id: string;
@@ -16,10 +19,15 @@ interface Commande {
   adresse_nom: string;
   date_creation: string;
   tracking_number?: string;
+  tracking_url?: string;
+  label_url?: string;
+  tags?: string[];
+  poids_reel_kg?: number;
+  poids_volumetrique_kg?: number;
+  transporteur_choisi?: string;
 }
 
-const Expedition = () => {
-  const { toast } = useToast();
+export default function Expedition() {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,20 +41,20 @@ const Expedition = () => {
         .from('commande')
         .select('*')
         .in('statut_wms', ['prete', 'expediee'])
-        .order('date_creation', { ascending: false })
-        .limit(50);
+        .order('date_creation', { ascending: false });
 
       if (error) throw error;
       setCommandes(data || []);
     } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error('Erreur:', error);
+      toast.error('Erreur lors du chargement des commandes');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePrintLabel = (labelUrl: string) => {
+    window.open(labelUrl, '_blank');
   };
 
   const getStatutBadge = (statut: string) => {
@@ -62,9 +70,9 @@ const Expedition = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Expédition</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Expédition & TMS</h1>
           <p className="text-muted-foreground">
-            Gestion des expéditions et intégration SendCloud
+            Gestion des expéditions, calcul volumétrique et configuration transporteurs
           </p>
         </div>
 
@@ -84,7 +92,7 @@ const Expedition = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Expédiées aujourd'hui</CardTitle>
-              <TruckIcon className="h-4 w-4 text-muted-foreground" />
+              <Truck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -97,8 +105,8 @@ const Expedition = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">En transit</CardTitle>
-              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Avec tracking</CardTitle>
+              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -120,23 +128,44 @@ const Expedition = () => {
 
         <Tabs defaultValue="liste" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="liste">Liste des commandes</TabsTrigger>
-            <TabsTrigger value="sendcloud">SendCloud</TabsTrigger>
-            <TabsTrigger value="tracking">Suivi</TabsTrigger>
+            <TabsTrigger value="liste">
+              <Package className="h-4 w-4 mr-2" />
+              Commandes
+            </TabsTrigger>
+            <TabsTrigger value="volumetrique">
+              <Scale className="h-4 w-4 mr-2" />
+              Volumétrique
+            </TabsTrigger>
+            <TabsTrigger value="transporteurs">
+              <Truck className="h-4 w-4 mr-2" />
+              Transporteurs
+            </TabsTrigger>
+            <TabsTrigger value="tags">
+              <Tags className="h-4 w-4 mr-2" />
+              Tags
+            </TabsTrigger>
+            <TabsTrigger value="sendcloud">
+              <ExternalLink className="h-4 w-4 mr-2" />
+              SendCloud
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="liste" className="space-y-4">
+          <TabsContent value="liste">
             <Card>
               <CardHeader>
                 <CardTitle>Commandes à expédier</CardTitle>
                 <CardDescription>
-                  Liste des commandes prêtes pour expédition
+                  Toutes les commandes prêtes (SendCloud et étiquettes externes)
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <div className="text-center py-8 text-muted-foreground">
+                    Chargement...
+                  </div>
+                ) : commandes.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Aucune commande à expédier
                   </div>
                 ) : (
                   <Table>
@@ -144,39 +173,64 @@ const Expedition = () => {
                       <TableRow>
                         <TableHead>N° Commande</TableHead>
                         <TableHead>Client</TableHead>
-                        <TableHead>Date</TableHead>
+                        <TableHead>Tags</TableHead>
+                        <TableHead>Poids</TableHead>
+                        <TableHead>Transporteur</TableHead>
                         <TableHead>Statut</TableHead>
-                        <TableHead>Tracking</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {commandes.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground">
-                            Aucune commande à expédier
+                      {commandes.map((commande) => (
+                        <TableRow key={commande.id}>
+                          <TableCell className="font-medium">
+                            {commande.numero_commande}
                           </TableCell>
-                        </TableRow>
-                      ) : (
-                        commandes.map((commande) => (
-                          <TableRow key={commande.id}>
-                            <TableCell className="font-medium">{commande.numero_commande}</TableCell>
-                            <TableCell>{commande.adresse_nom}</TableCell>
-                            <TableCell>{new Date(commande.date_creation).toLocaleDateString()}</TableCell>
-                            <TableCell>{getStatutBadge(commande.statut_wms)}</TableCell>
-                            <TableCell>
-                              {commande.tracking_number || (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Button variant="outline" size="sm">
+                          <TableCell>{commande.adresse_nom}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1 flex-wrap">
+                              {commande.tags?.map((tag) => (
+                                <Badge key={tag} variant="secondary" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {commande.poids_volumetrique_kg ? (
+                              <div className="text-sm">
+                                <div>{commande.poids_reel_kg?.toFixed(2)} kg réel</div>
+                                <div className="text-muted-foreground">
+                                  {commande.poids_volumetrique_kg.toFixed(2)} kg vol.
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">Non calculé</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {commande.transporteur_choisi || (
+                              <span className="text-muted-foreground">Non assigné</span>
+                            )}
+                          </TableCell>
+                          <TableCell>{getStatutBadge(commande.statut_wms)}</TableCell>
+                          <TableCell>
+                            {commande.label_url ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handlePrintLabel(commande.label_url!)}
+                              >
+                                Imprimer étiquette
+                              </Button>
+                            ) : (
+                              <Button size="sm" variant="outline" disabled>
                                 Créer expédition
                               </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 )}
@@ -184,51 +238,43 @@ const Expedition = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="sendcloud" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Intégration SendCloud</CardTitle>
-                <CardDescription>
-                  Synchronisation et gestion des expéditions via SendCloud
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span className="font-medium">Connexion active</span>
-                  </div>
-                  <Badge variant="secondary">Webhook configuré</Badge>
-                </div>
-                
-                <div className="space-y-2">
-                  <Button className="w-full" variant="outline">
-                    Synchroniser les commandes
-                  </Button>
-                  <Button className="w-full" variant="outline">
-                    Créer des expéditions groupées
-                  </Button>
-                  <Button className="w-full" variant="outline">
-                    Télécharger les étiquettes
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="volumetrique">
+            <CalculateurVolumetrique />
           </TabsContent>
 
-          <TabsContent value="tracking" className="space-y-4">
+          <TabsContent value="transporteurs">
+            <GestionTransporteurs />
+          </TabsContent>
+
+          <TabsContent value="tags">
+            <GestionTags />
+          </TabsContent>
+
+          <TabsContent value="sendcloud">
             <Card>
               <CardHeader>
-                <CardTitle>Suivi des expéditions</CardTitle>
+                <CardTitle>Interface SendCloud</CardTitle>
                 <CardDescription>
-                  Suivez vos colis en temps réel
+                  Ship & Go intégré pour créer les expéditions
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-center py-12 text-muted-foreground">
-                  <div className="text-center space-y-2">
-                    <MapPin className="h-12 w-12 mx-auto opacity-50" />
-                    <p>Aucune expédition en cours de suivi</p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      <span className="font-medium">Connexion active</span>
+                    </div>
+                    <Badge variant="secondary">Webhook configuré</Badge>
+                  </div>
+                  
+                  <div className="aspect-video border rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                    <div className="text-center space-y-2">
+                      <ExternalLink className="h-12 w-12 mx-auto text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        Interface SendCloud Ship & Go à intégrer ici
+                      </p>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -238,6 +284,4 @@ const Expedition = () => {
       </div>
     </DashboardLayout>
   );
-};
-
-export default Expedition;
+}
