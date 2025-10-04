@@ -167,6 +167,13 @@ export type Database = {
             referencedRelation: "commande"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "calculateur_volumetrique_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
         ]
       }
       commande: {
@@ -388,6 +395,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ligne_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ligne_commande_emplacement_picking_id_fkey"
             columns: ["emplacement_picking_id"]
             isOneToOne: false
@@ -517,6 +531,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ligne_service_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ligne_service_commande_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -583,6 +604,13 @@ export type Database = {
             columns: ["commande_id"]
             isOneToOne: false
             referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvement_stock_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
             referencedColumns: ["id"]
           },
           {
@@ -879,6 +907,13 @@ export type Database = {
             referencedRelation: "commande"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "retour_produit_commande_origine_id_fkey"
+            columns: ["commande_origine_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
         ]
       }
       service_logistique: {
@@ -954,6 +989,13 @@ export type Database = {
             columns: ["commande_id"]
             isOneToOne: false
             referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
             referencedColumns: ["id"]
           },
           {
@@ -1142,6 +1184,113 @@ export type Database = {
       }
     }
     Views: {
+      commande_gestionnaire_secure: {
+        Row: {
+          adresse_ligne_1: string | null
+          adresse_ligne_2: string | null
+          adresse_nom: string | null
+          client_id: string | null
+          code_postal: string | null
+          date_creation: string | null
+          date_modification: string | null
+          devise: string | null
+          email_client: string | null
+          facturation_code_postal: string | null
+          facturation_ligne_1: string | null
+          facturation_ligne_2: string | null
+          facturation_nom: string | null
+          facturation_pays_code: string | null
+          facturation_ville: string | null
+          id: string | null
+          methode_expedition: string | null
+          nom_client: string | null
+          numero_commande: string | null
+          numero_facture_commerciale: string | null
+          pays_code: string | null
+          poids_total: number | null
+          remarques: string | null
+          sendcloud_id: string | null
+          source: string | null
+          statut_wms: string | null
+          telephone_client: string | null
+          transporteur: string | null
+          valeur_totale: number | null
+          ville: string | null
+        }
+        Insert: {
+          adresse_ligne_1?: string | null
+          adresse_ligne_2?: string | null
+          adresse_nom?: string | null
+          client_id?: string | null
+          code_postal?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          devise?: string | null
+          email_client?: never
+          facturation_code_postal?: string | null
+          facturation_ligne_1?: string | null
+          facturation_ligne_2?: string | null
+          facturation_nom?: never
+          facturation_pays_code?: string | null
+          facturation_ville?: string | null
+          id?: string | null
+          methode_expedition?: string | null
+          nom_client?: never
+          numero_commande?: string | null
+          numero_facture_commerciale?: string | null
+          pays_code?: string | null
+          poids_total?: number | null
+          remarques?: string | null
+          sendcloud_id?: string | null
+          source?: string | null
+          statut_wms?: string | null
+          telephone_client?: never
+          transporteur?: string | null
+          valeur_totale?: number | null
+          ville?: string | null
+        }
+        Update: {
+          adresse_ligne_1?: string | null
+          adresse_ligne_2?: string | null
+          adresse_nom?: string | null
+          client_id?: string | null
+          code_postal?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          devise?: string | null
+          email_client?: never
+          facturation_code_postal?: string | null
+          facturation_ligne_1?: string | null
+          facturation_ligne_2?: string | null
+          facturation_nom?: never
+          facturation_pays_code?: string | null
+          facturation_ville?: string | null
+          id?: string | null
+          methode_expedition?: string | null
+          nom_client?: never
+          numero_commande?: string | null
+          numero_facture_commerciale?: string | null
+          pays_code?: string | null
+          poids_total?: number | null
+          remarques?: string | null
+          sendcloud_id?: string | null
+          source?: string | null
+          statut_wms?: string | null
+          telephone_client?: never
+          transporteur?: string | null
+          valeur_totale?: number | null
+          ville?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commande_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
       stock_disponible: {
         Row: {
           nom: string | null
