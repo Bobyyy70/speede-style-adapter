@@ -4,13 +4,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, Truck, CheckCircle2, Clock, ExternalLink, Scale, Tags } from "lucide-react";
+import { Package, Truck, CheckCircle2, Clock, ExternalLink, Scale, Tags, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CalculateurVolumetrique } from "@/components/expedition/CalculateurVolumetrique";
 import { GestionTransporteurs } from "@/components/expedition/GestionTransporteurs";
 import { GestionTags } from "@/components/expedition/GestionTags";
+import { useAutoRules } from "@/hooks/useAutoRules";
 
 interface Commande {
   id: string;
@@ -30,6 +31,7 @@ interface Commande {
 export default function Expedition() {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
+  const { applyAutoRules } = useAutoRules();
 
   useEffect(() => {
     fetchCommandes();
@@ -55,6 +57,11 @@ export default function Expedition() {
 
   const handlePrintLabel = (labelUrl: string) => {
     window.open(labelUrl, '_blank');
+  };
+
+  const handleApplyAutoRules = async (commandeId: string) => {
+    await applyAutoRules(commandeId);
+    fetchCommandes();
   };
 
   const getStatutBadge = (statut: string) => {
@@ -215,19 +222,29 @@ export default function Expedition() {
                           </TableCell>
                           <TableCell>{getStatutBadge(commande.statut_wms)}</TableCell>
                           <TableCell>
-                            {commande.label_url ? (
+                            <div className="flex gap-2">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handlePrintLabel(commande.label_url!)}
+                                onClick={() => handleApplyAutoRules(commande.id)}
+                                title="Appliquer les règles automatiques"
                               >
-                                Imprimer étiquette
+                                <Zap className="h-4 w-4" />
                               </Button>
-                            ) : (
-                              <Button size="sm" variant="outline" disabled>
-                                Créer expédition
-                              </Button>
-                            )}
+                              {commande.label_url ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handlePrintLabel(commande.label_url!)}
+                                >
+                                  Imprimer étiquette
+                                </Button>
+                              ) : (
+                                <Button size="sm" variant="outline" disabled>
+                                  Créer expédition
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
