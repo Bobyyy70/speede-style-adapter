@@ -70,7 +70,7 @@ const Utilisateurs = () => {
 
       // Récupérer les noms des clients
       const { data: clients, error: clientsError } = await supabase
-        .from('client')
+        .from('client' as any)
         .select('id, nom_entreprise');
 
       if (clientsError) throw clientsError;
@@ -78,7 +78,7 @@ const Utilisateurs = () => {
       // Combiner les données
       const usersData: UserData[] = (profiles || []).map(profile => {
         const userRole = roles?.find(r => r.user_id === profile.id);
-        const client = clients?.find(c => c.id === profile.client_id);
+        const client = (clients as any)?.find((c: any) => c.id === profile.client_id);
         
         return {
           id: profile.id,

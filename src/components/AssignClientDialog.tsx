@@ -44,13 +44,13 @@ export function AssignClientDialog({
     setLoadingClients(true);
     try {
       const { data, error } = await supabase
-        .from('client')
+        .from('client' as any)
         .select('id, nom_entreprise')
         .eq('actif', true)
         .order('nom_entreprise');
 
       if (error) throw error;
-      setClients(data || []);
+      setClients((data as any) || []);
     } catch (error: any) {
       console.error('Erreur lors du chargement des clients:', error);
       toast.error("Erreur lors du chargement des clients");
@@ -69,7 +69,7 @@ export function AssignClientDialog({
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ client_id: selectedClientId })
+        .update({ client_id: selectedClientId } as any)
         .eq('id', userId);
 
       if (error) throw error;

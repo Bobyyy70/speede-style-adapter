@@ -49,12 +49,12 @@ const GestionClients = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('client')
+        .from('client' as any)
         .select('*')
         .order('date_creation', { ascending: false });
 
       if (error) throw error;
-      setClients(data || []);
+      setClients((data as any) || []);
     } catch (error: any) {
       console.error('Erreur lors du chargement des clients:', error);
       toast.error("Erreur lors du chargement des clients");
@@ -99,7 +99,7 @@ const GestionClients = () => {
     try {
       if (editingClient) {
         const { error } = await supabase
-          .from('client')
+          .from('client' as any)
           .update(formData)
           .eq('id', editingClient.id);
 
@@ -107,8 +107,8 @@ const GestionClients = () => {
         toast.success("Client modifié avec succès");
       } else {
         const { error } = await supabase
-          .from('client')
-          .insert([formData]);
+          .from('client' as any)
+          .insert([formData as any]);
 
         if (error) throw error;
         toast.success("Client créé avec succès");

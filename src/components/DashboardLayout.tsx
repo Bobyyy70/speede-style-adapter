@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import logo from "@/assets/logo.jpg";
 import {
   LayoutDashboard,
-  Package,
   Settings,
   LogOut,
   Search,
@@ -21,9 +20,7 @@ import {
   RefreshCw,
   MapPin,
   Undo2,
-  PackageCheck,
   TruckIcon,
-  FileText,
   Plug,
   FolderTree,
   Boxes,
