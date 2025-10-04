@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.n8n-gateway]
 verify_jwt = false
+
+[functions.apply-automatic-rules]
+verify_jwt = true

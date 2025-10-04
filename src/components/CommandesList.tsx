@@ -107,7 +107,12 @@ const DEFAULT_VISIBLE_COLUMNS = ALL_COLUMNS
   .filter(col => col.defaultVisible)
   .map(col => col.key);
 
-export function CommandesList() {
+interface CommandesListProps {
+  filter?: string;
+  onUpdate?: () => void;
+}
+
+export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [stats, setStats] = useState<StatsData>({
     total: 0,
@@ -118,7 +123,7 @@ export function CommandesList() {
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatut, setSelectedStatut] = useState("all");
+  const [selectedStatut, setSelectedStatut] = useState(filter || "all");
   const [selectedSource, setSelectedSource] = useState("all");
   const [selectedCommandes, setSelectedCommandes] = useState<string[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -126,6 +131,12 @@ export function CommandesList() {
     const saved = localStorage.getItem("commandes-visible-columns");
     return saved ? JSON.parse(saved) : DEFAULT_VISIBLE_COLUMNS;
   });
+
+  useEffect(() => {
+    if (filter) {
+      setSelectedStatut(filter);
+    }
+  }, [filter]);
 
   useEffect(() => {
     fetchCommandes();
@@ -186,6 +197,10 @@ export function CommandesList() {
       });
 
       setCommandes(allCommandes);
+      
+      if (onUpdate) {
+        onUpdate();
+      }
     } catch (error) {
       console.error("Erreur lors du chargement des commandes:", error);
       toast.error("Erreur lors du chargement des commandes");
