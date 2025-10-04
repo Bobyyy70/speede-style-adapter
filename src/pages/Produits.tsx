@@ -3,13 +3,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, Search, AlertTriangle, TrendingUp, LayoutList, LayoutGrid } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Package, Search, AlertTriangle, TrendingUp, LayoutList, LayoutGrid, PackagePlus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { NouveauProduitDialog } from "@/components/NouveauProduitDialog";
 import { FicheProduitDialog } from "@/components/FicheProduitDialog";
 import { ProduitsKanban } from "@/components/ProduitsKanban";
+import { GestionConsommables } from "@/components/GestionConsommables";
+import { ImportCSVDialog } from "@/components/ImportCSVDialog";
 
 const Produits = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -117,34 +120,48 @@ const Produits = () => {
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Catalogue produits</CardTitle>
-                <CardDescription>Liste des références en stock</CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={viewMode === "list" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setViewMode("list")}
-                >
-                  <LayoutList className="h-4 w-4 mr-1" />
-                  Liste
-                </Button>
-                <Button
-                  variant={viewMode === "kanban" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setViewMode("kanban")}
-                >
-                  <LayoutGrid className="h-4 w-4 mr-1" />
-                  Kanban
-                </Button>
-                <NouveauProduitDialog onSuccess={() => refetch()} />
-              </div>
-            </div>
-          </CardHeader>
+        <Tabs defaultValue="produits" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="produits">
+              <Package className="h-4 w-4 mr-2" />
+              Produits
+            </TabsTrigger>
+            <TabsTrigger value="consommables">
+              <PackagePlus className="h-4 w-4 mr-2" />
+              Consommables
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="produits">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Catalogue produits</CardTitle>
+                    <CardDescription>Liste des références en stock</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <ImportCSVDialog onSuccess={() => refetch()} />
+                    <Button
+                      variant={viewMode === "list" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setViewMode("list")}
+                    >
+                      <LayoutList className="h-4 w-4 mr-1" />
+                      Liste
+                    </Button>
+                    <Button
+                      variant={viewMode === "kanban" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setViewMode("kanban")}
+                    >
+                      <LayoutGrid className="h-4 w-4 mr-1" />
+                      Kanban
+                    </Button>
+                    <NouveauProduitDialog onSuccess={() => refetch()} />
+                  </div>
+                </div>
+              </CardHeader>
           <CardContent>
             {viewMode === "list" && (
               <>
@@ -223,8 +240,14 @@ const Produits = () => {
                 )}
               </>
             )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="consommables">
+            <GestionConsommables />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {selectedProduitId && (
