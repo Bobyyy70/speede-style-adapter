@@ -12,7 +12,6 @@ import { CalculateurVolumetrique } from "@/components/expedition/CalculateurVolu
 import { GestionTransporteurs } from "@/components/expedition/GestionTransporteurs";
 import { GestionTags } from "@/components/expedition/GestionTags";
 import { useAutoRules } from "@/hooks/useAutoRules";
-
 interface Commande {
   id: string;
   numero_commande: string;
@@ -27,24 +26,23 @@ interface Commande {
   poids_volumetrique_kg?: number;
   transporteur_choisi?: string;
 }
-
 export default function Expedition() {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
-  const { applyAutoRules } = useAutoRules();
-
+  const {
+    applyAutoRules
+  } = useAutoRules();
   useEffect(() => {
     fetchCommandes();
   }, []);
-
   const fetchCommandes = async () => {
     try {
-      const { data, error } = await supabase
-        .from('commande')
-        .select('*')
-        .in('statut_wms', ['prete', 'expediee'])
-        .order('date_creation', { ascending: false });
-
+      const {
+        data,
+        error
+      } = await supabase.from('commande').select('*').in('statut_wms', ['prete', 'expediee']).order('date_creation', {
+        ascending: false
+      });
       if (error) throw error;
       setCommandes(data || []);
     } catch (error: any) {
@@ -54,30 +52,37 @@ export default function Expedition() {
       setLoading(false);
     }
   };
-
   const handlePrintLabel = (labelUrl: string) => {
     window.open(labelUrl, '_blank');
   };
-
   const handleApplyAutoRules = async (commandeId: string) => {
     await applyAutoRules(commandeId);
     fetchCommandes();
   };
-
   const getStatutBadge = (statut: string) => {
-    const variants: Record<string, { variant: any; label: string }> = {
-      prete: { variant: "default", label: "Prête" },
-      expediee: { variant: "secondary", label: "Expédiée" },
+    const variants: Record<string, {
+      variant: any;
+      label: string;
+    }> = {
+      prete: {
+        variant: "default",
+        label: "Prête"
+      },
+      expediee: {
+        variant: "secondary",
+        label: "Expédiée"
+      }
     };
-    const config = variants[statut] || { variant: "outline", label: statut };
+    const config = variants[statut] || {
+      variant: "outline",
+      label: statut
+    };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
-
-  return (
-    <DashboardLayout>
+  return <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Expédition & TMS</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Expédition</h1>
           <p className="text-muted-foreground">
             Gestion des expéditions, calcul volumétrique et configuration transporteurs
           </p>
@@ -103,9 +108,7 @@ export default function Expedition() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {commandes.filter(c => c.statut_wms === 'expediee' && 
-                  new Date(c.date_creation).toDateString() === new Date().toDateString()
-                ).length}
+                {commandes.filter(c => c.statut_wms === 'expediee' && new Date(c.date_creation).toDateString() === new Date().toDateString()).length}
               </div>
             </CardContent>
           </Card>
@@ -166,16 +169,11 @@ export default function Expedition() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {loading ? (
-                  <div className="text-center py-8 text-muted-foreground">
+                {loading ? <div className="text-center py-8 text-muted-foreground">
                     Chargement...
-                  </div>
-                ) : commandes.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
+                  </div> : commandes.length === 0 ? <div className="text-center py-8 text-muted-foreground">
                     Aucune commande à expédier
-                  </div>
-                ) : (
-                  <Table>
+                  </div> : <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>N° Commande</TableHead>
@@ -188,69 +186,45 @@ export default function Expedition() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {commandes.map((commande) => (
-                        <TableRow key={commande.id}>
+                      {commandes.map(commande => <TableRow key={commande.id}>
                           <TableCell className="font-medium">
                             {commande.numero_commande}
                           </TableCell>
                           <TableCell>{commande.adresse_nom}</TableCell>
                           <TableCell>
                             <div className="flex gap-1 flex-wrap">
-                              {commande.tags?.map((tag) => (
-                                <Badge key={tag} variant="secondary" className="text-xs">
+                              {commande.tags?.map(tag => <Badge key={tag} variant="secondary" className="text-xs">
                                   {tag}
-                                </Badge>
-                              ))}
+                                </Badge>)}
                             </div>
                           </TableCell>
                           <TableCell>
-                            {commande.poids_volumetrique_kg ? (
-                              <div className="text-sm">
+                            {commande.poids_volumetrique_kg ? <div className="text-sm">
                                 <div>{commande.poids_reel_kg?.toFixed(2)} kg réel</div>
                                 <div className="text-muted-foreground">
                                   {commande.poids_volumetrique_kg.toFixed(2)} kg vol.
                                 </div>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">Non calculé</span>
-                            )}
+                              </div> : <span className="text-muted-foreground">Non calculé</span>}
                           </TableCell>
                           <TableCell>
-                            {commande.transporteur_choisi || (
-                              <span className="text-muted-foreground">Non assigné</span>
-                            )}
+                            {commande.transporteur_choisi || <span className="text-muted-foreground">Non assigné</span>}
                           </TableCell>
                           <TableCell>{getStatutBadge(commande.statut_wms)}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleApplyAutoRules(commande.id)}
-                                title="Appliquer les règles automatiques"
-                              >
+                              <Button size="sm" variant="outline" onClick={() => handleApplyAutoRules(commande.id)} title="Appliquer les règles automatiques">
                                 <Zap className="h-4 w-4" />
                               </Button>
-                              {commande.label_url ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handlePrintLabel(commande.label_url!)}
-                                >
+                              {commande.label_url ? <Button size="sm" variant="outline" onClick={() => handlePrintLabel(commande.label_url!)}>
                                   Imprimer étiquette
-                                </Button>
-                              ) : (
-                                <Button size="sm" variant="outline" disabled>
+                                </Button> : <Button size="sm" variant="outline" disabled>
                                   Créer expédition
-                                </Button>
-                              )}
+                                </Button>}
                             </div>
                           </TableCell>
-                        </TableRow>
-                      ))}
+                        </TableRow>)}
                     </TableBody>
-                  </Table>
-                )}
+                  </Table>}
               </CardContent>
             </Card>
           </TabsContent>
@@ -285,13 +259,10 @@ export default function Expedition() {
                     <Badge variant="secondary">Webhook configuré</Badge>
                   </div>
                   
-                  <div className="border rounded-lg overflow-hidden" style={{ height: '800px' }}>
-                    <iframe
-                      src="https://panel.sendcloud.sc/shipping/"
-                      className="w-full h-full"
-                      title="SendCloud Ship & Go"
-                      allow="clipboard-write"
-                    />
+                  <div className="border rounded-lg overflow-hidden" style={{
+                  height: '800px'
+                }}>
+                    <iframe src="https://panel.sendcloud.sc/shipping/" className="w-full h-full" title="SendCloud Ship & Go" allow="clipboard-write" />
                   </div>
                 </div>
               </CardContent>
@@ -299,6 +270,5 @@ export default function Expedition() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
-  );
+    </DashboardLayout>;
 }
