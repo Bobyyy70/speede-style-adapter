@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FileText, Download, ChevronDown, Loader2, Package } from "lucide-react";
+import { FileText, Download, ChevronDown, Loader2, Package, Archive } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -94,32 +94,55 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
     }
   };
 
-const handleDownload = async (doc: any) => {
+  const handleDownload = async (doc: any) => {
     try {
-      // Extraire le nom du fichier depuis l'URL
-      const pathParts = doc.url_fichier.split("/");
-      const fileName = pathParts[pathParts.length - 1];
-
-      // Utiliser signedURL pour accès sécurisé
-      const { data: signedData, error: signError } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from("documents-commande")
-        .createSignedUrl(fileName, 60); // 60 secondes de validité
+        .createSignedUrl(doc.url_fichier.replace("documents-commande/", ""), 60);
 
-      if (signError) throw signError;
+      if (error) throw error;
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, "_blank");
+        toast({ title: "Document ouvert" });
+      }
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      toast({ title: "Erreur lors du téléchargement", variant: "destructive" });
+    }
+  };
 
-      // Ouvrir dans un nouvel onglet
-      window.open(signedData.signedUrl, "_blank");
+  const handleDownloadAll = async () => {
+    if (!documents || documents.length === 0) {
+      toast({ title: "Aucun document à télécharger", variant: "destructive" });
+      return;
+    }
 
-      toast({
-        title: "Document ouvert",
-        description: "Le document s'ouvre dans un nouvel onglet",
+    setGenerating("download_all");
+    toast({ title: "Préparation du téléchargement..." });
+
+    try {
+      const downloadPromises = documents.map(async (doc) => {
+        const { data, error } = await supabase.storage
+          .from("documents-commande")
+          .createSignedUrl(doc.url_fichier.replace("documents-commande/", ""), 60);
+        
+        if (error) throw error;
+        return { url: data?.signedUrl, name: doc.nom_fichier };
       });
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message,
-        variant: "destructive",
+
+      const urls = await Promise.all(downloadPromises);
+      
+      // Open each URL in a new tab (browser will handle downloads)
+      urls.forEach(({ url }) => {
+        if (url) window.open(url, "_blank");
       });
+
+      toast({ title: `${documents.length} document(s) téléchargé(s)` });
+    } catch (error) {
+      console.error("Error downloading all documents:", error);
+      toast({ title: "Erreur lors du téléchargement groupé", variant: "destructive" });
+    } finally {
+      setGenerating(null);
     }
   };
 
@@ -130,7 +153,27 @@ const handleDownload = async (doc: any) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Documents logistiques</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Documents logistiques
+          </CardTitle>
+          {documents && documents.length > 0 && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleDownloadAll}
+              disabled={generating === "download_all"}
+            >
+              {generating === "download_all" ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Archive className="h-4 w-4 mr-2" />
+              )}
+              Télécharger tout
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {isHorsUE && (

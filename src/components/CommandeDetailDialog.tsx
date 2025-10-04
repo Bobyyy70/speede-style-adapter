@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, Truck, FileText, Clock, MapPin, User, Mail, Phone, Euro, Weight } from "lucide-react";
+import { Package, Truck, FileText, Clock, MapPin, User, Mail, Phone, Euro, Weight, Play, Send, Download, Printer, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -23,6 +23,26 @@ interface CommandeDetailDialogProps {
 
 export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess }: CommandeDetailDialogProps) => {
   const { toast } = useToast();
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!open) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onOpenChange(false);
+      } else if (e.key === "p" || e.key === "P") {
+        e.preventDefault();
+        handlePrint();
+      } else if (e.key === "d" || e.key === "D") {
+        e.preventDefault();
+        handleDownloadAll();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onOpenChange]);
 
   // Fetch commande complète
   const { data: commande, refetch } = useQuery({
@@ -69,7 +89,35 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const tagsArray = Array.isArray(commande.tags) ? commande.tags : [];
+  const handlePrint = () => {
+    window.print();
+    toast({ title: "Impression lancée" });
+  };
+
+  const handleDownloadAll = () => {
+    // This will be handled by DocumentsSection component
+    toast({ title: "Téléchargement en cours..." });
+  };
+
+  const handleStartPreparation = async () => {
+    if (!commandeId) return;
+    try {
+      const { error } = await supabase
+        .from("commande")
+        .update({ statut_wms: "En préparation" })
+        .eq("id", commandeId);
+      
+      if (error) throw error;
+      toast({ title: "Préparation lancée" });
+    } catch (error) {
+      toast({ title: "Erreur", description: "Impossible de lancer la préparation", variant: "destructive" });
+    }
+  };
+
+  const canStartPreparation = commande?.statut_wms === "Prêt à préparer";
+  const canCreateShipment = commande?.statut_wms === "prete";
+
+  const tagsArray = Array.isArray(commande?.tags) ? commande.tags : [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -324,6 +372,41 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
             <HistoireTimeline commande={commande} />
           </TabsContent>
         </Tabs>
+
+        {/* Actions Bar */}
+        <div className="border-t bg-muted/30 px-6 py-4 mt-6">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              {canStartPreparation && (
+                <Button onClick={handleStartPreparation} size="sm">
+                  <Play className="h-4 w-4 mr-2" />
+                  Lancer la préparation
+                </Button>
+              )}
+              {canCreateShipment && (
+                <Button variant="default" size="sm">
+                  <Send className="h-4 w-4 mr-2" />
+                  Créer expédition SendCloud
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Printer className="h-4 w-4 mr-2" />
+                Imprimer (P)
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleDownloadAll}>
+                <Download className="h-4 w-4 mr-2" />
+                Tout télécharger (D)
+              </Button>
+              <Button variant="ghost" size="sm">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Ajouter un commentaire
+              </Button>
+            </div>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
