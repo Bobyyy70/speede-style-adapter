@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Settings, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ConditionBuilder } from "./ConditionBuilder";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface RegleTransport {
   id: string;
@@ -29,9 +30,9 @@ export function GestionTransporteurs() {
     nom_regle: "",
     transporteur: "",
     priorite: "1",
-    conditions: "[]",
-    config_poids_volumetrique: "{}"
+    diviseur: "5000"
   });
+  const [conditions, setConditions] = useState<any[]>([]);
 
   useEffect(() => {
     fetchRegles();
@@ -60,31 +61,31 @@ export function GestionTransporteurs() {
       return;
     }
 
-    try {
-      let parsedConditions = [];
-      let parsedConfig = {};
+    if (conditions.some(c => !c.field || !c.value)) {
+      toast.error("Toutes les conditions doivent être complètes");
+      return;
+    }
 
-      try {
-        parsedConditions = JSON.parse(newRegle.conditions);
-        parsedConfig = JSON.parse(newRegle.config_poids_volumetrique);
-      } catch {
-        toast.error("Format JSON invalide");
-        return;
-      }
+    try {
+      const config_poids_volumetrique = {
+        diviseur: parseInt(newRegle.diviseur),
+        applique: true
+      };
 
       const { error } = await supabase.from("regle_transport_automatique").insert({
         nom_regle: newRegle.nom_regle,
         transporteur: newRegle.transporteur,
         priorite: parseInt(newRegle.priorite),
-        conditions: parsedConditions,
-        config_poids_volumetrique: parsedConfig,
+        conditions: conditions,
+        config_poids_volumetrique: config_poids_volumetrique,
         actif: true
       });
 
       if (error) throw error;
 
       toast.success("Règle de transport ajoutée");
-      setNewRegle({ nom_regle: "", transporteur: "", priorite: "1", conditions: "[]", config_poids_volumetrique: "{}" });
+      setNewRegle({ nom_regle: "", transporteur: "", priorite: "1", diviseur: "5000" });
+      setConditions([]);
       setOpen(false);
       fetchRegles();
     } catch (error: any) {
@@ -145,50 +146,53 @@ export function GestionTransporteurs() {
                   </div>
                   <div>
                     <Label>Transporteur</Label>
-                    <Input
-                      placeholder="Ex: DPD, Colissimo, UPS"
-                      value={newRegle.transporteur}
-                      onChange={(e) => setNewRegle({ ...newRegle, transporteur: e.target.value })}
-                    />
+                    <Select value={newRegle.transporteur} onValueChange={(val) => setNewRegle({ ...newRegle, transporteur: val })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un transporteur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DPD">DPD</SelectItem>
+                        <SelectItem value="Colissimo">Colissimo</SelectItem>
+                        <SelectItem value="UPS">UPS</SelectItem>
+                        <SelectItem value="GLS">GLS</SelectItem>
+                        <SelectItem value="Geodis">Geodis</SelectItem>
+                        <SelectItem value="Chronopost">Chronopost</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div>
-                    <Label>Priorité (1 = la plus haute)</Label>
-                    <Input
-                      type="number"
-                      value={newRegle.priorite}
-                      onChange={(e) => setNewRegle({ ...newRegle, priorite: e.target.value })}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Priorité (1 = la plus haute)</Label>
+                      <Input
+                        type="number"
+                        value={newRegle.priorite}
+                        onChange={(e) => setNewRegle({ ...newRegle, priorite: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label>Diviseur poids volumétrique</Label>
+                      <Input
+                        type="number"
+                        value={newRegle.diviseur}
+                        onChange={(e) => setNewRegle({ ...newRegle, diviseur: e.target.value })}
+                        placeholder="5000"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label>Conditions (JSON)</Label>
-                    <Textarea
-                      placeholder={`[
-  {"field": "pays_code", "operator": "equals", "value": "FR"},
-  {"field": "poids_total", "operator": "lessThan", "value": 30}
-]`}
-                      value={newRegle.conditions}
-                      onChange={(e) => setNewRegle({ ...newRegle, conditions: e.target.value })}
-                      className="font-mono text-sm"
-                      rows={6}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Opérateurs: equals, notEquals, greaterThan, lessThan, contains, in
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Config poids volumétrique (JSON)</Label>
-                    <Textarea
-                      placeholder={`{
-  "diviseur": 5000,
-  "applique": true,
-  "zones_exception": ["RE", "GP"]
-}`}
-                      value={newRegle.config_poids_volumetrique}
-                      onChange={(e) => setNewRegle({ ...newRegle, config_poids_volumetrique: e.target.value })}
-                      className="font-mono text-sm"
-                      rows={4}
-                    />
-                  </div>
+
+                  <ConditionBuilder
+                    conditions={conditions}
+                    onChange={setConditions}
+                    availableFields={[
+                      { value: "pays_code", label: "Pays" },
+                      { value: "zone_livraison", label: "Zone" },
+                      { value: "poids_total", label: "Poids total (kg)" },
+                      { value: "valeur_totale", label: "Valeur (€)" },
+                      { value: "source", label: "Source commande" },
+                      { value: "nom_client", label: "Client" }
+                    ]}
+                  />
+
                   <Button onClick={handleAddRegle} className="w-full">
                     Créer la règle
                   </Button>

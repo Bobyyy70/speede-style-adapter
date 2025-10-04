@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2. Appliquer les règles de transport automatiques
+    // 2. Appliquer les règles de transport automatiques (première qui matche selon priorité)
     const { data: transportRules } = await supabaseClient
       .from('regle_transport_automatique')
       .select('*')
@@ -91,61 +91,60 @@ Deno.serve(async (req) => {
       .order('priorite', { ascending: true });
 
     if (transportRules && transportRules.length > 0) {
-      for (const rule of transportRules) {
-        if (evaluateConditions(commande, rule.conditions)) {
-          updates.transporteur_choisi = rule.transporteur;
+      // Trouver la première règle qui matche
+      const matchingRule = transportRules.find(rule => evaluateConditions(commande, rule.conditions));
+      
+      if (matchingRule) {
+        updates.transporteur_choisi = matchingRule.transporteur;
+        
+        // Calculer le poids volumétrique si configuré
+        if (matchingRule.config_poids_volumetrique?.applique) {
+          const diviseur = matchingRule.config_poids_volumetrique.diviseur || 5000;
           
-          // Calculer le poids volumétrique si configuré
-          if (rule.config_poids_volumetrique?.applique) {
-            const diviseur = rule.config_poids_volumetrique.diviseur || 5000;
-            
-            // Récupérer les lignes de commande avec produits
-            const { data: lignes } = await supabaseClient
-              .from('ligne_commande')
-              .select('produit_id, quantite_commandee')
-              .eq('commande_id', commandeId);
+          // Récupérer les lignes de commande avec produits
+          const { data: lignes } = await supabaseClient
+            .from('ligne_commande')
+            .select('produit_id, quantite_commandee')
+            .eq('commande_id', commandeId);
 
-            if (lignes && lignes.length > 0) {
-              let volumeTotal = 0;
-              let poidsTotal = 0;
+          if (lignes && lignes.length > 0) {
+            let volumeTotal = 0;
+            let poidsTotal = 0;
 
-              for (const ligne of lignes) {
-                const { data: produit } = await supabaseClient
-                  .from('produit')
-                  .select('volume_m3, poids_unitaire')
-                  .eq('id', ligne.produit_id)
-                  .single();
+            for (const ligne of lignes) {
+              const { data: produit } = await supabaseClient
+                .from('produit')
+                .select('volume_m3, poids_unitaire')
+                .eq('id', ligne.produit_id)
+                .single();
 
-                if (produit) {
-                  volumeTotal += (produit.volume_m3 || 0) * ligne.quantite_commandee;
-                  poidsTotal += (produit.poids_unitaire || 0) * ligne.quantite_commandee;
-                }
-              }
-
-              // Convertir m3 en cm3 pour le calcul
-              const volumeCm3 = volumeTotal * 1000000;
-              const poidsVolumetrique = volumeCm3 / diviseur;
-
-              updates.poids_reel_kg = poidsTotal;
-              updates.poids_volumetrique_kg = poidsVolumetrique;
-              updates.poids_total = Math.max(poidsTotal, poidsVolumetrique);
-
-              // Trouver le carton approprié
-              const { data: cartons } = await supabaseClient
-                .from('type_carton')
-                .select('*')
-                .eq('actif', true)
-                .gte('volume_m3', volumeTotal)
-                .order('volume_m3', { ascending: true })
-                .limit(1);
-
-              if (cartons && cartons.length > 0) {
-                updates.type_carton_id = cartons[0].id;
+              if (produit) {
+                volumeTotal += (produit.volume_m3 || 0) * ligne.quantite_commandee;
+                poidsTotal += (produit.poids_unitaire || 0) * ligne.quantite_commandee;
               }
             }
+
+            // Convertir m3 en cm3 pour le calcul
+            const volumeCm3 = volumeTotal * 1000000;
+            const poidsVolumetrique = volumeCm3 / diviseur;
+
+            updates.poids_reel_kg = poidsTotal;
+            updates.poids_volumetrique_kg = poidsVolumetrique;
+            updates.poids_total = Math.max(poidsTotal, poidsVolumetrique);
+
+            // Trouver le carton approprié
+            const { data: cartons } = await supabaseClient
+              .from('type_carton')
+              .select('*')
+              .eq('actif', true)
+              .gte('volume_m3', volumeTotal)
+              .order('volume_m3', { ascending: true })
+              .limit(1);
+
+            if (cartons && cartons.length > 0) {
+              updates.type_carton_id = cartons[0].id;
+            }
           }
-          
-          break; // Prendre la première règle qui match
         }
       }
     }

@@ -5,12 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Tag, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ConditionBuilder } from "./ConditionBuilder";
 
 interface RegleTag {
   id: string;
@@ -40,9 +40,9 @@ export function GestionTags() {
     nom_regle: "",
     tag: "",
     couleur_tag: "blue",
-    priorite: "1",
-    conditions: "[]"
+    priorite: "1"
   });
+  const [conditions, setConditions] = useState<any[]>([]);
 
   useEffect(() => {
     fetchRegles();
@@ -71,28 +71,26 @@ export function GestionTags() {
       return;
     }
 
-    try {
-      let parsedConditions = [];
-      try {
-        parsedConditions = JSON.parse(newRegle.conditions);
-      } catch {
-        toast.error("Format JSON invalide pour les conditions");
-        return;
-      }
+    if (conditions.some(c => !c.field || !c.value)) {
+      toast.error("Toutes les conditions doivent être complètes");
+      return;
+    }
 
+    try {
       const { error } = await supabase.from("regle_tag_automatique").insert({
         nom_regle: newRegle.nom_regle,
         tag: newRegle.tag,
         couleur_tag: newRegle.couleur_tag,
         priorite: parseInt(newRegle.priorite),
-        conditions: parsedConditions,
+        conditions: conditions,
         actif: true
       });
 
       if (error) throw error;
 
       toast.success("Règle de tag ajoutée");
-      setNewRegle({ nom_regle: "", tag: "", couleur_tag: "blue", priorite: "1", conditions: "[]" });
+      setNewRegle({ nom_regle: "", tag: "", couleur_tag: "blue", priorite: "1" });
+      setConditions([]);
       setOpen(false);
       fetchRegles();
     } catch (error: any) {
@@ -185,24 +183,20 @@ export function GestionTags() {
                       onChange={(e) => setNewRegle({ ...newRegle, priorite: e.target.value })}
                     />
                   </div>
-                  <div>
-                    <Label>Conditions (JSON)</Label>
-                    <Textarea
-                      placeholder={`[
-  {"field": "source", "operator": "equals", "value": "Amazon"},
-  {"field": "methode_expedition", "operator": "contains", "value": "Express"}
-]`}
-                      value={newRegle.conditions}
-                      onChange={(e) => setNewRegle({ ...newRegle, conditions: e.target.value })}
-                      className="font-mono text-sm"
-                      rows={6}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Champs disponibles: source, methode_expedition, pays_code, valeur_totale, etc.
-                      <br />
-                      Opérateurs: equals, notEquals, greaterThan, lessThan, contains, in
-                    </p>
-                  </div>
+                  <ConditionBuilder
+                    conditions={conditions}
+                    onChange={setConditions}
+                    availableFields={[
+                      { value: "source", label: "Source commande" },
+                      { value: "methode_expedition", label: "Méthode expédition" },
+                      { value: "transporteur", label: "Transporteur" },
+                      { value: "pays_code", label: "Pays" },
+                      { value: "zone_livraison", label: "Zone" },
+                      { value: "valeur_totale", label: "Valeur (€)" },
+                      { value: "poids_total", label: "Poids (kg)" },
+                      { value: "nom_client", label: "Client" }
+                    ]}
+                  />
                   <Button onClick={handleAddRegle} className="w-full">
                     Créer la règle
                   </Button>

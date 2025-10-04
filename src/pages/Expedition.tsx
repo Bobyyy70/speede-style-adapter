@@ -270,9 +270,9 @@ export default function Expedition() {
           <TabsContent value="sendcloud">
             <Card>
               <CardHeader>
-                <CardTitle>Interface SendCloud</CardTitle>
+                <CardTitle>Interface SendCloud Ship & Go</CardTitle>
                 <CardDescription>
-                  Ship & Go intégré pour créer les expéditions
+                  Créez vos expéditions directement depuis l'interface SendCloud
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -285,13 +285,13 @@ export default function Expedition() {
                     <Badge variant="secondary">Webhook configuré</Badge>
                   </div>
                   
-                  <div className="aspect-video border rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-                    <div className="text-center space-y-2">
-                      <ExternalLink className="h-12 w-12 mx-auto text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        Interface SendCloud Ship & Go à intégrer ici
-                      </p>
-                    </div>
+                  <div className="border rounded-lg overflow-hidden" style={{ height: '800px' }}>
+                    <iframe
+                      src="https://panel.sendcloud.sc/shipping/"
+                      className="w-full h-full"
+                      title="SendCloud Ship & Go"
+                      allow="clipboard-write"
+                    />
                   </div>
                 </div>
               </CardContent>
