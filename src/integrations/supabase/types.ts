@@ -194,20 +194,32 @@ export type Database = {
           facturation_pays_code: string | null
           facturation_ville: string | null
           id: string
+          label_source: string | null
+          label_url: string | null
           methode_expedition: string | null
           nom_client: string
+          notes_expedition: string | null
           numero_commande: string
           numero_facture_commerciale: string | null
           pays_code: string
+          poids_reel_kg: number | null
           poids_total: number | null
+          poids_volumetrique_kg: number | null
           remarques: string | null
           sendcloud_id: string | null
+          sendcloud_shipment_id: string | null
           source: string
           statut_wms: string
+          tags: string[] | null
           telephone_client: string | null
+          tracking_number: string | null
+          tracking_url: string | null
           transporteur: string | null
+          transporteur_choisi: string | null
+          type_carton_id: string | null
           valeur_totale: number
           ville: string
+          zone_livraison: string | null
         }
         Insert: {
           adresse_ligne_1: string
@@ -226,20 +238,32 @@ export type Database = {
           facturation_pays_code?: string | null
           facturation_ville?: string | null
           id?: string
+          label_source?: string | null
+          label_url?: string | null
           methode_expedition?: string | null
           nom_client: string
+          notes_expedition?: string | null
           numero_commande: string
           numero_facture_commerciale?: string | null
           pays_code: string
+          poids_reel_kg?: number | null
           poids_total?: number | null
+          poids_volumetrique_kg?: number | null
           remarques?: string | null
           sendcloud_id?: string | null
+          sendcloud_shipment_id?: string | null
           source: string
           statut_wms?: string
+          tags?: string[] | null
           telephone_client?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
           transporteur?: string | null
+          transporteur_choisi?: string | null
+          type_carton_id?: string | null
           valeur_totale?: number
           ville: string
+          zone_livraison?: string | null
         }
         Update: {
           adresse_ligne_1?: string
@@ -258,20 +282,32 @@ export type Database = {
           facturation_pays_code?: string | null
           facturation_ville?: string | null
           id?: string
+          label_source?: string | null
+          label_url?: string | null
           methode_expedition?: string | null
           nom_client?: string
+          notes_expedition?: string | null
           numero_commande?: string
           numero_facture_commerciale?: string | null
           pays_code?: string
+          poids_reel_kg?: number | null
           poids_total?: number | null
+          poids_volumetrique_kg?: number | null
           remarques?: string | null
           sendcloud_id?: string | null
+          sendcloud_shipment_id?: string | null
           source?: string
           statut_wms?: string
+          tags?: string[] | null
           telephone_client?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
           transporteur?: string | null
+          transporteur_choisi?: string | null
+          type_carton_id?: string | null
           valeur_totale?: number
           ville?: string
+          zone_livraison?: string | null
         }
         Relationships: [
           {
@@ -280,6 +316,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "commande_type_carton_id_fkey"
+            columns: ["type_carton_id"]
+            isOneToOne: false
+            referencedRelation: "type_carton"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1048,6 +1091,84 @@ export type Database = {
         }
         Relationships: []
       }
+      regle_tag_automatique: {
+        Row: {
+          actif: boolean | null
+          conditions: Json
+          couleur_tag: string
+          created_by: string | null
+          date_creation: string | null
+          date_modification: string | null
+          id: string
+          nom_regle: string
+          priorite: number
+          tag: string
+        }
+        Insert: {
+          actif?: boolean | null
+          conditions?: Json
+          couleur_tag: string
+          created_by?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          id?: string
+          nom_regle: string
+          priorite?: number
+          tag: string
+        }
+        Update: {
+          actif?: boolean | null
+          conditions?: Json
+          couleur_tag?: string
+          created_by?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          id?: string
+          nom_regle?: string
+          priorite?: number
+          tag?: string
+        }
+        Relationships: []
+      }
+      regle_transport_automatique: {
+        Row: {
+          actif: boolean | null
+          conditions: Json
+          config_poids_volumetrique: Json | null
+          created_by: string | null
+          date_creation: string | null
+          date_modification: string | null
+          id: string
+          nom_regle: string
+          priorite: number
+          transporteur: string
+        }
+        Insert: {
+          actif?: boolean | null
+          conditions?: Json
+          config_poids_volumetrique?: Json | null
+          created_by?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          id?: string
+          nom_regle: string
+          priorite?: number
+          transporteur: string
+        }
+        Update: {
+          actif?: boolean | null
+          conditions?: Json
+          config_poids_volumetrique?: Json | null
+          created_by?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          id?: string
+          nom_regle?: string
+          priorite?: number
+          transporteur?: string
+        }
+        Relationships: []
+      }
       retour_produit: {
         Row: {
           client_id: string | null
@@ -1111,6 +1232,91 @@ export type Database = {
             columns: ["commande_origine_id"]
             isOneToOne: false
             referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scan_picking: {
+        Row: {
+          code_barre: string
+          commande_id: string
+          date_scan: string | null
+          id: string
+          ligne_commande_id: string | null
+          operateur_id: string | null
+          produit_id: string
+          quantite_scannee: number
+          remarques: string | null
+          session_id: string
+          statut_scan: string | null
+        }
+        Insert: {
+          code_barre: string
+          commande_id: string
+          date_scan?: string | null
+          id?: string
+          ligne_commande_id?: string | null
+          operateur_id?: string | null
+          produit_id: string
+          quantite_scannee?: number
+          remarques?: string | null
+          session_id: string
+          statut_scan?: string | null
+        }
+        Update: {
+          code_barre?: string
+          commande_id?: string
+          date_scan?: string | null
+          id?: string
+          ligne_commande_id?: string | null
+          operateur_id?: string | null
+          produit_id?: string
+          quantite_scannee?: number
+          remarques?: string | null
+          session_id?: string
+          statut_scan?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_picking_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scan_picking_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scan_picking_ligne_commande_id_fkey"
+            columns: ["ligne_commande_id"]
+            isOneToOne: false
+            referencedRelation: "ligne_commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scan_picking_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scan_picking_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "stock_disponible"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "scan_picking_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_preparation"
             referencedColumns: ["id"]
           },
         ]
@@ -1359,6 +1565,42 @@ export type Database = {
             referencedColumns: ["produit_id"]
           },
         ]
+      }
+      type_carton: {
+        Row: {
+          actif: boolean | null
+          date_creation: string | null
+          hauteur_cm: number
+          id: string
+          largeur_cm: number
+          longueur_cm: number
+          nom: string
+          poids_carton_kg: number
+          volume_m3: number | null
+        }
+        Insert: {
+          actif?: boolean | null
+          date_creation?: string | null
+          hauteur_cm: number
+          id?: string
+          largeur_cm: number
+          longueur_cm: number
+          nom: string
+          poids_carton_kg?: number
+          volume_m3?: number | null
+        }
+        Update: {
+          actif?: boolean | null
+          date_creation?: string | null
+          hauteur_cm?: number
+          id?: string
+          largeur_cm?: number
+          longueur_cm?: number
+          nom?: string
+          poids_carton_kg?: number
+          volume_m3?: number | null
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
