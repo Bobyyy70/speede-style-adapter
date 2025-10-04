@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.sendcloud-orders-batch]
 verify_jwt = false
+
+[functions.n8n-gateway]
+verify_jwt = false

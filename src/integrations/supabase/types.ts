@@ -643,6 +643,104 @@ export type Database = {
           },
         ]
       }
+      n8n_execution_log: {
+        Row: {
+          date_execution: string | null
+          declencheur: string | null
+          duree_ms: number | null
+          error_message: string | null
+          id: string
+          payload_envoye: Json
+          reponse_n8n: Json | null
+          statut: string | null
+          user_id: string | null
+          workflow_id: string | null
+        }
+        Insert: {
+          date_execution?: string | null
+          declencheur?: string | null
+          duree_ms?: number | null
+          error_message?: string | null
+          id?: string
+          payload_envoye: Json
+          reponse_n8n?: Json | null
+          statut?: string | null
+          user_id?: string | null
+          workflow_id?: string | null
+        }
+        Update: {
+          date_execution?: string | null
+          declencheur?: string | null
+          duree_ms?: number | null
+          error_message?: string | null
+          id?: string
+          payload_envoye?: Json
+          reponse_n8n?: Json | null
+          statut?: string | null
+          user_id?: string | null
+          workflow_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "n8n_execution_log_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "n8n_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      n8n_workflows: {
+        Row: {
+          actif: boolean | null
+          categorie: string | null
+          config_json: Json
+          created_by: string | null
+          date_creation: string | null
+          date_modification: string | null
+          declencheur_auto: Json | null
+          derniere_execution: string | null
+          description: string | null
+          id: string
+          metadonnees: Json | null
+          nom: string
+          nombre_executions: number | null
+          webhook_url: string
+        }
+        Insert: {
+          actif?: boolean | null
+          categorie?: string | null
+          config_json: Json
+          created_by?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          declencheur_auto?: Json | null
+          derniere_execution?: string | null
+          description?: string | null
+          id?: string
+          metadonnees?: Json | null
+          nom: string
+          nombre_executions?: number | null
+          webhook_url: string
+        }
+        Update: {
+          actif?: boolean | null
+          categorie?: string | null
+          config_json?: Json
+          created_by?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          declencheur_auto?: Json | null
+          derniere_execution?: string | null
+          description?: string | null
+          id?: string
+          metadonnees?: Json | null
+          nom?: string
+          nombre_executions?: number | null
+          webhook_url?: string
+        }
+        Relationships: []
+      }
       produit: {
         Row: {
           categorie_emballage: number | null
