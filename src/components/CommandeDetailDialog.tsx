@@ -11,6 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DocumentsSection } from "./expedition/DocumentsSection";
+import { ServicesSection } from "./expedition/ServicesSection";
+import { HistoireTimeline } from "./expedition/HistoireTimeline";
 
 interface CommandeDetailDialogProps {
   commandeId: string;
@@ -47,24 +49,6 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
         .select("*")
         .eq("commande_id", commandeId)
         .order("date_creation", { ascending: true });
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: open && !!commandeId,
-  });
-
-  // Fetch services facturés
-  const { data: services } = useQuery({
-    queryKey: ["services_commande", commandeId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("ligne_service_commande")
-        .select(`
-          *,
-          service:service_id (nom_service, code_service)
-        `)
-        .eq("commande_id", commandeId);
       
       if (error) throw error;
       return data;
@@ -336,49 +320,8 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
           </TabsContent>
 
           <TabsContent value="services" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Services logistiques facturés</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Service</TableHead>
-                      <TableHead className="text-center">Quantité</TableHead>
-                      <TableHead className="text-right">Prix unitaire</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead>Auto</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {services && services.length > 0 ? (
-                      services.map((srv) => (
-                        <TableRow key={srv.id}>
-                          <TableCell>
-                            {srv.service ? (srv.service as any).nom_service : "Service inconnu"}
-                          </TableCell>
-                          <TableCell className="text-center">{srv.quantite}</TableCell>
-                          <TableCell className="text-right">{srv.prix_unitaire.toFixed(2)} €</TableCell>
-                          <TableCell className="text-right font-semibold">
-                            {srv.prix_total ? srv.prix_total.toFixed(2) : (srv.quantite * srv.prix_unitaire).toFixed(2)} €
-                          </TableCell>
-                          <TableCell>
-                            {srv.genere_automatiquement && <Badge variant="secondary">Auto</Badge>}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground">
-                          Aucun service facturé
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <ServicesSection commandeId={commandeId} />
+            <HistoireTimeline commande={commande} />
           </TabsContent>
         </Tabs>
       </DialogContent>
