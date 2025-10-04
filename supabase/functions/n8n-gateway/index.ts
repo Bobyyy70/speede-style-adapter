@@ -516,6 +516,223 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ========== CHATBOT IA ENDPOINTS ==========
+
+    // POST /ia/chat - Envoyer un message au chatbot IA
+    if (path === '/ia/chat' && method === 'POST') {
+      const body = await req.json();
+      const { message, session_id, contexte_wms } = body;
+
+      // Récupérer l'userId depuis le token JWT
+      const authHeader = req.headers.get('Authorization');
+      const token = authHeader?.replace('Bearer ', '');
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Vérifier que l'utilisateur est admin ou gestionnaire
+      const { data: userRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!userRole || !['admin', 'gestionnaire'].includes(userRole.role)) {
+        return new Response(JSON.stringify({ error: 'Forbidden: Admins/Gestionnaires only' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Vérifier que l'utilisateur n'est PAS bloqué
+      const { data: blocage } = await supabase
+        .from('ia_user_blocked')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('actif', true)
+        .single();
+
+      if (blocage) {
+        return new Response(JSON.stringify({
+          error: 'Accès bloqué',
+          raison: blocage.raison,
+          contact_admin: true
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Vérifier les quotas (gratuit vs payant)
+      let { data: quota } = await supabase
+        .from('ia_usage_quotas')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      // Créer quota si inexistant
+      if (!quota) {
+        const { data: newQuota } = await supabase
+          .from('ia_usage_quotas')
+          .insert({ user_id: user.id })
+          .select()
+          .single();
+        quota = newQuota;
+      }
+
+      // Reset mensuel si nécessaire
+      if (quota && new Date(quota.reset_date) < new Date()) {
+        await supabase
+          .from('ia_usage_quotas')
+          .update({
+            messages_gratuits_restants: 50,
+            reset_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          })
+          .eq('user_id', user.id);
+        quota.messages_gratuits_restants = 50;
+      }
+
+      // Vérifier si l'utilisateur a dépassé son quota
+      const mode_gratuit = quota && quota.messages_gratuits_restants > 0;
+      const mode_paye = quota && quota.messages_payes_restants > 0;
+
+      if (!mode_gratuit && !mode_paye) {
+        return new Response(JSON.stringify({
+          error: 'Quota épuisé',
+          messages_restants: 0,
+          upgrade_required: true,
+          message: 'Vous avez épuisé vos messages gratuits. Passez à un forfait payant pour continuer.'
+        }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Sauvegarder le message utilisateur
+      await supabase.from('ia_conversation').insert({
+        user_id: user.id,
+        session_id,
+        role: 'user',
+        message,
+        contexte_wms,
+      });
+
+      // Appeler l'orchestrateur n8n/Flowise
+      const ORCHESTRATOR_WEBHOOK = Deno.env.get('ORCHESTRATOR_WEBHOOK_URL');
+
+      if (!ORCHESTRATOR_WEBHOOK) {
+        // Réponse par défaut si pas encore configuré
+        const defaultResponse = "🤖 Chatbot en configuration. L'administrateur doit configurer le webhook orchestrateur.";
+
+        await supabase.from('ia_conversation').insert({
+          user_id: user.id,
+          session_id,
+          role: 'assistant',
+          message: defaultResponse,
+        });
+
+        return new Response(JSON.stringify({
+          response: defaultResponse,
+          configured: false,
+          mode_gratuit,
+          messages_restants: mode_gratuit ? quota.messages_gratuits_restants : quota.messages_payes_restants
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Appeler l'orchestrateur
+      try {
+        const orchestratorResponse = await fetch(ORCHESTRATOR_WEBHOOK, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-N8N-API-KEY': N8N_API_KEY,
+          },
+          body: JSON.stringify({
+            message,
+            session_id,
+            user_id: user.id,
+            contexte_wms,
+            mode_gratuit,
+          }),
+        });
+
+        const responseData = await orchestratorResponse.json();
+        const assistantMessage = responseData.message || responseData.response || "Erreur de réponse";
+        const tokens_utilises = responseData.tokens_utilises || 0;
+        const cout_estimation = mode_gratuit ? 0 : (tokens_utilises * 0.0001);
+
+        // Sauvegarder la réponse
+        await supabase.from('ia_conversation').insert({
+          user_id: user.id,
+          session_id,
+          role: 'assistant',
+          message: assistantMessage,
+          workflow_genere_id: responseData.workflow_id || null,
+          tokens_utilises,
+          cout_estimation,
+        });
+
+        // Décrémenter le quota
+        if (mode_gratuit) {
+          await supabase
+            .from('ia_usage_quotas')
+            .update({
+              messages_gratuits_restants: quota.messages_gratuits_restants - 1,
+              derniere_utilisation: new Date().toISOString()
+            })
+            .eq('user_id', user.id);
+        } else {
+          await supabase
+            .from('ia_usage_quotas')
+            .update({
+              messages_payes_restants: quota.messages_payes_restants - 1,
+              derniere_utilisation: new Date().toISOString()
+            })
+            .eq('user_id', user.id);
+        }
+
+        return new Response(JSON.stringify({
+          response: assistantMessage,
+          workflow_created: !!responseData.workflow_id,
+          configured: true,
+          mode_gratuit,
+          messages_restants: mode_gratuit
+            ? quota.messages_gratuits_restants - 1
+            : quota.messages_payes_restants - 1,
+          tokens_utilises,
+          cout_estimation
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+      } catch (error: any) {
+        console.error('Error calling orchestrator:', error);
+
+        const errorMessage = "Désolé, je rencontre un problème technique. Veuillez réessayer.";
+        await supabase.from('ia_conversation').insert({
+          user_id: user.id,
+          session_id,
+          role: 'assistant',
+          message: errorMessage,
+        });
+
+        return new Response(JSON.stringify({
+          response: errorMessage,
+          error: error.message
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Route non trouvée
     return new Response(
       JSON.stringify({ error: 'Route not found', path, method }),

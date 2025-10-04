@@ -334,6 +334,107 @@ export type Database = {
           },
         ]
       }
+      ia_conversation: {
+        Row: {
+          contexte_wms: Json | null
+          cout_estimation: number | null
+          date_creation: string | null
+          id: string
+          message: string
+          role: string
+          session_id: string
+          tokens_utilises: number | null
+          user_id: string
+          workflow_genere_id: string | null
+        }
+        Insert: {
+          contexte_wms?: Json | null
+          cout_estimation?: number | null
+          date_creation?: string | null
+          id?: string
+          message: string
+          role: string
+          session_id: string
+          tokens_utilises?: number | null
+          user_id: string
+          workflow_genere_id?: string | null
+        }
+        Update: {
+          contexte_wms?: Json | null
+          cout_estimation?: number | null
+          date_creation?: string | null
+          id?: string
+          message?: string
+          role?: string
+          session_id?: string
+          tokens_utilises?: number | null
+          user_id?: string
+          workflow_genere_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_conversation_workflow_genere_id_fkey"
+            columns: ["workflow_genere_id"]
+            isOneToOne: false
+            referencedRelation: "n8n_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ia_usage_quotas: {
+        Row: {
+          derniere_utilisation: string | null
+          id: string
+          messages_gratuits_restants: number | null
+          messages_payes_restants: number | null
+          reset_date: string | null
+          user_id: string
+        }
+        Insert: {
+          derniere_utilisation?: string | null
+          id?: string
+          messages_gratuits_restants?: number | null
+          messages_payes_restants?: number | null
+          reset_date?: string | null
+          user_id: string
+        }
+        Update: {
+          derniere_utilisation?: string | null
+          id?: string
+          messages_gratuits_restants?: number | null
+          messages_payes_restants?: number | null
+          reset_date?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ia_user_blocked: {
+        Row: {
+          actif: boolean | null
+          bloque_par: string | null
+          date_blocage: string | null
+          id: string
+          raison: string
+          user_id: string
+        }
+        Insert: {
+          actif?: boolean | null
+          bloque_par?: string | null
+          date_blocage?: string | null
+          id?: string
+          raison: string
+          user_id: string
+        }
+        Update: {
+          actif?: boolean | null
+          bloque_par?: string | null
+          date_blocage?: string | null
+          id?: string
+          raison?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ligne_commande: {
         Row: {
           commande_id: string

@@ -1,0 +1,4 @@
+-- Activer RLS sur les tables IA
+ALTER TABLE ia_conversation ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ia_user_blocked ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ia_usage_quotas ENABLE ROW LEVEL SECURITY;

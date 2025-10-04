@@ -27,6 +27,7 @@ import ImportExport from "./pages/ImportExport";
 import Utilisateurs from "./pages/Utilisateurs";
 import GestionClients from "./pages/GestionClients";
 import Notifications from "./pages/Notifications";
+import ChatbotIA from "./pages/ChatbotIA";
 import NotFound from "./pages/NotFound";
 import ClientDashboard from "./pages/client/Dashboard";
 import ClientCommandes from "./pages/client/MesCommandes";
@@ -210,6 +211,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Notifications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parametres/chatbot-ia"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ChatbotIA />
                 </ProtectedRoute>
               }
             />
