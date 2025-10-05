@@ -1522,6 +1522,63 @@ export type Database = {
           },
         ]
       }
+      sendcloud_api_log: {
+        Row: {
+          commande_id: string | null
+          created_by: string | null
+          date_appel: string | null
+          duree_ms: number | null
+          endpoint: string
+          error_message: string | null
+          id: string
+          methode: string
+          payload: Json | null
+          reponse: Json | null
+          statut_http: number | null
+        }
+        Insert: {
+          commande_id?: string | null
+          created_by?: string | null
+          date_appel?: string | null
+          duree_ms?: number | null
+          endpoint: string
+          error_message?: string | null
+          id?: string
+          methode: string
+          payload?: Json | null
+          reponse?: Json | null
+          statut_http?: number | null
+        }
+        Update: {
+          commande_id?: string | null
+          created_by?: string | null
+          date_appel?: string | null
+          duree_ms?: number | null
+          endpoint?: string
+          error_message?: string | null
+          id?: string
+          methode?: string
+          payload?: Json | null
+          reponse?: Json | null
+          statut_http?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sendcloud_api_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sendcloud_api_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_logistique: {
         Row: {
           actif: boolean | null

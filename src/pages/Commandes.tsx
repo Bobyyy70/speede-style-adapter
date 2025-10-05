@@ -7,10 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Download, Package, Clock, CheckCircle2, TrendingUp } from "lucide-react";
+import { Upload, Download, Package, Clock, CheckCircle2, TrendingUp, Activity } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { useAutoRules } from "@/hooks/useAutoRules";
 export default function Commandes() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     total: 0,
     enAttente: 0,
@@ -126,6 +128,10 @@ export default function Commandes() {
           </p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate("/integrations/sendcloud-sync")}>
+              <Activity className="mr-2 h-4 w-4" />
+              Monitoring SendCloud
+            </Button>
             <Button variant="outline" onClick={handleExportCSV}>
               <Download className="mr-2 h-4 w-4" />
               Exporter CSV

@@ -29,6 +29,7 @@ import ImportExport from "./pages/ImportExport";
 import Utilisateurs from "./pages/Utilisateurs";
 import GestionClients from "./pages/GestionClients";
 import Notifications from "./pages/Notifications";
+import SendCloudSync from "./pages/SendCloudSync";
 
 import NotFound from "./pages/NotFound";
 import ClientDashboard from "./pages/client/Dashboard";
@@ -224,6 +225,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Notifications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/integrations/sendcloud-sync"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <SendCloudSync />
                 </ProtectedRoute>
               }
             />
