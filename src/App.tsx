@@ -2,10 +2,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { AIAssistant } from "@/components/AIAssistant";
+
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Reception from "./pages/Reception";
@@ -29,7 +29,7 @@ import ImportExport from "./pages/ImportExport";
 import Utilisateurs from "./pages/Utilisateurs";
 import GestionClients from "./pages/GestionClients";
 import Notifications from "./pages/Notifications";
-import ChatbotIA from "./pages/ChatbotIA";
+
 import NotFound from "./pages/NotFound";
 import ClientDashboard from "./pages/client/Dashboard";
 import ClientCommandes from "./pages/client/MesCommandes";
@@ -44,7 +44,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AIAssistant />
+      
       <BrowserRouter>
         <AuthProvider>
           <Routes>
@@ -227,11 +227,7 @@ const App = () => (
             />
             <Route
               path="/parametres/chatbot-ia"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <ChatbotIA />
-                </ProtectedRoute>
-              }
+              element={<Navigate to="/parametres/utilisateurs" replace />}
             />
             {/* Client Routes */}
             <Route

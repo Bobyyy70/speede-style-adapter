@@ -33,7 +33,7 @@ import {
   ShipWheel,
   Cable,
   Building2,
-  Bot,
+  
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -57,7 +57,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { IAChat } from "@/components/IAChat";
+
 
 type NavigationItem = {
   name: string;
@@ -112,7 +112,7 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
           { name: "Utilisateurs", href: "/parametres/utilisateurs", icon: UserCog },
           { name: "Clients", href: "/parametres/clients", icon: Building2 },
           { name: "Notifications", href: "/parametres/notifications", icon: Bell },
-          { name: "Chatbot IA", href: "/parametres/chatbot-ia", icon: Bot },
+          
           { name: "Facturation", href: "/administratif/facturation", icon: Receipt },
         ]
       },
@@ -463,10 +463,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </main>
       </div>
 
-      {/* Chatbot IA (visible uniquement pour admin/gestionnaire) */}
-      {userRole && ['admin', 'gestionnaire'].includes(userRole) && (
-        <IAChat />
-      )}
     </div>
   );
 }
