@@ -20,3 +20,6 @@ verify_jwt = true
 
 [functions.generate-picking-slip]
 verify_jwt = true
+
+[functions.ai-assistant]
+verify_jwt = true

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { format, subDays } from "date-fns";
+import { DashboardAIAssistant } from "@/components/DashboardAIAssistant";
 const Index = () => {
   const [stats, setStats] = useState({
     commandesEnPreparation: 0,
@@ -142,10 +143,10 @@ const Index = () => {
               </ResponsiveContainer>
             </CardContent>
           </Card>
-
-          
         </div>
       </div>
+      
+      <DashboardAIAssistant context={{ stats, period, chartData }} />
     </DashboardLayout>;
 };
 export default Index;

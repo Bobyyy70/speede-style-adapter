@@ -1,4 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,7 +18,9 @@ Deno.serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const systemPrompt = `Tu es un assistant IA intégré au WMS Speed E-Log. 
+    const mode = context?.mode || 'chat';
+    
+    let systemPrompt = `Tu es un assistant IA intégré au WMS Speed E-Log. 
 Tu as accès à toutes les données de l'application et tu peux aider les utilisateurs à :
 - Consulter des statistiques et des rapports
 - Rechercher des informations sur les commandes, produits, stocks
@@ -28,6 +30,12 @@ Tu as accès à toutes les données de l'application et tu peux aider les utilis
 Contexte actuel de l'application : ${JSON.stringify(context || {})}
 
 Réponds de manière concise et professionnelle en français.`;
+
+    if (mode === 'insights') {
+      systemPrompt = `Analyse les données suivantes et génère exactement 3 insights courts (1 ligne max chacun), sans numérotation, séparés par des sauts de ligne. Sois direct et factuel. Données: ${JSON.stringify(context?.stats || {})}`;
+    } else if (context?.capabilities) {
+      systemPrompt += `\n\nTu peux suggérer des actions concrètes comme créer des commandes ou modifier des stocks. Si l'utilisateur demande une action, réponds avec du texte normal ET un objet JSON "suggestedActions" avec type, label et data.`;
+    }
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -71,7 +79,8 @@ Réponds de manière concise et professionnelle en français.`;
     });
   } catch (error) {
     console.error('Error in ai-assistant:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
