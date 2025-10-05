@@ -8,10 +8,8 @@ import { GestionTags } from "@/components/expedition/GestionTags";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2 } from "lucide-react";
-
 export default function Preparation() {
-  return (
-    <DashboardLayout>
+  return <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -31,10 +29,7 @@ export default function Preparation() {
               <ClipboardList className="h-4 w-4 mr-2" />
               Sessions
             </TabsTrigger>
-            <TabsTrigger value="picking">
-              <ScanLine className="h-4 w-4 mr-2" />
-              Picking
-            </TabsTrigger>
+            
             <TabsTrigger value="volumetrique">
               <Scale className="h-4 w-4 mr-2" />
               Volumétrique
@@ -93,13 +88,10 @@ export default function Preparation() {
                     <Badge variant="secondary">Webhook configuré</Badge>
                   </div>
                   
-                  <div className="border rounded-lg overflow-hidden" style={{ height: '800px' }}>
-                    <iframe 
-                      src="https://panel.sendcloud.sc/shipping/" 
-                      className="w-full h-full" 
-                      title="SendCloud Ship & Go" 
-                      allow="clipboard-write" 
-                    />
+                  <div className="border rounded-lg overflow-hidden" style={{
+                  height: '800px'
+                }}>
+                    <iframe src="https://panel.sendcloud.sc/shipping/" className="w-full h-full" title="SendCloud Ship & Go" allow="clipboard-write" />
                   </div>
                 </div>
               </CardContent>
@@ -107,6 +99,5 @@ export default function Preparation() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
-  );
+    </DashboardLayout>;
 }
