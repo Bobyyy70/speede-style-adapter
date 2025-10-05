@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useSearchParams } from "react-router-dom";
 
 interface Commande {
   id: string;
@@ -21,29 +22,36 @@ interface Commande {
 
 export default function MesCommandes() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchCommandes();
-  }, [user]);
+  }, [user, searchParams]);
 
   const fetchCommandes = async () => {
     try {
       if (!user) return;
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+      const asClient = searchParams.get('asClient');
+      let clientId: string | null = asClient;
 
-      if (!profile?.client_id) return;
+      if (!clientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        clientId = profile?.client_id || null;
+      }
+
+      if (!clientId) return;
 
       const { data, error } = await supabase
         .from("commande")
         .select("*")
-        .eq("client_id", profile.client_id)
+        .eq("client_id", clientId)
         .order("date_creation", { ascending: false });
 
       if (error) throw error;

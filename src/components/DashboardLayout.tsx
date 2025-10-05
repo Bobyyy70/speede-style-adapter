@@ -57,7 +57,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-
+import { supabase } from "@/integrations/supabase/client";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type NavigationItem = {
   name: string;
@@ -183,6 +184,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const [clientList, setClientList] = useState<{ id: string; nom_entreprise: string }[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, userRole, signOut } = useAuth();
@@ -191,6 +193,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   
   const navigation = getNavigationForRole(userRole);
 
+  // Charger la liste des clients pour les rôles admin/gestionnaire
+  if (userRole === 'admin' || userRole === 'gestionnaire') {
+    if (clientList.length === 0) {
+      (async () => {
+        try {
+          const { data } = await supabase
+            .from('client' as any)
+            .select('id, nom_entreprise')
+            .order('nom_entreprise', { ascending: true });
+          if (data) setClientList(data as any);
+        } catch (e) {
+          // ignore
+        }
+      })();
+    }
+  }
   const toggleMenu = (menuName: string) => {
     setExpandedMenus(prev => 
       prev.includes(menuName) 

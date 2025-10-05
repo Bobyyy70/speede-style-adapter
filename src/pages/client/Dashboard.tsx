@@ -5,9 +5,11 @@ import { Package, ShoppingCart, TrendingUp, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { useSearchParams } from "react-router-dom";
 
 export default function ClientDashboard() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [stats, setStats] = useState({
     totalProduits: 0,
     commandesEnCours: 0,
@@ -18,20 +20,26 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     fetchStats();
-  }, [user]);
+  }, [user, searchParams]);
 
   const fetchStats = async () => {
     try {
       if (!user) return;
 
-      // Get client_id from profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+      const asClient = searchParams.get('asClient');
+      let clientId: string | null = asClient;
 
-      if (!profile?.client_id) {
+      if (!clientId) {
+        // Get client_id from profile
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        clientId = profile?.client_id || null;
+      }
+
+      if (!clientId) {
         toast({
           title: "Erreur",
           description: "Profil client non configuré",
@@ -44,21 +52,21 @@ export default function ClientDashboard() {
       const { count: produitsCount } = await supabase
         .from("produit")
         .select("*", { count: "exact", head: true })
-        .eq("client_id", profile.client_id)
+        .eq("client_id", clientId)
         .eq("statut_actif", true);
 
       // Fetch orders in progress
       const { count: commandesCount } = await supabase
         .from("commande")
         .select("*", { count: "exact", head: true })
-        .eq("client_id", profile.client_id)
+        .eq("client_id", clientId)
         .in("statut_wms", ["En attente de réappro", "Prêt à préparer", "En préparation"]);
 
       // Fetch total stock - get product IDs first then query stock
       const { data: produitsData } = await supabase
         .from("produit")
         .select("id")
-        .eq("client_id", profile.client_id);
+        .eq("client_id", clientId);
 
       const produitIds = produitsData?.map(p => p.id) || [];
 
@@ -76,7 +84,7 @@ export default function ClientDashboard() {
       const { count: alertesCount } = await supabase
         .from("produit")
         .select("*", { count: "exact", head: true })
-        .eq("client_id", profile.client_id)
+        .eq("client_id", clientId)
         .lt("stock_actuel", "stock_minimum");
 
       setStats({
