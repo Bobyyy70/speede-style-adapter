@@ -5,21 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus, TrendingUp, Package, Clock, CheckCircle2, Columns, Eye } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -27,7 +14,6 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSessionDialog } from "./CreateSessionDialog";
 import { CommandeDetailDialog } from "./CommandeDetailDialog";
-
 interface Commande {
   id: string;
   numero_commande: string;
@@ -53,7 +39,6 @@ interface Commande {
   telephone_client?: string;
   remarques?: string;
 }
-
 interface StatsData {
   total: number;
   en_attente: number;
@@ -61,66 +46,146 @@ interface StatsData {
   en_preparation: number;
   expedie: number;
 }
-
-const STATUTS = [
-  { value: "all", label: "Tous les statuts" },
-  { value: "En attente de réappro", label: "En attente de réappro" },
-  { value: "Prêt à préparer", label: "Prêt à préparer" },
-  { value: "En préparation", label: "En préparation" },
-  { value: "En attente d'expédition", label: "En attente d'expédition" },
-  { value: "En cours de livraison", label: "En cours de livraison" },
-  { value: "Livré", label: "Livré" },
-];
-
-const SOURCES = [
-  { value: "all", label: "Toutes les sources" },
-  { value: "SendCloud", label: "SendCloud" },
-  { value: "maraiches", label: "Maraiches" },
-  { value: "SupplyCo's", label: "SupplyCo's" },
-];
-
-const ALL_COLUMNS = [
-  { key: "numero_commande", label: "N° Commande", defaultVisible: true },
-  { key: "nom_client", label: "Client", defaultVisible: true },
-  { key: "date_creation", label: "Date de création", defaultVisible: true },
-  { key: "statut_wms", label: "Statut", defaultVisible: true },
-  { key: "source", label: "Source", defaultVisible: true },
-  { key: "valeur_totale", label: "Valeur", defaultVisible: true },
-  { key: "methode_expedition", label: "Méthode d'expédition", defaultVisible: false },
-  { key: "transporteur", label: "Transporteur", defaultVisible: false },
-  { key: "poids_total", label: "Poids total", defaultVisible: false },
-  { key: "sendcloud_id", label: "SendCloud ID", defaultVisible: false },
-  { key: "numero_facture_commerciale", label: "N° Facture", defaultVisible: false },
-  { key: "devise", label: "Devise", defaultVisible: false },
-  { key: "date_modification", label: "Date de modification", defaultVisible: false },
-  { key: "ville", label: "Ville", defaultVisible: false },
-  { key: "code_postal", label: "Code postal", defaultVisible: false },
-  { key: "pays_code", label: "Pays", defaultVisible: false },
-  { key: "adresse_ligne_1", label: "Adresse ligne 1", defaultVisible: false },
-  { key: "adresse_ligne_2", label: "Adresse ligne 2", defaultVisible: false },
-  { key: "adresse_nom", label: "Adresse nom", defaultVisible: false },
-  { key: "email_client", label: "Email client", defaultVisible: false },
-  { key: "telephone_client", label: "Téléphone client", defaultVisible: false },
-  { key: "remarques", label: "Remarques", defaultVisible: false },
-];
-
-const DEFAULT_VISIBLE_COLUMNS = ALL_COLUMNS
-  .filter(col => col.defaultVisible)
-  .map(col => col.key);
-
+const STATUTS = [{
+  value: "all",
+  label: "Tous les statuts"
+}, {
+  value: "En attente de réappro",
+  label: "En attente de réappro"
+}, {
+  value: "Prêt à préparer",
+  label: "Prêt à préparer"
+}, {
+  value: "En préparation",
+  label: "En préparation"
+}, {
+  value: "En attente d'expédition",
+  label: "En attente d'expédition"
+}, {
+  value: "En cours de livraison",
+  label: "En cours de livraison"
+}, {
+  value: "Livré",
+  label: "Livré"
+}];
+const SOURCES = [{
+  value: "all",
+  label: "Toutes les sources"
+}, {
+  value: "SendCloud",
+  label: "SendCloud"
+}, {
+  value: "maraiches",
+  label: "Maraiches"
+}, {
+  value: "SupplyCo's",
+  label: "SupplyCo's"
+}];
+const ALL_COLUMNS = [{
+  key: "numero_commande",
+  label: "N° Commande",
+  defaultVisible: true
+}, {
+  key: "nom_client",
+  label: "Client",
+  defaultVisible: true
+}, {
+  key: "date_creation",
+  label: "Date de création",
+  defaultVisible: true
+}, {
+  key: "statut_wms",
+  label: "Statut",
+  defaultVisible: true
+}, {
+  key: "source",
+  label: "Source",
+  defaultVisible: true
+}, {
+  key: "valeur_totale",
+  label: "Valeur",
+  defaultVisible: true
+}, {
+  key: "methode_expedition",
+  label: "Méthode d'expédition",
+  defaultVisible: false
+}, {
+  key: "transporteur",
+  label: "Transporteur",
+  defaultVisible: false
+}, {
+  key: "poids_total",
+  label: "Poids total",
+  defaultVisible: false
+}, {
+  key: "sendcloud_id",
+  label: "SendCloud ID",
+  defaultVisible: false
+}, {
+  key: "numero_facture_commerciale",
+  label: "N° Facture",
+  defaultVisible: false
+}, {
+  key: "devise",
+  label: "Devise",
+  defaultVisible: false
+}, {
+  key: "date_modification",
+  label: "Date de modification",
+  defaultVisible: false
+}, {
+  key: "ville",
+  label: "Ville",
+  defaultVisible: false
+}, {
+  key: "code_postal",
+  label: "Code postal",
+  defaultVisible: false
+}, {
+  key: "pays_code",
+  label: "Pays",
+  defaultVisible: false
+}, {
+  key: "adresse_ligne_1",
+  label: "Adresse ligne 1",
+  defaultVisible: false
+}, {
+  key: "adresse_ligne_2",
+  label: "Adresse ligne 2",
+  defaultVisible: false
+}, {
+  key: "adresse_nom",
+  label: "Adresse nom",
+  defaultVisible: false
+}, {
+  key: "email_client",
+  label: "Email client",
+  defaultVisible: false
+}, {
+  key: "telephone_client",
+  label: "Téléphone client",
+  defaultVisible: false
+}, {
+  key: "remarques",
+  label: "Remarques",
+  defaultVisible: false
+}];
+const DEFAULT_VISIBLE_COLUMNS = ALL_COLUMNS.filter(col => col.defaultVisible).map(col => col.key);
 interface CommandesListProps {
   filter?: string;
   onUpdate?: () => void;
 }
-
-export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
+export function CommandesList({
+  filter,
+  onUpdate
+}: CommandesListProps = {}) {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [stats, setStats] = useState<StatsData>({
     total: 0,
     en_attente: 0,
     pret_a_preparer: 0,
     en_preparation: 0,
-    expedie: 0,
+    expedie: 0
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -134,23 +199,18 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
     const saved = localStorage.getItem("commandes-visible-columns");
     return saved ? JSON.parse(saved) : DEFAULT_VISIBLE_COLUMNS;
   });
-
   useEffect(() => {
     if (filter) {
       setSelectedStatut(filter);
     }
   }, [filter]);
-
   useEffect(() => {
     fetchCommandes();
   }, [selectedStatut, selectedSource]);
-
   const fetchCommandes = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from("commande")
-        .select(`
+      let query = supabase.from("commande").select(`
           id,
           numero_commande,
           nom_client,
@@ -174,19 +234,19 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
           email_client,
           telephone_client,
           remarques
-        `)
-        .order("date_creation", { ascending: false });
-
+        `).order("date_creation", {
+        ascending: false
+      });
       if (selectedStatut !== "all") {
         query = query.eq("statut_wms", selectedStatut);
       }
-
       if (selectedSource !== "all") {
         query = query.eq("source", selectedSource);
       }
-
-      const { data, error } = await query;
-
+      const {
+        data,
+        error
+      } = await query;
       if (error) throw error;
 
       // Calculate stats
@@ -196,11 +256,9 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
         en_attente: allCommandes.filter(c => c.statut_wms === "En attente de réappro").length,
         pret_a_preparer: allCommandes.filter(c => c.statut_wms === "Prêt à préparer").length,
         en_preparation: allCommandes.filter(c => c.statut_wms === "En préparation").length,
-        expedie: allCommandes.filter(c => ["En attente d'expédition", "En cours de livraison", "Livré"].includes(c.statut_wms)).length,
+        expedie: allCommandes.filter(c => ["En attente d'expédition", "En cours de livraison", "Livré"].includes(c.statut_wms)).length
       });
-
       setCommandes(allCommandes);
-      
       if (onUpdate) {
         onUpdate();
       }
@@ -211,28 +269,20 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
       setLoading(false);
     }
   };
-
-  const filteredCommandes = commandes.filter((commande) => {
-    const matchesSearch =
-      commande.numero_commande.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      commande.nom_client.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredCommandes = commandes.filter(commande => {
+    const matchesSearch = commande.numero_commande.toLowerCase().includes(searchQuery.toLowerCase()) || commande.nom_client.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
-
   const toggleCommandeSelection = (id: string) => {
-    setSelectedCommandes((prev) =>
-      prev.includes(id) ? prev.filter((cId) => cId !== id) : [...prev, id]
-    );
+    setSelectedCommandes(prev => prev.includes(id) ? prev.filter(cId => cId !== id) : [...prev, id]);
   };
-
   const toggleSelectAll = () => {
     if (selectedCommandes.length === filteredCommandes.length) {
       setSelectedCommandes([]);
     } else {
-      setSelectedCommandes(filteredCommandes.map((c) => c.id));
+      setSelectedCommandes(filteredCommandes.map(c => c.id));
     }
   };
-
   const getStatutBadgeVariant = (statut: string) => {
     switch (statut) {
       case "En attente de réappro":
@@ -250,7 +300,6 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
         return "outline";
     }
   };
-
   const handleCreateSession = () => {
     if (selectedCommandes.length === 0) {
       toast.error("Veuillez sélectionner au moins une commande");
@@ -258,34 +307,26 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
     }
     setCreateDialogOpen(true);
   };
-
   const handleSessionCreated = () => {
     setSelectedCommandes([]);
     fetchCommandes();
   };
-
   const toggleColumnVisibility = (columnKey: string) => {
-    setVisibleColumns((prev) => {
-      const newColumns = prev.includes(columnKey)
-        ? prev.filter((k) => k !== columnKey)
-        : [...prev, columnKey];
+    setVisibleColumns(prev => {
+      const newColumns = prev.includes(columnKey) ? prev.filter(k => k !== columnKey) : [...prev, columnKey];
       localStorage.setItem("commandes-visible-columns", JSON.stringify(newColumns));
       return newColumns;
     });
   };
-
   const resetColumns = () => {
     setVisibleColumns(DEFAULT_VISIBLE_COLUMNS);
     localStorage.setItem("commandes-visible-columns", JSON.stringify(DEFAULT_VISIBLE_COLUMNS));
   };
-
   const isColumnVisible = (columnKey: string) => visibleColumns.includes(columnKey);
-
   const handleViewDetails = (commandeId: string) => {
     setSelectedCommandeId(commandeId);
     setDetailDialogOpen(true);
   };
-
   const renderCellContent = (commande: Commande, columnKey: string) => {
     switch (columnKey) {
       case "numero_commande":
@@ -308,13 +349,10 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
         return (commande as any)[columnKey] || "-";
     }
   };
-
   if (loading) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
+          {[1, 2, 3, 4].map(i => <Card key={i}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-4 w-4" />
@@ -322,64 +360,18 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
               <CardContent>
                 <Skeleton className="h-8 w-16" />
               </CardContent>
-            </Card>
-          ))}
+            </Card>)}
         </div>
         <Card>
           <CardContent className="pt-6">
             <Skeleton className="h-64 w-full" />
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Commandes</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">En attente</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.en_attente}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Prêt / En préparation</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.pret_a_preparer + stats.en_preparation}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Expédié</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.expedie}</div>
-          </CardContent>
-        </Card>
-      </div>
+      
 
       {/* Filters and Actions */}
       <Card>
@@ -388,12 +380,7 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
             <div className="flex-1 space-y-4 lg:space-y-0 lg:flex lg:items-center lg:gap-4">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher par N° ou client..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
+                <Input placeholder="Rechercher par N° ou client..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8" />
               </div>
 
               <Select value={selectedStatut} onValueChange={setSelectedStatut}>
@@ -401,11 +388,9 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
                   <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUTS.map((statut) => (
-                    <SelectItem key={statut.value} value={statut.value}>
+                  {STATUTS.map(statut => <SelectItem key={statut.value} value={statut.value}>
                       {statut.label}
-                    </SelectItem>
-                  ))}
+                    </SelectItem>)}
                 </SelectContent>
               </Select>
 
@@ -414,11 +399,9 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
                   <SelectValue placeholder="Source" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SOURCES.map((source) => (
-                    <SelectItem key={source.value} value={source.value}>
+                  {SOURCES.map(source => <SelectItem key={source.value} value={source.value}>
                       {source.label}
-                    </SelectItem>
-                  ))}
+                    </SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -438,40 +421,22 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
                     </div>
                     <ScrollArea className="h-[300px] pr-4">
                       <div className="space-y-2">
-                        {ALL_COLUMNS.map((column) => (
-                          <div key={column.key} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={column.key}
-                              checked={isColumnVisible(column.key)}
-                              onCheckedChange={() => toggleColumnVisibility(column.key)}
-                            />
-                            <label
-                              htmlFor={column.key}
-                              className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                            >
+                        {ALL_COLUMNS.map(column => <div key={column.key} className="flex items-center space-x-2">
+                            <Checkbox id={column.key} checked={isColumnVisible(column.key)} onCheckedChange={() => toggleColumnVisibility(column.key)} />
+                            <label htmlFor={column.key} className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
                               {column.label}
                             </label>
-                          </div>
-                        ))}
+                          </div>)}
                       </div>
                     </ScrollArea>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={resetColumns}
-                      className="w-full"
-                    >
+                    <Button variant="outline" size="sm" onClick={resetColumns} className="w-full">
                       Réinitialiser par défaut
                     </Button>
                   </div>
                 </PopoverContent>
               </Popover>
 
-              <Button
-                onClick={handleCreateSession}
-                disabled={selectedCommandes.length === 0}
-                className="w-full lg:w-auto"
-              >
+              <Button onClick={handleCreateSession} disabled={selectedCommandes.length === 0} className="w-full lg:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Créer une session ({selectedCommandes.length})
               </Button>
@@ -485,86 +450,45 @@ export function CommandesList({ filter, onUpdate }: CommandesListProps = {}) {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">
-                    <Checkbox
-                      checked={
-                        filteredCommandes.length > 0 &&
-                        selectedCommandes.length === filteredCommandes.length
-                      }
-                      onCheckedChange={toggleSelectAll}
-                    />
+                    <Checkbox checked={filteredCommandes.length > 0 && selectedCommandes.length === filteredCommandes.length} onCheckedChange={toggleSelectAll} />
                   </TableHead>
-                  {ALL_COLUMNS.filter(col => isColumnVisible(col.key)).map((column) => (
-                    <TableHead 
-                      key={column.key}
-                      className={column.key === "valeur_totale" ? "text-right" : ""}
-                    >
+                  {ALL_COLUMNS.filter(col => isColumnVisible(col.key)).map(column => <TableHead key={column.key} className={column.key === "valeur_totale" ? "text-right" : ""}>
                       {column.label}
-                    </TableHead>
-                  ))}
+                    </TableHead>)}
                   <TableHead className="w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCommandes.length === 0 ? (
-                  <TableRow>
+                {filteredCommandes.length === 0 ? <TableRow>
                     <TableCell colSpan={visibleColumns.length + 2} className="text-center text-muted-foreground">
                       Aucune commande trouvée
                     </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredCommandes.map((commande) => (
-                    <TableRow key={commande.id}>
+                  </TableRow> : filteredCommandes.map(commande => <TableRow key={commande.id}>
                       <TableCell>
-                        <Checkbox
-                          checked={selectedCommandes.includes(commande.id)}
-                          onCheckedChange={() => toggleCommandeSelection(commande.id)}
-                        />
+                        <Checkbox checked={selectedCommandes.includes(commande.id)} onCheckedChange={() => toggleCommandeSelection(commande.id)} />
                       </TableCell>
-                      {ALL_COLUMNS.filter(col => isColumnVisible(col.key)).map((column) => (
-                        <TableCell key={column.key}>
+                      {ALL_COLUMNS.filter(col => isColumnVisible(col.key)).map(column => <TableCell key={column.key}>
                           {renderCellContent(commande, column.key)}
-                        </TableCell>
-                      ))}
+                        </TableCell>)}
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewDetails(commande.id)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => handleViewDetails(commande.id)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                       </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                    </TableRow>)}
               </TableBody>
             </Table>
           </div>
 
-          {filteredCommandes.length > 0 && (
-            <div className="mt-4 text-sm text-muted-foreground">
+          {filteredCommandes.length > 0 && <div className="mt-4 text-sm text-muted-foreground">
               {filteredCommandes.length} commande(s) affichée(s)
               {selectedCommandes.length > 0 && ` • ${selectedCommandes.length} sélectionnée(s)`}
-            </div>
-          )}
+            </div>}
         </CardContent>
       </Card>
 
-      <CreateSessionDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        selectedCommandeIds={selectedCommandes}
-        onSuccess={handleSessionCreated}
-      />
+      <CreateSessionDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} selectedCommandeIds={selectedCommandes} onSuccess={handleSessionCreated} />
       
-      {selectedCommandeId && (
-        <CommandeDetailDialog
-          commandeId={selectedCommandeId}
-          open={detailDialogOpen}
-          onOpenChange={setDetailDialogOpen}
-          onSuccess={fetchCommandes}
-        />
-      )}
-    </div>
-  );
+      {selectedCommandeId && <CommandeDetailDialog commandeId={selectedCommandeId} open={detailDialogOpen} onOpenChange={setDetailDialogOpen} onSuccess={fetchCommandes} />}
+    </div>;
 }
