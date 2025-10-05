@@ -34,7 +34,7 @@ interface ImportReport {
 
 const Parametres = () => {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"general" | "users" | "notifications" | "import-export" | "data" | "statistics">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "users" | "notifications" | "import-export" | "data" | "statistics" | "client-view">("general");
   const [importType, setImportType] = useState<"produits" | "commandes" | "emplacements">("produits");
   const [csvData, setCsvData] = useState<any[]>([]);
   const [validatedData, setValidatedData] = useState<ValidationResult | null>(null);
@@ -54,6 +54,7 @@ const Parametres = () => {
   ];
 
   const statisticsTab = { id: "statistics" as const, label: "Statistiques", icon: TrendingUp };
+  const clientViewTab = { id: "client-view" as const, label: "Vue Client", icon: Users };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -601,6 +602,21 @@ const Parametres = () => {
               <statisticsTab.icon className="h-10 w-10" />
               <span className="text-base font-semibold text-center">{statisticsTab.label}</span>
             </button>
+
+            {/* Onglet Vue Client */}
+            <button
+              onClick={() => setActiveTab("client-view")}
+              className={cn(
+                "flex flex-col items-center justify-center gap-3 p-6 rounded-lg transition-all min-h-[120px]",
+                "hover:bg-accent hover:text-accent-foreground",
+                activeTab === "client-view"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-transparent"
+              )}
+            >
+              <clientViewTab.icon className="h-10 w-10" />
+              <span className="text-base font-semibold text-center">{clientViewTab.label}</span>
+            </button>
           </nav>
 
           {/* Contenu */}
@@ -1092,6 +1108,43 @@ const Parametres = () => {
                         </div>
                       </CardContent>
                     </Card>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === "client-view" && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Vue Client</CardTitle>
+                    <CardDescription>
+                      Aperçu de l'interface visible par les clients
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Cette section vous permet de voir l'interface telle qu'elle apparaît aux clients.
+                      </p>
+                      <Button 
+                        onClick={() => window.open('/client/dashboard', '_blank')}
+                        className="w-full"
+                      >
+                        Ouvrir la vue client dans un nouvel onglet
+                      </Button>
+                      
+                      <div className="border rounded-lg p-4 bg-muted/30">
+                        <h3 className="font-semibold mb-2">Pages accessibles aux clients :</h3>
+                        <ul className="space-y-1 text-sm">
+                          <li>• Tableau de bord (statistiques personnelles)</li>
+                          <li>• Mes produits (inventaire)</li>
+                          <li>• Mes commandes (suivi)</li>
+                          <li>• Mes retours (gestion des retours)</li>
+                          <li>• Ma facturation (historique)</li>
+                        </ul>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
