@@ -6,6 +6,18 @@ verify_jwt = false
 [functions.sendcloud-orders-batch]
 verify_jwt = false
 
+[functions.sendcloud-create-parcel]
+verify_jwt = true
+
+[functions.sendcloud-create-return]
+verify_jwt = true
+
+[functions.sendcloud-get-tracking]
+verify_jwt = true
+
+[functions.sendcloud-cancel-parcel]
+verify_jwt = true
+
 [functions.n8n-gateway]
 verify_jwt = false
 

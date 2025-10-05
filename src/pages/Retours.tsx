@@ -6,14 +6,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Package, Clock, CheckCircle, AlertTriangle, Plus } from "lucide-react";
+import { PackageX, Clock, CheckCircle, AlertTriangle, RotateCcw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 export default function Retours() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
 
-  const { data: retours, isLoading } = useQuery({
+  const { data: retours, isLoading, refetch } = useQuery({
     queryKey: ["retours-produit"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -28,6 +31,28 @@ export default function Retours() {
       return data;
     },
   });
+
+  const handleCreateReturn = async (commandeId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('sendcloud-create-return', {
+        body: { 
+          commande_id: commandeId,
+          raison: 'Retour client - Mondial Relay',
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.success('Étiquette retour Mondial Relay générée');
+        refetch();
+      } else {
+        toast.error(data.error || 'Erreur création retour');
+      }
+    } catch (error: any) {
+      toast.error('Erreur: ' + error.message);
+    }
+  };
 
   const filteredRetours = retours?.filter(retour => {
     const matchesSearch = retour.numero_retour.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -47,7 +72,9 @@ export default function Retours() {
     const variants: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; label: string }> = {
       recu: { variant: "outline", label: "Reçu" },
       en_traitement: { variant: "secondary", label: "En traitement" },
+      en_inspection: { variant: "secondary", label: "En inspection" },
       traite: { variant: "default", label: "Traité" },
+      etiquette_generee: { variant: "default", label: "Étiquette générée" },
       non_conforme: { variant: "destructive", label: "Non conforme" },
     };
     return variants[statut] || { variant: "outline", label: statut };
@@ -65,7 +92,7 @@ export default function Retours() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">En attente</CardTitle>
-              <Clock className="h-4 w-4 text-orange-500" />
+              <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.enAttente}</div>
@@ -75,7 +102,7 @@ export default function Retours() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">En cours</CardTitle>
-              <Package className="h-4 w-4 text-blue-500" />
+              <PackageX className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.enCours}</div>
@@ -85,7 +112,7 @@ export default function Retours() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Traités</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-500" />
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.traites}</div>
@@ -95,7 +122,7 @@ export default function Retours() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Non conformes</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-red-500" />
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.nonConformes}</div>
@@ -105,15 +132,9 @@ export default function Retours() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Dossiers de retours</CardTitle>
-                <CardDescription>Liste complète des retours produits avec facturation automatique</CardDescription>
-              </div>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouveau retour
-              </Button>
+            <div>
+              <CardTitle>Dossiers de retours</CardTitle>
+              <CardDescription>Liste complète des retours produits avec facturation automatique</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -133,7 +154,9 @@ export default function Retours() {
                   <SelectItem value="all">Tous statuts</SelectItem>
                   <SelectItem value="recu">Reçu</SelectItem>
                   <SelectItem value="en_traitement">En traitement</SelectItem>
+                  <SelectItem value="en_inspection">En inspection</SelectItem>
                   <SelectItem value="traite">Traité</SelectItem>
+                  <SelectItem value="etiquette_generee">Étiquette générée</SelectItem>
                   <SelectItem value="non_conforme">Non conforme</SelectItem>
                 </SelectContent>
               </Select>
@@ -159,7 +182,7 @@ export default function Retours() {
                         </div>
                         <p className="text-sm text-muted-foreground">{retour.client_nom}</p>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>{new Date(retour.date_creation).toLocaleDateString("fr-FR")}</span>
+                          <span>{format(new Date(retour.date_creation), "d MMMM yyyy", { locale: fr })}</span>
                           {retour.lignes && (
                             <>
                               <span>•</span>
@@ -174,9 +197,21 @@ export default function Retours() {
                           )}
                         </div>
                       </div>
-                      <div className="text-right ml-4">
-                        <div className="font-medium">{Number(retour.valeur_totale).toFixed(2)}€</div>
-                        <div className="text-xs text-muted-foreground">Coût traitement</div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div className="font-medium">{Number(retour.valeur_totale).toFixed(2)}€</div>
+                          <div className="text-xs text-muted-foreground">Coût traitement</div>
+                        </div>
+                        {retour.commande_origine_id && retour.statut_retour === 'recu' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleCreateReturn(retour.commande_origine_id!)}
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            Générer étiquette
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );

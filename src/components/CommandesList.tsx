@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSessionDialog } from "./CreateSessionDialog";
 import { CommandeDetailDialog } from "./CommandeDetailDialog";
+import { SendCloudActions } from "./SendCloudActions";
+
 interface Commande {
   id: string;
   numero_commande: string;
@@ -26,6 +28,10 @@ interface Commande {
   transporteur?: string;
   poids_total?: number;
   sendcloud_id?: string;
+  sendcloud_shipment_id?: string;
+  label_url?: string;
+  tracking_number?: string;
+  tracking_url?: string;
   numero_facture_commerciale?: string;
   devise?: string;
   date_modification?: string;
@@ -455,7 +461,7 @@ export function CommandesList({
                   {ALL_COLUMNS.filter(col => isColumnVisible(col.key)).map(column => <TableHead key={column.key} className={column.key === "valeur_totale" ? "text-right" : ""}>
                       {column.label}
                     </TableHead>)}
-                  <TableHead className="w-[80px]">Actions</TableHead>
+                  <TableHead className="w-[300px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -471,9 +477,17 @@ export function CommandesList({
                           {renderCellContent(commande, column.key)}
                         </TableCell>)}
                       <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => handleViewDetails(commande.id)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-2 items-center">
+                          <Button variant="ghost" size="sm" onClick={() => handleViewDetails(commande.id)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <SendCloudActions
+                            commandeId={commande.id}
+                            hasLabel={!!commande.label_url}
+                            hasSendcloudId={!!commande.sendcloud_shipment_id}
+                            onSuccess={fetchCommandes}
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>)}
               </TableBody>
