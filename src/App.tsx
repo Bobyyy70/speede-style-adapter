@@ -36,6 +36,8 @@ import ClientCommandes from "./pages/client/MesCommandes";
 import ClientProduits from "./pages/client/MesProduits";
 import ClientRetours from "./pages/client/MesRetours";
 import ClientFacturation from "./pages/client/MaFacturation";
+import ClientAttenduReception from "./pages/client/AttenduReception";
+import ClientCreerCommande from "./pages/client/CreerCommande";
 
 const queryClient = new QueryClient();
 
@@ -267,6 +269,22 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['client']}>
                   <ClientFacturation />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/reception"
+              element={
+                <ProtectedRoute allowedRoles={['client']}>
+                  <ClientAttenduReception />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/commandes/creer"
+              element={
+                <ProtectedRoute allowedRoles={['client']}>
+                  <ClientCreerCommande />
                 </ProtectedRoute>
               }
             />

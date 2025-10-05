@@ -14,6 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendu_reception: {
+        Row: {
+          client_id: string | null
+          created_by: string | null
+          date_arrivee_reelle: string | null
+          date_creation: string
+          date_modification: string
+          date_reception_prevue: string | null
+          fournisseur: string | null
+          id: string
+          instructions_speciales: string | null
+          nombre_colis: number | null
+          nombre_palettes: number | null
+          numero_attendu: string
+          numero_tracking: string | null
+          poids_total_kg: number | null
+          remarques: string | null
+          statut: Database["public"]["Enums"]["statut_attendu_reception"]
+          transporteur: string | null
+          volume_total_m3: number | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_by?: string | null
+          date_arrivee_reelle?: string | null
+          date_creation?: string
+          date_modification?: string
+          date_reception_prevue?: string | null
+          fournisseur?: string | null
+          id?: string
+          instructions_speciales?: string | null
+          nombre_colis?: number | null
+          nombre_palettes?: number | null
+          numero_attendu: string
+          numero_tracking?: string | null
+          poids_total_kg?: number | null
+          remarques?: string | null
+          statut?: Database["public"]["Enums"]["statut_attendu_reception"]
+          transporteur?: string | null
+          volume_total_m3?: number | null
+        }
+        Update: {
+          client_id?: string | null
+          created_by?: string | null
+          date_arrivee_reelle?: string | null
+          date_creation?: string
+          date_modification?: string
+          date_reception_prevue?: string | null
+          fournisseur?: string | null
+          id?: string
+          instructions_speciales?: string | null
+          nombre_colis?: number | null
+          nombre_palettes?: number | null
+          numero_attendu?: string
+          numero_tracking?: string | null
+          poids_total_kg?: number | null
+          remarques?: string | null
+          statut?: Database["public"]["Enums"]["statut_attendu_reception"]
+          transporteur?: string | null
+          volume_total_m3?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendu_reception_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -194,6 +265,7 @@ export type Database = {
           facturation_pays_code: string | null
           facturation_ville: string | null
           id: string
+          label_pregenere: boolean | null
           label_source: string | null
           label_url: string | null
           methode_expedition: string | null
@@ -238,6 +310,7 @@ export type Database = {
           facturation_pays_code?: string | null
           facturation_ville?: string | null
           id?: string
+          label_pregenere?: boolean | null
           label_source?: string | null
           label_url?: string | null
           methode_expedition?: string | null
@@ -282,6 +355,7 @@ export type Database = {
           facturation_pays_code?: string | null
           facturation_ville?: string | null
           id?: string
+          label_pregenere?: boolean | null
           label_source?: string | null
           label_url?: string | null
           methode_expedition?: string | null
@@ -531,6 +605,79 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      ligne_attendu_reception: {
+        Row: {
+          attendu_reception_id: string
+          date_creation: string
+          date_fabrication: string | null
+          date_peremption: string | null
+          emplacement_stockage_prevu: string | null
+          id: string
+          numero_lot: string | null
+          produit_id: string | null
+          produit_nom: string
+          produit_reference: string
+          quantite_attendue: number
+          quantite_recue: number | null
+          remarques: string | null
+          statut_ligne: Database["public"]["Enums"]["statut_ligne_attendu"]
+        }
+        Insert: {
+          attendu_reception_id: string
+          date_creation?: string
+          date_fabrication?: string | null
+          date_peremption?: string | null
+          emplacement_stockage_prevu?: string | null
+          id?: string
+          numero_lot?: string | null
+          produit_id?: string | null
+          produit_nom: string
+          produit_reference: string
+          quantite_attendue: number
+          quantite_recue?: number | null
+          remarques?: string | null
+          statut_ligne?: Database["public"]["Enums"]["statut_ligne_attendu"]
+        }
+        Update: {
+          attendu_reception_id?: string
+          date_creation?: string
+          date_fabrication?: string | null
+          date_peremption?: string | null
+          emplacement_stockage_prevu?: string | null
+          id?: string
+          numero_lot?: string | null
+          produit_id?: string | null
+          produit_nom?: string
+          produit_reference?: string
+          quantite_attendue?: number
+          quantite_recue?: number | null
+          remarques?: string | null
+          statut_ligne?: Database["public"]["Enums"]["statut_ligne_attendu"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ligne_attendu_reception_attendu_reception_id_fkey"
+            columns: ["attendu_reception_id"]
+            isOneToOne: false
+            referencedRelation: "attendu_reception"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ligne_attendu_reception_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ligne_attendu_reception_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "stock_disponible"
+            referencedColumns: ["produit_id"]
+          },
+        ]
       }
       ligne_commande: {
         Row: {
@@ -1822,6 +1969,21 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "operateur" | "gestionnaire" | "client"
+      statut_attendu_reception:
+        | "prévu"
+        | "en_transit"
+        | "arrivé"
+        | "en_cours_réception"
+        | "réceptionné_partiellement"
+        | "réceptionné_totalement"
+        | "anomalie"
+        | "annulé"
+      statut_ligne_attendu:
+        | "attendu"
+        | "réceptionné"
+        | "manquant"
+        | "excédent"
+        | "endommagé"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1950,6 +2112,23 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "operateur", "gestionnaire", "client"],
+      statut_attendu_reception: [
+        "prévu",
+        "en_transit",
+        "arrivé",
+        "en_cours_réception",
+        "réceptionné_partiellement",
+        "réceptionné_totalement",
+        "anomalie",
+        "annulé",
+      ],
+      statut_ligne_attendu: [
+        "attendu",
+        "réceptionné",
+        "manquant",
+        "excédent",
+        "endommagé",
+      ],
     },
   },
 } as const
