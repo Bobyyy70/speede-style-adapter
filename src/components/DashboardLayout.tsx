@@ -33,7 +33,7 @@ import {
   ShipWheel,
   Cable,
   Building2,
-  
+  Eye,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -404,6 +404,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             <div className="flex items-center gap-3">
+              {userRole === 'admin' && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate('/client/dashboard')}
+                  className="gap-2"
+                >
+                  <Eye className="w-4 h-4" />
+                  Vue Client
+                </Button>
+              )}
+              
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
