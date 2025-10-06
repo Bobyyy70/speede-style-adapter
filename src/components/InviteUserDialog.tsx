@@ -58,18 +58,23 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
 
     setLoading(true);
     try {
-      // Créer l'utilisateur via l'API admin
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      // Créer l'utilisateur via signUp
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        email_confirm: true,
-        user_metadata: {
-          nom_complet: nomComplet
+        options: {
+          data: {
+            nom_complet: nomComplet
+          },
+          emailRedirectTo: `${window.location.origin}/`
         }
       });
 
       if (authError) throw authError;
       if (!authData.user) throw new Error("Erreur lors de la création de l'utilisateur");
+
+      // Attendre que le trigger crée le profil
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Assigner le rôle
       const { error: roleError } = await supabase
