@@ -71,9 +71,8 @@ serve(async (req) => {
 
     // Action: Récupération des détails par SIRET
     if (action === 'details' && siret) {
-      // L'API utilise le SIREN (9 premiers chiffres du SIRET)
-      const siren = siret.substring(0, 9);
-      const detailsUrl = `https://recherche-entreprises.api.gouv.fr/siren/${siren}`;
+      // Rechercher l'entreprise par SIRET complet
+      const detailsUrl = `https://recherche-entreprises.api.gouv.fr/search?q=${encodeURIComponent(siret)}&per_page=1`;
       
       console.log(`[recherche-entreprise] Fetching details: ${detailsUrl}`);
       
@@ -89,26 +88,32 @@ serve(async (req) => {
       }
 
       const data = await response.json();
+      
+      if (!data.results || data.results.length === 0) {
+        console.error(`[recherche-entreprise] No results for SIRET: ${siret}`);
+        throw new Error(`No company found for SIRET: ${siret}`);
+      }
+
       console.log(`[recherche-entreprise] Details retrieved successfully`);
 
-      // Trouver l'établissement correspondant au SIRET demandé
-      const etablissement = data.etablissements?.find((e: any) => e.siret === siret) || data.siege;
+      const result = data.results[0];
+      const siege = result.siege;
 
       const details: EntrepriseDetails = {
-        nom_entreprise: data.nom_complet || data.nom_raison_sociale || '',
-        siret: etablissement?.siret || siret,
+        nom_entreprise: result.nom_complet || result.nom_raison_sociale || '',
+        siret: siege?.siret || siret,
         adresse: [
-          etablissement?.numero_voie,
-          etablissement?.type_voie,
-          etablissement?.libelle_voie,
-          etablissement?.code_postal,
-          etablissement?.libelle_commune,
+          siege?.numero_voie,
+          siege?.type_voie,
+          siege?.libelle_voie,
+          siege?.code_postal,
+          siege?.libelle_commune,
         ]
           .filter(Boolean)
           .join(' ')
           .trim(),
-        telephone: etablissement?.telephone || undefined,
-        email: etablissement?.email || undefined,
+        telephone: siege?.telephone || undefined,
+        email: siege?.email || undefined,
       };
 
       return new Response(
@@ -125,8 +130,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[recherche-entreprise] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
