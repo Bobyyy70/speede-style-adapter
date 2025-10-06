@@ -167,6 +167,7 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
       { name: "Mes Commandes", href: "/client/commandes", icon: ClipboardList },
       { name: "Mes Produits", href: "/client/produits", icon: Boxes },
       { name: "Mes Retours", href: "/client/retours", icon: Undo2 },
+      { name: "Attendus de Réception", href: "/client/reception", icon: PackageOpen },
       { name: "Ma Facturation", href: "/client/facturation", icon: Receipt },
     ];
   }
