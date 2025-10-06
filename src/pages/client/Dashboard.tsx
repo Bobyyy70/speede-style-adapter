@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 
 export default function ClientDashboard() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const [searchParams] = useSearchParams();
   const [stats, setStats] = useState({
     totalProduits: 0,
@@ -42,9 +42,22 @@ export default function ClientDashboard() {
       }
 
       if (!clientId) {
+        // Si admin/gestionnaire sans client lié, prendre le premier client actif par défaut
+        if (userRole === 'admin' || userRole === 'gestionnaire') {
+          const { data: firstClients } = await supabase
+            .from('client' as any)
+            .select('id')
+            .eq('actif', true)
+            .order('nom_entreprise', { ascending: true })
+            .limit(1);
+          clientId = (firstClients as any)?.[0]?.id || null;
+        }
+      }
+
+      if (!clientId) {
         toast({
           title: "Erreur",
-          description: "Profil client non configuré",
+          description: "Aucun client sélectionné. Ajoutez ?asClient=<client_id> à l’URL ou reliez un profil.",
           variant: "destructive",
         });
         return;

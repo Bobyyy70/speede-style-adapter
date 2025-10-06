@@ -427,7 +427,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => navigate('/client/dashboard')}
+                  onClick={() => navigate(clientList[0]?.id ? `/client/dashboard?asClient=${clientList[0].id}` : '/client/dashboard')}
                   className="gap-2"
                 >
                   <Eye className="w-4 h-4" />

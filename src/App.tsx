@@ -244,7 +244,7 @@ const App = () => (
             <Route
               path="/client/dashboard"
               element={
-                <ProtectedRoute allowedRoles={['client']}>
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
                   <ClientDashboard />
                 </ProtectedRoute>
               }
@@ -252,7 +252,7 @@ const App = () => (
             <Route
               path="/client/commandes"
               element={
-                <ProtectedRoute allowedRoles={['client']}>
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
                   <ClientCommandes />
                 </ProtectedRoute>
               }
@@ -260,7 +260,7 @@ const App = () => (
             <Route
               path="/client/produits"
               element={
-                <ProtectedRoute allowedRoles={['client']}>
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
                   <ClientProduits />
                 </ProtectedRoute>
               }
@@ -268,7 +268,7 @@ const App = () => (
             <Route
               path="/client/retours"
               element={
-                <ProtectedRoute allowedRoles={['client']}>
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
                   <ClientRetours />
                 </ProtectedRoute>
               }
@@ -276,7 +276,7 @@ const App = () => (
             <Route
               path="/client/facturation"
               element={
-                <ProtectedRoute allowedRoles={['client']}>
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
                   <ClientFacturation />
                 </ProtectedRoute>
               }
@@ -284,7 +284,7 @@ const App = () => (
             <Route
               path="/client/reception"
               element={
-                <ProtectedRoute allowedRoles={['client']}>
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
                   <ClientAttenduReception />
                 </ProtectedRoute>
               }
@@ -292,7 +292,7 @@ const App = () => (
             <Route
               path="/client/commandes/creer"
               element={
-                <ProtectedRoute allowedRoles={['client']}>
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
                   <ClientCreerCommande />
                 </ProtectedRoute>
               }
