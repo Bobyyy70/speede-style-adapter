@@ -126,18 +126,24 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Vérifier quelles commandes existent déjà
+    // Vérifier quelles commandes existent déjà avec deux requêtes séparées
     const sendcloudIds = orders.map(o => o.id.toString());
     const orderNumbers = orders.map(o => o.order_number);
 
-    const { data: existingCommandes } = await supabase
-      .from('commande')
-      .select('sendcloud_id, numero_commande')
-      .or(`sendcloud_id.in.(${sendcloudIds.join(',')}),numero_commande.in.(${orderNumbers.join(',')})`);
+    const [bySendcloudIds, byOrderNumbers] = await Promise.all([
+      supabase
+        .from('commande')
+        .select('sendcloud_id')
+        .in('sendcloud_id', sendcloudIds),
+      supabase
+        .from('commande')
+        .select('numero_commande')
+        .in('numero_commande', orderNumbers)
+    ]);
 
     const existingSet = new Set([
-      ...(existingCommandes || []).map((c: any) => c.sendcloud_id),
-      ...(existingCommandes || []).map((c: any) => c.numero_commande),
+      ...(bySendcloudIds.data || []).map((c: any) => c.sendcloud_id),
+      ...(byOrderNumbers.data || []).map((c: any) => c.numero_commande),
     ]);
 
     // Filtrer les nouvelles commandes

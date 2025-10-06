@@ -18,17 +18,57 @@ interface SendCloudOrder {
   id: string | number;
   order_number?: string;
   order_id?: string;
-  name: string;
+  name?: string;
   email?: string;
   telephone?: string;
-  address: string;
+  address?: string;
   address_2?: string;
-  city: string;
-  postal_code: string;
-  country: string;
+  city?: string;
+  postal_code?: string;
+  country?: any;
+  shipping_address?: {
+    name?: string;
+    address?: string;
+    address_2?: string;
+    city?: string;
+    postal_code?: string;
+    country?: any;
+  };
   order_products: SendCloudProduct[];
   total_order_value?: number;
   currency?: string;
+}
+
+// Normaliser les codes pays depuis différents formats SendCloud
+function normalizeCountry(country: any): string {
+  if (!country) return 'FR';
+  
+  // Si c'est déjà un code ISO-2 valide
+  if (typeof country === 'string') {
+    const trimmed = country.trim().toUpperCase();
+    if (trimmed.length === 2) return trimmed;
+    
+    // Mapping des noms communs vers ISO-2
+    const countryMap: Record<string, string> = {
+      'FRANCE': 'FR', 'BELGIUM': 'BE', 'BELGIQUE': 'BE',
+      'GERMANY': 'DE', 'ALLEMAGNE': 'DE', 'SPAIN': 'ES', 
+      'ESPAGNE': 'ES', 'ITALY': 'IT', 'ITALIE': 'IT',
+      'NETHERLANDS': 'NL', 'PAYS-BAS': 'NL', 'UK': 'GB',
+      'UNITED KINGDOM': 'GB', 'ROYAUME-UNI': 'GB'
+    };
+    
+    return countryMap[trimmed] || 'FR';
+  }
+  
+  // Si c'est un objet avec iso_2
+  if (typeof country === 'object' && country !== null && 'iso_2' in country) {
+    const code = (country as any).iso_2;
+    if (typeof code === 'string') {
+      return code.trim().toUpperCase();
+    }
+  }
+  
+  return 'FR';
 }
 
 interface BatchResult {
@@ -73,12 +113,21 @@ Deno.serve(async (req) => {
       try {
         console.log(`\n🔄 Traitement: ${orderNumber}`);
 
-        // Vérifier si la commande existe déjà
-        const { data: existingCommande } = await supabase
-          .from('commande')
-          .select('id, numero_commande')
-          .or(`sendcloud_id.eq.${sendcloudData.id},numero_commande.eq.${orderNumber}`)
-          .maybeSingle();
+        // Vérifier si la commande existe déjà avec deux requêtes distinctes
+        const [bySendcloudId, byOrderNumber] = await Promise.all([
+          supabase
+            .from('commande')
+            .select('id, numero_commande')
+            .eq('sendcloud_id', String(sendcloudData.id))
+            .maybeSingle(),
+          supabase
+            .from('commande')
+            .select('id, numero_commande')
+            .eq('numero_commande', orderNumber)
+            .maybeSingle()
+        ]);
+
+        const existingCommande = bySendcloudId.data || byOrderNumber.data;
 
         if (existingCommande) {
           console.log(`⚠️ Déjà existante: ${existingCommande.numero_commande}`);
@@ -92,21 +141,35 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Extraire les données d'adresse (v3 avec shipping_address ou v2 à plat)
+        const shippingAddr = sendcloudData.shipping_address;
+        const clientName = shippingAddr?.name || sendcloudData.name || 'Client inconnu';
+        const address1 = shippingAddr?.address || sendcloudData.address || '';
+        const address2 = shippingAddr?.address_2 || sendcloudData.address_2 || null;
+        const city = shippingAddr?.city || sendcloudData.city || '';
+        const postalCode = shippingAddr?.postal_code || sendcloudData.postal_code || '';
+        const country = shippingAddr?.country || sendcloudData.country;
+        
+        // Normaliser le code pays
+        const paysCode = normalizeCountry(country);
+        
+        console.log(`📍 Adresse: ${city}, ${postalCode}, Pays: ${paysCode}`);
+
         // Insérer la commande
         const { data: commande, error: commandeError } = await supabase
           .from('commande')
           .insert({
             sendcloud_id: String(sendcloudData.id),
             numero_commande: orderNumber,
-            nom_client: sendcloudData.name,
+            nom_client: clientName,
             email_client: sendcloudData.email || null,
             telephone_client: sendcloudData.telephone || null,
-            adresse_nom: sendcloudData.name,
-            adresse_ligne_1: sendcloudData.address,
-            adresse_ligne_2: sendcloudData.address_2 || null,
-            ville: sendcloudData.city,
-            code_postal: sendcloudData.postal_code,
-            pays_code: sendcloudData.country,
+            adresse_nom: clientName,
+            adresse_ligne_1: address1,
+            adresse_ligne_2: address2,
+            ville: city,
+            code_postal: postalCode,
+            pays_code: paysCode,
             valeur_totale: sendcloudData.total_order_value || 0,
             devise: sendcloudData.currency || 'EUR',
             statut_wms: 'En attente de réappro',
