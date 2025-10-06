@@ -59,6 +59,19 @@ export default function SendCloudSync() {
     fetchSyncLogs();
   }, []);
 
+  // Auto-déclenchement d'une synchro (fenêtre 7 jours) une fois à l'ouverture de la page
+  useEffect(() => {
+    try {
+      const key = 'sendcloudSyncAutoTriggered';
+      const last = localStorage.getItem(key);
+      const now = Date.now();
+      if (!last || now - Number(last) > 2 * 60 * 1000) {
+        localStorage.setItem(key, String(now));
+        handleManualSync();
+      }
+    } catch {}
+  }, []);
+
   const fetchLogs = async () => {
     try {
       const { data, error } = await supabase
