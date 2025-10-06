@@ -247,6 +247,45 @@ export type Database = {
           },
         ]
       }
+      client: {
+        Row: {
+          actif: boolean | null
+          adresse: string | null
+          date_creation: string | null
+          date_modification: string | null
+          email_contact: string | null
+          id: string
+          nom_entreprise: string
+          remarques: string | null
+          siret: string | null
+          telephone: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          adresse?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          email_contact?: string | null
+          id?: string
+          nom_entreprise: string
+          remarques?: string | null
+          siret?: string | null
+          telephone?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          adresse?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          email_contact?: string | null
+          id?: string
+          nom_entreprise?: string
+          remarques?: string | null
+          siret?: string | null
+          telephone?: string | null
+        }
+        Relationships: []
+      }
       commande: {
         Row: {
           adresse_ligne_1: string

@@ -10,9 +10,22 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Building2, Plus, Pencil, Users } from "lucide-react";
+import { Building2, Plus, Pencil, Users, Search, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface Client {
   id: string;
@@ -41,6 +54,13 @@ const GestionClients = () => {
     actif: true
   });
 
+  // États pour la recherche d'entreprise
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     fetchClients();
   }, []);
@@ -49,18 +69,87 @@ const GestionClients = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('client' as any)
+        .from('client')
         .select('*')
         .order('date_creation', { ascending: false });
 
       if (error) throw error;
-      setClients((data as any) || []);
+      setClients(data || []);
     } catch (error: any) {
       console.error('Erreur lors du chargement des clients:', error);
       toast.error("Erreur lors du chargement des clients");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Recherche d'entreprise avec debounce
+  const searchEntreprises = async (query: string) => {
+    if (!query || query.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('recherche-entreprise', {
+        body: { action: 'search', query },
+      });
+
+      if (error) throw error;
+      setSearchResults(data.results || []);
+    } catch (error: any) {
+      console.error("Erreur recherche entreprise:", error);
+      toast.error("Erreur lors de la recherche");
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Récupérer les détails d'une entreprise
+  const fetchEntrepriseDetails = async (siret: string) => {
+    try {
+      toast.loading("Récupération des informations...");
+      const { data, error } = await supabase.functions.invoke('recherche-entreprise', {
+        body: { action: 'details', siret },
+      });
+
+      if (error) throw error;
+
+      const details = data.details;
+      setFormData({
+        ...formData,
+        nom_entreprise: details.nom_entreprise || "",
+        siret: details.siret || "",
+        adresse: details.adresse || "",
+        telephone: details.telephone || "",
+        email_contact: details.email || "",
+      });
+
+      setSearchOpen(false);
+      toast.dismiss();
+      toast.success("Informations récupérées avec succès");
+    } catch (error: any) {
+      console.error("Erreur détails entreprise:", error);
+      toast.dismiss();
+      toast.error("Erreur lors de la récupération des détails");
+    }
+  };
+
+  // Gestion du debounce pour la recherche
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    const timeout = setTimeout(() => {
+      searchEntreprises(value);
+    }, 300);
+
+    setSearchTimeout(timeout);
   };
 
   const handleOpenDialog = (client?: Client) => {
@@ -86,6 +175,8 @@ const GestionClients = () => {
         remarques: "",
         actif: true
       });
+      setSearchQuery("");
+      setSearchResults([]);
     }
     setDialogOpen(true);
   };
@@ -99,7 +190,7 @@ const GestionClients = () => {
     try {
       if (editingClient) {
         const { error } = await supabase
-          .from('client' as any)
+          .from('client')
           .update(formData)
           .eq('id', editingClient.id);
 
@@ -107,14 +198,16 @@ const GestionClients = () => {
         toast.success("Client modifié avec succès");
       } else {
         const { error } = await supabase
-          .from('client' as any)
-          .insert([formData as any]);
+          .from('client')
+          .insert([formData]);
 
         if (error) throw error;
         toast.success("Client créé avec succès");
       }
 
       setDialogOpen(false);
+      setSearchQuery("");
+      setSearchResults([]);
       fetchClients();
     } catch (error: any) {
       console.error('Erreur lors de l\'enregistrement:', error);
@@ -259,12 +352,65 @@ const GestionClients = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="nom">Nom de l'entreprise *</Label>
-                <Input
-                  id="nom"
-                  value={formData.nom_entreprise}
-                  onChange={(e) => setFormData({ ...formData, nom_entreprise: e.target.value })}
-                  placeholder="Nom de l'entreprise"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="nom"
+                    value={formData.nom_entreprise}
+                    onChange={(e) => setFormData({ ...formData, nom_entreprise: e.target.value })}
+                    placeholder="Nom de l'entreprise"
+                    className="flex-1"
+                  />
+                  <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="icon" type="button">
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0" align="start">
+                      <Command shouldFilter={false}>
+                        <CommandInput
+                          placeholder="Rechercher une entreprise..."
+                          value={searchQuery}
+                          onValueChange={handleSearchChange}
+                        />
+                        <CommandList>
+                          {isSearching && (
+                            <div className="flex items-center justify-center py-6">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            </div>
+                          )}
+                          {!isSearching && searchResults.length === 0 && searchQuery.length >= 3 && (
+                            <CommandEmpty>Aucune entreprise trouvée.</CommandEmpty>
+                          )}
+                          {!isSearching && searchResults.length === 0 && searchQuery.length < 3 && (
+                            <CommandEmpty>Tapez au moins 3 caractères...</CommandEmpty>
+                          )}
+                          {!isSearching && searchResults.length > 0 && (
+                            <CommandGroup>
+                              {searchResults.map((result, index) => (
+                                <CommandItem
+                                  key={index}
+                                  value={result.siret}
+                                  onSelect={() => fetchEntrepriseDetails(result.siret)}
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{result.nom}</span>
+                                    <span className="text-sm text-muted-foreground">
+                                      SIRET: {result.siret} • {result.adresse_simple}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Cliquez sur l'icône de recherche pour trouver une entreprise française
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="siret">SIRET</Label>

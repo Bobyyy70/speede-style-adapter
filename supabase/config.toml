@@ -1,5 +1,8 @@
 project_id = "tggdjeoxvpzbigbikpfy"
 
+[functions.recherche-entreprise]
+verify_jwt = true
+
 [functions.sendcloud-webhook]
 verify_jwt = false
 
