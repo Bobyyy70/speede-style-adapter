@@ -18,6 +18,8 @@ export default function Commandes() {
   const navigate = useNavigate();
   const { user, userRole, getViewingClientId } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedClientFilter, setSelectedClientFilter] = useState<string | null>(null);
+  const [clientList, setClientList] = useState<{ id: string; nom_entreprise: string }[]>([]);
   const [stats, setStats] = useState({
     total: 0,
     enAttente: 0,
@@ -29,7 +31,22 @@ export default function Commandes() {
   } = useAutoRules();
   useEffect(() => {
     fetchStats();
+    if (userRole === 'admin' || userRole === 'gestionnaire') {
+      fetchClients();
+    }
   }, []);
+
+  const fetchClients = async () => {
+    try {
+      const { data } = await supabase
+        .from('client' as any)
+        .select('id, nom_entreprise')
+        .order('nom_entreprise', { ascending: true });
+      if (data) setClientList(data as any);
+    } catch (e) {
+      console.error('Erreur chargement clients:', e);
+    }
+  };
   const fetchStats = async () => {
     try {
       let query = supabase.from("commande").select("statut_wms");
@@ -175,11 +192,26 @@ export default function Commandes() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Gestion des commandes </h1>
+            <h1 className="text-3xl font-bold tracking-tight">Gestion des commandes</h1>
             <p className="text-muted-foreground">
-          </p>
+              {selectedClientFilter && `Filtré pour: ${clientList.find(c => c.id === selectedClientFilter)?.nom_entreprise || 'Client inconnu'}`}
+            </p>
           </div>
           <div className="flex gap-2">
+            {(userRole === 'admin' || userRole === 'gestionnaire') && clientList.length > 0 && (
+              <select
+                className="px-3 py-2 border rounded-md"
+                value={selectedClientFilter || 'all'}
+                onChange={(e) => setSelectedClientFilter(e.target.value === 'all' ? null : e.target.value)}
+              >
+                <option value="all">Tous les clients</option>
+                {clientList.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.nom_entreprise}
+                  </option>
+                ))}
+              </select>
+            )}
             {userRole !== 'client' && (
               <>
                 <Button 
@@ -267,19 +299,46 @@ export default function Commandes() {
           </TabsList>
 
           <TabsContent value="toutes">
-            <CommandesList onUpdate={fetchStats} userRole={userRole} userId={user?.id} viewingClientId={getViewingClientId()} />
+            <CommandesList 
+              onUpdate={fetchStats} 
+              userRole={userRole} 
+              userId={user?.id} 
+              viewingClientId={getViewingClientId()} 
+              clientFilter={selectedClientFilter}
+            />
           </TabsContent>
 
           <TabsContent value="en-attente">
-            <CommandesList filter="En attente de réappro" onUpdate={fetchStats} userRole={userRole} userId={user?.id} viewingClientId={getViewingClientId()} />
+            <CommandesList 
+              filter="En attente de réappro" 
+              onUpdate={fetchStats} 
+              userRole={userRole} 
+              userId={user?.id} 
+              viewingClientId={getViewingClientId()} 
+              clientFilter={selectedClientFilter}
+            />
           </TabsContent>
 
           <TabsContent value="prete">
-            <CommandesList filter="prete" onUpdate={fetchStats} userRole={userRole} userId={user?.id} viewingClientId={getViewingClientId()} />
+            <CommandesList 
+              filter="prete" 
+              onUpdate={fetchStats} 
+              userRole={userRole} 
+              userId={user?.id} 
+              viewingClientId={getViewingClientId()} 
+              clientFilter={selectedClientFilter}
+            />
           </TabsContent>
 
           <TabsContent value="en-preparation">
-            <CommandesList filter="En préparation" onUpdate={fetchStats} userRole={userRole} userId={user?.id} viewingClientId={getViewingClientId()} />
+            <CommandesList 
+              filter="En préparation" 
+              onUpdate={fetchStats} 
+              userRole={userRole} 
+              userId={user?.id} 
+              viewingClientId={getViewingClientId()} 
+              clientFilter={selectedClientFilter}
+            />
           </TabsContent>
         </Tabs>
       </div>

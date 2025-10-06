@@ -32,7 +32,6 @@ import Notifications from "./pages/Notifications";
 import SendCloudSync from "./pages/SendCloudSync";
 
 import NotFound from "./pages/NotFound";
-import ClientDashboard from "./pages/client/Dashboard";
 import ClientCommandes from "./pages/client/MesCommandes";
 import ClientProduits from "./pages/client/MesProduits";
 import ClientRetours from "./pages/client/MesRetours";
@@ -241,14 +240,6 @@ const App = () => (
               element={<Navigate to="/parametres/utilisateurs" replace />}
             />
             {/* Client Routes */}
-            <Route
-              path="/client/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
-                  <ClientDashboard />
-                </ProtectedRoute>
-              }
-            />
             <Route
               path="/client/commandes"
               element={

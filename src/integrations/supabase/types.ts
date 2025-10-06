@@ -1920,6 +1920,51 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_sendcloud_log: {
+        Row: {
+          commande_id: string | null
+          date_reception: string | null
+          erreur: string | null
+          id: string
+          payload: Json
+          statut: string | null
+          traite_a: string | null
+        }
+        Insert: {
+          commande_id?: string | null
+          date_reception?: string | null
+          erreur?: string | null
+          id?: string
+          payload: Json
+          statut?: string | null
+          traite_a?: string | null
+        }
+        Update: {
+          commande_id?: string | null
+          date_reception?: string | null
+          erreur?: string | null
+          id?: string
+          payload?: Json
+          statut?: string | null
+          traite_a?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_sendcloud_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_sendcloud_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       commande_gestionnaire_secure: {

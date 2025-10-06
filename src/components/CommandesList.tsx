@@ -183,13 +183,15 @@ interface CommandesListProps {
   userRole?: string | null;
   userId?: string;
   viewingClientId?: string | null;
+  clientFilter?: string | null;
 }
 export function CommandesList({
   filter,
   onUpdate,
   userRole,
   userId,
-  viewingClientId
+  viewingClientId,
+  clientFilter
 }: CommandesListProps = {}) {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [stats, setStats] = useState<StatsData>({
@@ -218,7 +220,7 @@ export function CommandesList({
   }, [filter]);
   useEffect(() => {
     fetchCommandes();
-  }, [selectedStatut, selectedSource]);
+  }, [selectedStatut, selectedSource, clientFilter, viewingClientId]);
   const fetchCommandes = async () => {
     setLoading(true);
     try {
@@ -250,10 +252,16 @@ export function CommandesList({
         ascending: false
       });
       
-      // Filter by client_id if viewing as client or if user is a client
-      if (viewingClientId) {
+      // Priorité 1: Filtre manuel admin
+      if (clientFilter) {
+        query = query.eq("client_id", clientFilter);
+      }
+      // Priorité 2: Vue Client admin
+      else if (viewingClientId) {
         query = query.eq("client_id", viewingClientId);
-      } else if (userRole === 'client' && userId) {
+      }
+      // Priorité 3: Client connecté
+      else if (userRole === 'client' && userId) {
         const { data: profileData } = await supabase
           .from("profiles")
           .select("client_id")

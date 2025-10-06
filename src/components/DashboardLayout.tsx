@@ -71,10 +71,33 @@ type NavigationItem = {
 };
 
 // Navigation restructurée selon les spécifications - Janvier 2025
-const getNavigationForRole = (role: string | null): NavigationItem[] => {
+const getNavigationForRole = (role: string | null, viewingAsClient: boolean = false): NavigationItem[] => {
   const baseNavigation: NavigationItem[] = [
     { name: "Tableau de Bord", href: "/", icon: LayoutDashboard },
   ];
+
+  // Si admin en mode "Vue Client", afficher le menu client complet
+  if (viewingAsClient) {
+    return [
+      { name: "Tableau de Bord", href: "/", icon: LayoutDashboard },
+      { name: "Commandes", href: "/commandes", icon: ClipboardList },
+      { name: "Retours", href: "/retours", icon: Undo2 },
+      { name: "Produits", href: "/produits", icon: Boxes },
+      { name: "Stock", href: "/produits", icon: Warehouse },
+      { name: "Réception", href: "/client/attendu-reception", icon: PackageOpen },
+      { name: "Mouvements", href: "/stock/mouvements", icon: ArrowRightLeft },
+      { 
+        name: "Intégrations", 
+        icon: Plug,
+        children: [
+          { name: "Transporteurs", href: "/integrations/transporteurs", icon: ShipWheel },
+          { name: "Connecteurs", href: "/integrations/connecteurs", icon: Cable },
+        ]
+      },
+      { name: "Gestion des Données", href: "/gestion-donnees/import-export", icon: FolderTree },
+      { name: "Paramètres", href: "/parametres", icon: Settings },
+    ];
+  }
 
   if (role === "admin") {
     return [
@@ -146,11 +169,22 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
   if (role === "client") {
     return [
       { name: "Tableau de Bord", href: "/", icon: LayoutDashboard },
-      { name: "Mes Commandes", href: "/commandes", icon: ClipboardList },
-      { name: "Mes Produits", href: "/produits", icon: Boxes },
-      { name: "Mes Retours", href: "/retours", icon: Undo2 },
-      { name: "Stock", href: "/produits", icon: Boxes },
-      { name: "Réception", href: "/reception", icon: PackageOpen },
+      { name: "Commandes", href: "/commandes", icon: ClipboardList },
+      { name: "Retours", href: "/retours", icon: Undo2 },
+      { name: "Produits", href: "/produits", icon: Boxes },
+      { name: "Stock", href: "/produits", icon: Warehouse },
+      { name: "Réception", href: "/client/attendu-reception", icon: PackageOpen },
+      { name: "Mouvements", href: "/stock/mouvements", icon: ArrowRightLeft },
+      { 
+        name: "Intégrations", 
+        icon: Plug,
+        children: [
+          { name: "Transporteurs", href: "/integrations/transporteurs", icon: ShipWheel },
+          { name: "Connecteurs", href: "/integrations/connecteurs", icon: Cable },
+        ]
+      },
+      { name: "Gestion des Données", href: "/gestion-donnees/import-export", icon: FolderTree },
+      { name: "Paramètres", href: "/parametres", icon: Settings },
     ];
   }
 
@@ -174,7 +208,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const breadcrumbs = useBreadcrumbs();
   const { results: searchResults, isLoading: searchLoading } = useGlobalSearch(searchQuery);
   
-  const navigation = getNavigationForRole(userRole);
+  const navigation = getNavigationForRole(userRole, isViewingAsClient());
 
   // Charger la liste des clients pour les rôles admin/gestionnaire
   if (userRole === 'admin' || userRole === 'gestionnaire') {
@@ -421,10 +455,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                         localStorage.setItem('selectedClientId', selected);
                       }
                       if (selected) {
-                        navigate(`/client/dashboard?asClient=${selected}`);
-                      } else {
-                        // No client available
-                        // Optional: you can add a toast here if needed
+                        localStorage.setItem('viewingAsClient', selected);
+                        navigate(`/?asClient=${selected}`);
                       }
                     }}
                   >
@@ -444,7 +476,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                             key={client.id}
                             onClick={() => {
                               localStorage.setItem('selectedClientId', client.id);
-                              navigate(`/client/dashboard?asClient=${client.id}`);
+                              localStorage.setItem('viewingAsClient', client.id);
+                              navigate(`/?asClient=${client.id}`);
                             }}
                           >
                             <Building2 className="w-4 h-4 mr-2" />

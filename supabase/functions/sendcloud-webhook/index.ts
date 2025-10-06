@@ -39,6 +39,8 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let logId: string | null = null;
+  
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -71,18 +73,40 @@ Deno.serve(async (req) => {
       sendcloudData = JSON.parse(rawBody);
     } catch (parseError) {
       console.error('❌ Erreur parsing JSON:', parseError);
+      
+      // Logger l'erreur de parsing
+      await supabase.from('webhook_sendcloud_log').insert({
+        payload: { raw: rawBody.substring(0, 1000), error: 'JSON invalide' },
+        statut: 'erreur',
+        erreur: parseError instanceof Error ? parseError.message : 'Unknown parsing error',
+      });
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: 'JSON invalide',
           details: parseError instanceof Error ? parseError.message : 'Unknown parsing error',
-          receivedBody: rawBody.substring(0, 500) // Premiers 500 caractères pour debug
+          receivedBody: rawBody.substring(0, 500)
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
 
     console.log('Données SendCloud parsées:', JSON.stringify(sendcloudData, null, 2));
+
+    // Logger la réception du webhook
+    const { data: logData } = await supabase
+      .from('webhook_sendcloud_log')
+      .insert({
+        payload: sendcloudData,
+        statut: 'recu',
+      })
+      .select()
+      .single();
+    
+    if (logData) {
+      logId = logData.id;
+    }
 
     // Normaliser order_number (accepter order_number ou order_id)
     const orderNumber = sendcloudData.order_number || sendcloudData.order_id || String(sendcloudData.id);
@@ -97,6 +121,19 @@ Deno.serve(async (req) => {
 
     if (existingCommande) {
       console.log('⚠️ Commande déjà existante:', existingCommande.numero_commande);
+      
+      // Mettre à jour le log
+      if (logId) {
+        await supabase
+          .from('webhook_sendcloud_log')
+          .update({
+            statut: 'deja_existe',
+            commande_id: existingCommande.id,
+            traite_a: new Date().toISOString(),
+          })
+          .eq('id', logId);
+      }
+      
       return new Response(
         JSON.stringify({ 
           success: true,
@@ -262,6 +299,18 @@ Deno.serve(async (req) => {
 
     console.log('✅ Traitement terminé -', commande.numero_commande, '- Statut:', nouveauStatut);
 
+    // Mettre à jour le log comme traité
+    if (logId) {
+      await supabase
+        .from('webhook_sendcloud_log')
+        .update({
+          statut: 'traite',
+          commande_id: commande.id,
+          traite_a: new Date().toISOString(),
+        })
+        .eq('id', logId);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -283,6 +332,21 @@ Deno.serve(async (req) => {
     console.error('❌ Erreur webhook:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    // Logger l'erreur
+    if (logId) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      await supabase
+        .from('webhook_sendcloud_log')
+        .update({
+          statut: 'erreur',
+          erreur: `${errorMessage}\n\n${errorStack || ''}`,
+        })
+        .eq('id', logId);
+    }
     
     return new Response(
       JSON.stringify({ 
