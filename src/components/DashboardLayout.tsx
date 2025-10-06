@@ -75,12 +75,26 @@ type NavigationItem = {
       return [
         { label: 'Tableau de Bord', icon: LayoutDashboard, path: '/' },
         { label: 'Commandes', icon: Package, path: '/commandes' },
+        { label: 'Préparation', icon: ClipboardList, path: '/preparation' },
+        { label: 'Expédition', icon: Truck, path: '/expedition' },
         { label: 'Réceptions', icon: TruckIcon, path: '/reception' },
         { label: 'Retours', icon: RotateCcw, path: '/retours' },
         { label: 'Produits', icon: Boxes, path: '/produits' },
+        { label: 'Emplacements', icon: MapPin, path: '/emplacements' },
         { label: 'Mouvements', icon: Activity, path: '/mouvements' },
+        { label: 'Réappro', icon: RefreshCw, path: '/reappro' },
+        { label: 'Bacs & Adresses', icon: Box, path: '/bacs-adresses' },
+        { label: 'Gestion Clients', icon: Users, path: '/gestion-clients' },
+        { label: 'Transporteurs', icon: Truck, path: '/transporteurs' },
+        { label: 'Services', icon: Package, path: '/services-logistiques' },
+        { label: 'Workflows', icon: Workflow, path: '/workflows' },
         { label: 'Import/Export', icon: FileSpreadsheet, path: '/import-export' },
         { label: 'Connecteurs', icon: Plug, path: '/connecteurs' },
+        { label: 'Facturation', icon: DollarSign, path: '/facturation' },
+        { label: 'Utilisateurs', icon: UserCog, path: '/utilisateurs' },
+        { label: 'SendCloud', icon: Cloud, path: '/sendcloud-sync' },
+        { label: 'Notifications', icon: Bell, path: '/notifications' },
+        { label: 'Chatbot IA', icon: MessageSquare, path: '/chatbot-ia' },
         { label: 'Paramètres', icon: Settings, path: '/parametres' },
       ];
     }
@@ -89,22 +103,26 @@ type NavigationItem = {
       return [
         { label: 'Tableau de Bord', icon: LayoutDashboard, path: '/' },
         { label: 'Commandes', icon: Package, path: '/commandes' },
+        { label: 'Préparation', icon: ClipboardList, path: '/preparation' },
+        { label: 'Expédition', icon: Truck, path: '/expedition' },
         { label: 'Réception', icon: TruckIcon, path: '/reception' },
         { label: 'Picking Mobile', icon: Smartphone, path: '/picking-mobile' },
         { label: 'Retours', icon: RotateCcw, path: '/retours' },
         { label: 'Produits', icon: Boxes, path: '/produits' },
+        { label: 'Emplacements', icon: MapPin, path: '/emplacements' },
         { label: 'Mouvements', icon: Activity, path: '/mouvements' },
+        { label: 'Réappro', icon: RefreshCw, path: '/reappro' },
       ];
     }
     
     if (role === 'client') {
       return [
-        { label: 'Tableau de Bord', icon: LayoutDashboard, path: '/client/dashboard' },
-        { label: 'Commandes', icon: Package, path: '/client/commandes' },
-        { label: 'Retours', icon: RotateCcw, path: '/client/retours' },
-        { label: 'Produits', icon: Boxes, path: '/client/produits' },
-        { label: 'Stock', icon: Package, path: '/client/produits' },
-        { label: 'Réception', icon: TruckIcon, path: '/client/attendu-reception' },
+        { label: 'Tableau de Bord', icon: LayoutDashboard, path: '/' },
+        { label: 'Commandes', icon: Package, path: '/commandes' },
+        { label: 'Retours', icon: RotateCcw, path: '/retours' },
+        { label: 'Produits', icon: Boxes, path: '/produits' },
+        { label: 'Stock', icon: Package, path: '/produits' },
+        { label: 'Réception', icon: TruckIcon, path: '/reception' },
       ];
     }
     
