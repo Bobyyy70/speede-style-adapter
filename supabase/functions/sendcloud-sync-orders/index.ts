@@ -47,32 +47,58 @@ Deno.serve(async (req) => {
 
     console.log('[SendCloud Sync] Starting automatic synchronization...');
 
-    // Calculer la date de début (dernières 24h)
+    // Calculer la date de début (dernières 24h ou 7 jours pour le premier backfill)
     const dateMin = new Date();
-    dateMin.setHours(dateMin.getHours() - 24);
+    // Utiliser 7 jours pour récupérer toutes les commandes manquées lors du premier sync
+    dateMin.setDate(dateMin.getDate() - 7);
     const dateMinISO = dateMin.toISOString();
 
-    // Appeler l'API SendCloud pour récupérer les commandes récentes
-    const sendcloudUrl = `https://panel.sendcloud.sc/api/v2/integrations/orders?created_at_min=${dateMinISO}`;
+    // Utiliser l'API v3 de SendCloud (Orders API)
     const authHeader = 'Basic ' + btoa(`${sendcloudPublicKey}:${sendcloudSecretKey}`);
+    
+    console.log(`[SendCloud Sync] Fetching orders from SendCloud API v3 since ${dateMinISO}...`);
 
-    console.log(`[SendCloud Sync] Fetching orders from SendCloud since ${dateMinISO}...`);
+    const allOrders: SendCloudOrder[] = [];
+    let page = 1;
+    let hasMorePages = true;
 
-    const sendcloudResponse = await fetch(sendcloudUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json',
-      },
-    });
+    // Pagination de l'API v3
+    while (hasMorePages) {
+      const sendcloudUrl = `https://panel.sendcloud.sc/api/v3/orders?created_at__gte=${dateMinISO}&page=${page}&page_size=100`;
+      
+      console.log(`[SendCloud Sync] Fetching page ${page}...`);
 
-    if (!sendcloudResponse.ok) {
-      const errorText = await sendcloudResponse.text();
-      throw new Error(`SendCloud API error: ${sendcloudResponse.status} - ${errorText}`);
+      const sendcloudResponse = await fetch(sendcloudUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!sendcloudResponse.ok) {
+        const errorText = await sendcloudResponse.text();
+        throw new Error(`SendCloud API v3 error: ${sendcloudResponse.status} - ${errorText}`);
+      }
+
+      const sendcloudData = await sendcloudResponse.json();
+      const pageOrders = sendcloudData.orders || [];
+      
+      if (pageOrders.length === 0) {
+        hasMorePages = false;
+      } else {
+        allOrders.push(...pageOrders);
+        page++;
+        
+        // Limite de sécurité pour éviter les boucles infinies
+        if (page > 50) {
+          console.log('[SendCloud Sync] Safety limit reached (50 pages), stopping pagination');
+          hasMorePages = false;
+        }
+      }
     }
 
-    const sendcloudData = await sendcloudResponse.json();
-    const orders: SendCloudOrder[] = sendcloudData.results || [];
+    const orders: SendCloudOrder[] = allOrders;
 
     console.log(`[SendCloud Sync] Found ${orders.length} orders from SendCloud`);
 
