@@ -140,7 +140,7 @@ export default function Reception() {
                 <CardDescription>Liste des réceptions en cours et à venir</CardDescription>
               </div>
               {userRole === 'client' && (
-                <Button onClick={() => navigate("/client/attendu-reception")}>
+                <Button onClick={() => navigate("/client/reception")}>
                   <Package className="mr-2 h-4 w-4" />
                   Nouvelle réception
                 </Button>

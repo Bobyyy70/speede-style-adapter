@@ -288,6 +288,11 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* Redirections anciennes routes client */}
+            <Route path="/produits" element={<Navigate to="/stock/produits" replace />} />
+            <Route path="/retours" element={<Navigate to="/commandes/retours" replace />} />
+            <Route path="/client/attendu-reception" element={<Navigate to="/client/reception" replace />} />
+            
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
