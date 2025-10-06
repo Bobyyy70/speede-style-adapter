@@ -32,6 +32,11 @@ export default function ClientDashboard() {
       let clientId: string | null = asClient;
 
       if (!clientId) {
+        // Fallback to previously selected client in localStorage
+        clientId = localStorage.getItem('selectedClientId');
+      }
+
+      if (!clientId) {
         // Get client_id from profile
         const { data: profile } = await supabase
           .from("profiles")
@@ -95,18 +100,18 @@ export default function ClientDashboard() {
         stockTotal = stockData?.reduce((sum, item) => sum + (item.stock_actuel || 0), 0) || 0;
       }
 
-      // Fetch stock alerts
-      const { count: alertesCount } = await supabase
+      // Fetch stock alerts: compute client-side to avoid column-to-column filter issues
+      const { data: produitsForAlerts } = await supabase
         .from("produit")
-        .select("*", { count: "exact", head: true })
-        .eq("client_id", clientId)
-        .lt("stock_actuel", "stock_minimum");
+        .select("stock_actuel, stock_minimum")
+        .eq("client_id", clientId);
+      const alertesCount = (produitsForAlerts || []).filter(p => (p.stock_actuel || 0) < (p.stock_minimum || 0)).length;
 
       setStats({
         totalProduits: produitsCount || 0,
         commandesEnCours: commandesCount || 0,
         stockTotal,
-        alertesStock: alertesCount || 0,
+        alertesStock: alertesCount,
       });
     } catch (error: any) {
       console.error("Error fetching stats:", error);

@@ -425,34 +425,53 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              {(userRole === 'admin' || userRole === 'gestionnaire') && clientList.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="gap-2"
-                    >
-                      <Eye className="w-4 h-4" />
-                      Vue Client
-                      <ChevronDown className="w-4 h-4 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    {clientList.map((client) => (
-                      <DropdownMenuItem 
-                        key={client.id}
-                        onClick={() => {
-                          localStorage.setItem('selectedClientId', client.id);
-                          navigate(`/client/dashboard?asClient=${client.id}`);
-                        }}
-                      >
-                        <Building2 className="w-4 h-4 mr-2" />
-                        {client.nom_entreprise}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              {(userRole === 'admin' || userRole === 'gestionnaire') && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      let selected = localStorage.getItem('selectedClientId');
+                      if (!selected && clientList.length > 0) {
+                        selected = clientList[0].id;
+                        localStorage.setItem('selectedClientId', selected);
+                      }
+                      if (selected) {
+                        navigate(`/client/dashboard?asClient=${selected}`);
+                      } else {
+                        // No client available
+                        // Optional: you can add a toast here if needed
+                      }
+                    }}
+                  >
+                    <Eye className="w-4 h-4" />
+                    Vue Client
+                  </Button>
+                  {clientList.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="icon" aria-label="Changer de client">
+                          <ChevronDown className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        {clientList.map((client) => (
+                          <DropdownMenuItem
+                            key={client.id}
+                            onClick={() => {
+                              localStorage.setItem('selectedClientId', client.id);
+                              navigate(`/client/dashboard?asClient=${client.id}`);
+                            }}
+                          >
+                            <Building2 className="w-4 h-4 mr-2" />
+                            {client.nom_entreprise}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               )}
               
               <Button variant="ghost" size="icon" className="relative">
