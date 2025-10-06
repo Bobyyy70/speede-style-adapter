@@ -2,17 +2,32 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Cloud, TruckIcon, Tag, DollarSign } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Transporteurs() {
+  const { userRole } = useAuth();
+  const isClient = userRole === 'client';
+  
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Transporteurs</h1>
           <p className="text-muted-foreground">
-            Gestion des transporteurs et intégrations
+            {isClient ? 'Consultez les transporteurs disponibles' : 'Gestion des transporteurs et intégrations'}
           </p>
         </div>
+
+        {isClient && (
+          <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+            <CardContent className="pt-6">
+              <p className="text-sm text-blue-900 dark:text-blue-100">
+                <strong>Information :</strong> Vous pouvez consulter les transporteurs configurés pour votre compte. 
+                Pour modifier la configuration, veuillez contacter votre gestionnaire.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="sendcloud" className="space-y-4">
           <TabsList>

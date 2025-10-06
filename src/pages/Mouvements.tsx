@@ -10,19 +10,38 @@ import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useAuth } from "@/hooks/useAuth";
 
 const Mouvements = () => {
+  const { user, userRole, getViewingClientId } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
 
   // Fetch mouvements groupés par produit avec quantités par statut
   const { data: pipelineData = [], isLoading } = useQuery({
-    queryKey: ["pipeline-mouvements", statutFilter],
+    queryKey: ["pipeline-mouvements", statutFilter, userRole, user?.id, getViewingClientId()],
     queryFn: async () => {
-      // Get all products with their movements
-      const { data: produits, error: produitsError } = await supabase
+      let query = supabase
         .from("produit")
         .select("id, reference, nom, stock_actuel");
+      
+      // Filter by client_id if viewing as client or if user is a client
+      const viewingClientId = getViewingClientId();
+      if (viewingClientId) {
+        query = query.eq("client_id", viewingClientId);
+      } else if (userRole === 'client' && user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        
+        if (profileData?.client_id) {
+          query = query.eq("client_id", profileData.client_id);
+        }
+      }
+      
+      const { data: produits, error: produitsError } = await query;
       
       if (produitsError) throw produitsError;
 

@@ -32,7 +32,6 @@ import Notifications from "./pages/Notifications";
 import SendCloudSync from "./pages/SendCloudSync";
 
 import NotFound from "./pages/NotFound";
-import ClientCommandes from "./pages/client/MesCommandes";
 import ClientProduits from "./pages/client/MesProduits";
 import ClientRetours from "./pages/client/MesRetours";
 import ClientFacturation from "./pages/client/MaFacturation";
@@ -241,14 +240,6 @@ const App = () => (
             />
             {/* Client Routes */}
             <Route
-              path="/client/commandes"
-              element={
-                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
-                  <ClientCommandes />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/client/produits"
               element={
                 <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
@@ -292,6 +283,10 @@ const App = () => (
             <Route path="/produits" element={<Navigate to="/stock/produits" replace />} />
             <Route path="/retours" element={<Navigate to="/commandes/retours" replace />} />
             <Route path="/client/attendu-reception" element={<Navigate to="/client/reception" replace />} />
+            <Route path="/client/commandes" element={<Navigate to="/commandes" replace />} />
+            <Route path="/client/retours" element={<Navigate to="/commandes/retours" replace />} />
+            <Route path="/client/produits" element={<Navigate to="/stock/produits" replace />} />
+            <Route path="/client/mouvements" element={<Navigate to="/stock/mouvements" replace />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

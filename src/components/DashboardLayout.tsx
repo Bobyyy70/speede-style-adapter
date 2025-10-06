@@ -80,7 +80,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
   if (viewingAsClient) {
     return [
       { name: "Tableau de Bord", href: "/", icon: LayoutDashboard },
-      { name: "Commandes", href: "/client/commandes", icon: ClipboardList },
+      { name: "Commandes", href: "/commandes", icon: ClipboardList },
       { name: "Retours", href: "/commandes/retours", icon: Undo2 },
       { name: "Produits", href: "/stock/produits", icon: Boxes },
       { name: "Stock", href: "/stock/produits", icon: Warehouse },
@@ -169,7 +169,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
   if (role === "client") {
     return [
       { name: "Tableau de Bord", href: "/", icon: LayoutDashboard },
-      { name: "Commandes", href: "/client/commandes", icon: ClipboardList },
+      { name: "Commandes", href: "/commandes", icon: ClipboardList },
       { name: "Retours", href: "/commandes/retours", icon: Undo2 },
       { name: "Produits", href: "/stock/produits", icon: Boxes },
       { name: "Stock", href: "/stock/produits", icon: Warehouse },
@@ -343,7 +343,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                           return (
                             <Link
                               key={child.name}
-                              to={child.href}
+                              to={isViewingAsClient() ? `${child.href}${location.search}` : child.href}
                               className={cn(
                                 "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200",
                                 isChildActive
@@ -361,12 +361,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   </div>
                 ) : (
                   <Link
-                    to={item.href!}
+                    to={isViewingAsClient() ? `${item.href}${location.search}` : item.href!}
                     onClick={(e) => {
                       if (!sidebarOpen && !sidebarPinned) {
                         e.preventDefault();
                         setSidebarOpen(true);
-                        setTimeout(() => navigate(item.href!), 300);
+                        const targetHref = isViewingAsClient() ? `${item.href}${location.search}` : item.href!;
+                        setTimeout(() => navigate(targetHref), 300);
                       }
                     }}
                     className={cn(
@@ -405,7 +406,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     Recherche globale... (Ctrl+K)
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0" align="start">
+                <PopoverContent className="w-[400px] p-0 z-50 bg-card border shadow-lg" align="start">
                   <Command>
                     <CommandInput 
                       placeholder="Rechercher produits, ordres, emplacements..." 
@@ -470,7 +471,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                           <ChevronDown className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuContent align="end" className="w-56 z-50 bg-card border shadow-lg">
                         {clientList.map((client) => (
                           <DropdownMenuItem
                             key={client.id}

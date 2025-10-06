@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Connecteurs() {
   const { userRole } = useAuth();
+  const isClient = userRole === 'client';
   
   return (
     <DashboardLayout>
@@ -16,10 +17,21 @@ export default function Connecteurs() {
           <div>
             <h1 className="text-3xl font-bold">Connecteurs</h1>
             <p className="text-muted-foreground">
-              {userRole === 'client' ? 'Consultez les intégrations disponibles' : 'Gestion des intégrations et connecteurs externes'}
+              {isClient ? 'Consultez les intégrations disponibles' : 'Gestion des intégrations et connecteurs externes'}
             </p>
           </div>
         </div>
+
+        {isClient && (
+          <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+            <CardContent className="pt-6">
+              <p className="text-sm text-blue-900 dark:text-blue-100">
+                <strong>Information :</strong> Vous pouvez consulter les connecteurs configurés pour votre compte. 
+                Pour ajouter ou modifier des intégrations, veuillez contacter votre gestionnaire.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
