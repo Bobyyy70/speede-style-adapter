@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Trash2, Upload } from "lucide-react";
+import { Plus, Trash2, Upload, AlertCircle, Home } from "lucide-react";
+import { getClientId } from "@/lib/clientHelpers";
 
 interface LigneCommande {
   produit_id: string;
@@ -40,6 +41,7 @@ const CreerCommande = () => {
   const [labelFile, setLabelFile] = useState<File | null>(null);
   const [labelUrl, setLabelUrl] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
+  const [clientError, setClientError] = useState(false);
   
   const [formData, setFormData] = useState({
     nom_client: "",
@@ -63,19 +65,8 @@ const CreerCommande = () => {
 
   const fetchProduits = async () => {
     try {
-      const asClient = searchParams.get("asClient");
-      let clientId = asClient;
-
-      if (!asClient) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("client_id")
-          .eq("id", user?.id)
-          .single();
-        clientId = profile?.client_id;
-      }
-
-      if (!clientId) return;
+      setClientError(false);
+      const { clientId } = await getClientId(user, searchParams, null);
 
       const { data, error } = await supabase
         .from("produit")
@@ -87,11 +78,15 @@ const CreerCommande = () => {
       if (error) throw error;
       setProduits(data || []);
     } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (error.message.includes("Aucun client")) {
+        setClientError(true);
+      } else {
+        toast({
+          title: "Erreur",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -186,26 +181,7 @@ const CreerCommande = () => {
     }
 
     try {
-      const asClient = searchParams.get("asClient");
-      let clientId = asClient;
-
-      if (!asClient) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("client_id")
-          .eq("id", user?.id)
-          .single();
-        clientId = profile?.client_id;
-      }
-
-      if (!clientId) {
-        toast({
-          title: "Erreur",
-          description: "Client non trouvé",
-          variant: "destructive",
-        });
-        return;
-      }
+      const { clientId } = await getClientId(user, searchParams, null);
 
       const valeurTotale = lignes.reduce((sum, l) => sum + (l.quantite * l.prix_unitaire), 0);
       const poidsTotal = lignes.reduce((sum, l) => {
@@ -275,6 +251,23 @@ const CreerCommande = () => {
       });
     }
   };
+
+  if (clientError) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-64 space-y-4">
+          <AlertCircle className="h-12 w-12 text-muted-foreground" />
+          <p className="text-lg text-muted-foreground">
+            Aucun client sélectionné. Veuillez utiliser le menu "Vue Client" pour en choisir un.
+          </p>
+          <Button onClick={() => navigate("/")}>
+            <Home className="mr-2 h-4 w-4" />
+            Retour au tableau de bord
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

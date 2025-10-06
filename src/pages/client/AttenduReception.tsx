@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Package, TruckIcon, CheckCircle, AlertCircle, Plus, Eye } from "lucide-react";
+import { Package, TruckIcon, CheckCircle, AlertCircle, Plus, Eye, Home } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { getClientId } from "@/lib/clientHelpers";
 
 interface AttenduReception {
   id: string;
@@ -30,9 +31,11 @@ interface AttenduReception {
 const AttenduReception = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [attendus, setAttendus] = useState<AttenduReception[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clientError, setClientError] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedAttendu, setSelectedAttendu] = useState<string | null>(null);
@@ -57,27 +60,9 @@ const AttenduReception = () => {
   const fetchAttendus = async () => {
     try {
       setLoading(true);
+      setClientError(false);
       
-      const asClient = searchParams.get("asClient");
-      let clientId = asClient;
-
-      if (!asClient) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("client_id")
-          .eq("id", user?.id)
-          .single();
-        clientId = profile?.client_id;
-      }
-
-      if (!clientId) {
-        toast({
-          title: "Erreur",
-          description: "Client non trouvé",
-          variant: "destructive",
-        });
-        return;
-      }
+      const { clientId } = await getClientId(user, searchParams, null);
 
       const { data, error } = await supabase
         .from("attendu_reception")
@@ -88,11 +73,15 @@ const AttenduReception = () => {
       if (error) throw error;
       setAttendus(data || []);
     } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (error.message.includes("Aucun client")) {
+        setClientError(true);
+      } else {
+        toast({
+          title: "Erreur",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -101,26 +90,7 @@ const AttenduReception = () => {
   const handleCreateAttendu = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const asClient = searchParams.get("asClient");
-      let clientId = asClient;
-
-      if (!asClient) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("client_id")
-          .eq("id", user?.id)
-          .single();
-        clientId = profile?.client_id;
-      }
-
-      if (!clientId) {
-        toast({
-          title: "Erreur",
-          description: "Client non trouvé",
-          variant: "destructive",
-        });
-        return;
-      }
+      const { clientId } = await getClientId(user, searchParams, null);
 
       const { error } = await supabase.from("attendu_reception").insert([{
         numero_attendu: null as any,
@@ -176,6 +146,23 @@ const AttenduReception = () => {
     termines: attendus.filter(a => a.statut === 'réceptionné_totalement').length,
     anomalies: attendus.filter(a => a.statut === 'anomalie').length,
   };
+
+  if (clientError) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-64 space-y-4">
+          <AlertCircle className="h-12 w-12 text-muted-foreground" />
+          <p className="text-lg text-muted-foreground">
+            Aucun client sélectionné. Veuillez utiliser le menu "Vue Client" pour en choisir un.
+          </p>
+          <Button onClick={() => navigate("/")}>
+            <Home className="mr-2 h-4 w-4" />
+            Retour au tableau de bord
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

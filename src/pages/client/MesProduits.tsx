@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { getClientId } from "@/lib/clientHelpers";
+import { AlertCircle, Home } from "lucide-react";
 
 interface Produit {
   id: string;
@@ -20,9 +23,11 @@ interface Produit {
 
 export default function MesProduits() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [produits, setProduits] = useState<Produit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clientError, setClientError] = useState(false);
 
   useEffect(() => {
     fetchProduits();
@@ -31,20 +36,10 @@ export default function MesProduits() {
   const fetchProduits = async () => {
     try {
       if (!user) return;
-
-      const asClient = searchParams.get("asClient");
-      let clientId = asClient;
-
-      if (!asClient) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("client_id")
-          .eq("id", user.id)
-          .single();
-        clientId = profile?.client_id;
-      }
-
-      if (!clientId) return;
+      setLoading(true);
+      setClientError(false);
+      
+      const { clientId } = await getClientId(user, searchParams, null);
 
       const { data, error } = await supabase
         .from("produit")
@@ -56,12 +51,15 @@ export default function MesProduits() {
       if (error) throw error;
       setProduits(data || []);
     } catch (error: any) {
-      console.error("Error fetching produits:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les produits",
-        variant: "destructive",
-      });
+      if (error.message.includes("Aucun client")) {
+        setClientError(true);
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les produits",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -76,6 +74,23 @@ export default function MesProduits() {
     }
     return <Badge variant="default">Disponible</Badge>;
   };
+
+  if (clientError) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-64 space-y-4">
+          <AlertCircle className="h-12 w-12 text-muted-foreground" />
+          <p className="text-lg text-muted-foreground">
+            Aucun client sélectionné. Veuillez utiliser le menu "Vue Client" pour en choisir un.
+          </p>
+          <Button onClick={() => navigate("/")}>
+            <Home className="mr-2 h-4 w-4" />
+            Retour au tableau de bord
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

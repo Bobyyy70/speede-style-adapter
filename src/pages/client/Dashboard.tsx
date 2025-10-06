@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Package, ShoppingCart, TrendingUp, AlertTriangle, Plus, PackageOpen, Undo2, Boxes, ClipboardList, Warehouse } from "lucide-react";
+import { Package, ShoppingCart, TrendingUp, AlertTriangle, Plus, PackageOpen, Undo2, Boxes, ClipboardList, Warehouse, Home, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { getClientId } from "@/lib/clientHelpers";
 
 export default function ClientDashboard() {
   const { user, userRole } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [stats, setStats] = useState({
     totalProduits: 0,
@@ -19,6 +22,7 @@ export default function ClientDashboard() {
     alertesStock: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [clientError, setClientError] = useState(false);
 
   useEffect(() => {
     fetchStats();
@@ -27,46 +31,10 @@ export default function ClientDashboard() {
   const fetchStats = async () => {
     try {
       if (!user) return;
-
-      const asClient = searchParams.get('asClient');
-      let clientId: string | null = asClient;
-
-      if (!clientId) {
-        // Fallback to previously selected client in localStorage
-        clientId = localStorage.getItem('selectedClientId');
-      }
-
-      if (!clientId) {
-        // Get client_id from profile
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("client_id")
-          .eq("id", user.id)
-          .single();
-        clientId = profile?.client_id || null;
-      }
-
-      if (!clientId) {
-        // Si admin/gestionnaire sans client lié, prendre le premier client actif par défaut
-        if (userRole === 'admin' || userRole === 'gestionnaire') {
-          const { data: firstClients } = await supabase
-            .from('client' as any)
-            .select('id')
-            .eq('actif', true)
-            .order('nom_entreprise', { ascending: true })
-            .limit(1);
-          clientId = (firstClients as any)?.[0]?.id || null;
-        }
-      }
-
-      if (!clientId) {
-        toast({
-          title: "Erreur",
-          description: "Aucun client sélectionné. Ajoutez ?asClient=<client_id> à l’URL ou reliez un profil.",
-          variant: "destructive",
-        });
-        return;
-      }
+      setLoading(true);
+      setClientError(false);
+      
+      const { clientId } = await getClientId(user, searchParams, userRole);
 
       // Fetch products count
       const { count: produitsCount } = await supabase
@@ -114,16 +82,46 @@ export default function ClientDashboard() {
         alertesStock: alertesCount,
       });
     } catch (error: any) {
-      console.error("Error fetching stats:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les statistiques",
-        variant: "destructive",
-      });
+      if (error.message.includes("Aucun client")) {
+        setClientError(true);
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les statistiques",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  if (clientError) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-64 space-y-4">
+          <AlertCircle className="h-12 w-12 text-muted-foreground" />
+          <p className="text-lg text-muted-foreground">
+            Aucun client sélectionné. Veuillez utiliser le menu "Vue Client" pour en choisir un.
+          </p>
+          <Button onClick={() => navigate("/")}>
+            <Home className="mr-2 h-4 w-4" />
+            Retour au tableau de bord
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Chargement...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -171,7 +169,7 @@ export default function ClientDashboard() {
                     Créer une commande
                   </Button>
                 </Link>
-                <Link to="/client/reception">
+                <Link to="/client/attendu-reception">
                   <Button className="w-full h-24 text-lg" size="lg" variant="secondary">
                     <PackageOpen className="mr-2 h-5 w-5" />
                     Annoncer une réception
@@ -253,7 +251,7 @@ export default function ClientDashboard() {
 
           <TabsContent value="attendus" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Link to="/client/reception">
+              <Link to="/client/attendu-reception">
                 <Card className="cursor-pointer hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
