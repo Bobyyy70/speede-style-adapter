@@ -3,7 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Package, ShoppingCart, TrendingUp, AlertTriangle, Plus, PackageOpen, Undo2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Package, ShoppingCart, TrendingUp, AlertTriangle, Plus, PackageOpen, Undo2, Boxes, ClipboardList, Warehouse } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -110,99 +111,145 @@ export default function ClientDashboard() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Mon Tableau de Bord</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Espace Client</h1>
           <p className="text-muted-foreground">
-            Vue d'ensemble de vos stocks et commandes
+            Vue d'ensemble et accès rapide à vos opérations
           </p>
         </div>
 
-        {/* Statistiques rapides - cliquables */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Link to="/client/produits">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Mes Produits</CardTitle>
-                <Package className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalProduits}</div>
-                <p className="text-xs text-muted-foreground">
-                  Références actives
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
+        <Tabs defaultValue="commandes" className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="commandes" className="gap-2"><ClipboardList className="h-4 w-4" /> Commandes</TabsTrigger>
+            <TabsTrigger value="produits" className="gap-2"><Boxes className="h-4 w-4" /> Produits</TabsTrigger>
+            <TabsTrigger value="retours" className="gap-2"><Undo2 className="h-4 w-4" /> Retours</TabsTrigger>
+            <TabsTrigger value="stocks" className="gap-2"><Warehouse className="h-4 w-4" /> Stocks</TabsTrigger>
+            <TabsTrigger value="attendus" className="gap-2"><PackageOpen className="h-4 w-4" /> Attendus</TabsTrigger>
+          </TabsList>
 
-          <Link to="/client/commandes">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Commandes en cours</CardTitle>
-                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.commandesEnCours}</div>
-                <p className="text-xs text-muted-foreground">
-                  En préparation/attente
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
+          <TabsContent value="commandes" className="space-y-6">
+            {/* Stats commandes */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Link to="/client/commandes">
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Commandes en cours</CardTitle>
+                    <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.commandesEnCours}</div>
+                    <p className="text-xs text-muted-foreground">En préparation/attente</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
 
-          <Link to="/client/produits">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Stock Total</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.stockTotal}</div>
-                <p className="text-xs text-muted-foreground">
-                  Unités en stock
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
+            {/* Actions commandes */}
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Actions rapides</h2>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Link to="/client/commandes/creer">
+                  <Button className="w-full h-24 text-lg" size="lg">
+                    <Plus className="mr-2 h-5 w-5" />
+                    Créer une commande
+                  </Button>
+                </Link>
+                <Link to="/client/reception">
+                  <Button className="w-full h-24 text-lg" size="lg" variant="secondary">
+                    <PackageOpen className="mr-2 h-5 w-5" />
+                    Annoncer une réception
+                  </Button>
+                </Link>
+                <Link to="/client/retours">
+                  <Button className="w-full h-24 text-lg" size="lg" variant="outline">
+                    <Undo2 className="mr-2 h-5 w-5" />
+                    Déclarer un retour
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </TabsContent>
 
-          <Link to="/client/produits">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Alertes Stock</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-destructive">{stats.alertesStock}</div>
-                <p className="text-xs text-muted-foreground">
-                  Produits sous seuil
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
+          <TabsContent value="produits" className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Link to="/client/produits">
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Mes Produits</CardTitle>
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.totalProduits}</div>
+                    <p className="text-xs text-muted-foreground">Références actives</p>
+                  </CardContent>
+                </Card>
+              </Link>
 
-        {/* Actions rapides */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Actions rapides</h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Link to="/client/commandes/creer">
-              <Button className="w-full h-24 text-lg" size="lg">
-                <Plus className="mr-2 h-5 w-5" />
-                Créer une commande
-              </Button>
-            </Link>
-            <Link to="/client/reception">
-              <Button className="w-full h-24 text-lg" size="lg" variant="secondary">
-                <PackageOpen className="mr-2 h-5 w-5" />
-                Annoncer une réception
-              </Button>
-            </Link>
-            <Link to="/client/retours">
-              <Button className="w-full h-24 text-lg" size="lg" variant="outline">
-                <Undo2 className="mr-2 h-5 w-5" />
-                Déclarer un retour
-              </Button>
-            </Link>
-          </div>
-        </div>
+              <Link to="/client/produits">
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Alertes Stock</CardTitle>
+                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-destructive">{stats.alertesStock}</div>
+                    <p className="text-xs text-muted-foreground">Produits sous seuil</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="retours" className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Link to="/client/retours">
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Undo2 className="h-4 w-4" /> Mes Retours
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    Consultez et suivez vos retours produits.
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="stocks" className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Link to="/client/produits">
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Stock Total</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats.stockTotal}</div>
+                    <p className="text-xs text-muted-foreground">Unités en stock</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="attendus" className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Link to="/client/reception">
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <PackageOpen className="h-4 w-4" /> Attendus de Réception
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    Annoncez et suivez vos réceptions prévues.
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );
