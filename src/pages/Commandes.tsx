@@ -80,56 +80,7 @@ export default function Commandes() {
       console.error("Erreur stats:", error);
     }
   };
-  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    Papa.parse(file, {
-      header: true,
-      complete: async results => {
-        try {
-          const commandes = results.data.filter((row: any) => row.numero_commande).map((row: any) => ({
-            numero_commande: row.numero_commande || "",
-            source: row.source || "Import CSV",
-            nom_client: row.nom_client || "",
-            email_client: row.email_client || "",
-            telephone_client: row.telephone_client || "",
-            adresse_nom: row.adresse_nom || row.nom_client || "",
-            adresse_ligne_1: row.adresse_ligne_1 || "",
-            adresse_ligne_2: row.adresse_ligne_2 || "",
-            code_postal: row.code_postal || "",
-            ville: row.ville || "",
-            pays_code: row.pays_code || "FR",
-            valeur_totale: parseFloat(row.valeur_totale) || 0,
-            devise: row.devise || "EUR",
-            statut_wms: "En attente de réappro",
-            methode_expedition: row.methode_expedition || "",
-            transporteur: row.transporteur || ""
-          }));
-          const {
-            data: insertedCommandes,
-            error
-          } = await supabase.from("commande").insert(commandes).select();
-          if (error) throw error;
 
-          // Appliquer les règles automatiques pour chaque commande importée
-          if (insertedCommandes) {
-            for (const commande of insertedCommandes) {
-              await applyAutoRules(commande.id);
-            }
-          }
-          toast.success(`${commandes.length} commande(s) importée(s) avec règles appliquées`);
-          fetchStats();
-        } catch (error: any) {
-          toast.error("Erreur lors de l'import: " + error.message);
-          console.error(error);
-        }
-      },
-      error: error => {
-        toast.error("Erreur de lecture du fichier CSV");
-        console.error(error);
-      }
-    });
-  };
   const handleSyncSendCloud = async () => {
     setIsSyncing(true);
     try {
@@ -145,47 +96,18 @@ export default function Commandes() {
     }
   };
 
-  const handleExportCSV = async () => {
+  const handleRefreshTracking = async () => {
+    setIsSyncing(true);
     try {
-      let query = supabase.from("commande").select("*").order("date_creation", {
-        ascending: false
-      });
-      
-      // Filter by client_id if viewing as client or if user is a client
-      const viewingClientId = getViewingClientId();
-      if (viewingClientId) {
-        query = query.eq("client_id", viewingClientId);
-      } else if (userRole === 'client' && user) {
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("client_id")
-          .eq("id", user.id)
-          .single();
-        
-        if (profileData?.client_id) {
-          query = query.eq("client_id", profileData.client_id);
-        }
-      }
-      
-      const { data, error } = await query;
+      const { data, error } = await supabase.functions.invoke('sendcloud-refresh-tracking');
       if (error) throw error;
-      
-      const csv = Papa.unparse(data || []);
-      const blob = new Blob([csv], {
-        type: "text/csv;charset=utf-8;"
-      });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", `commandes_${new Date().toISOString().split("T")[0]}.csv`);
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success("Export CSV réussi");
+      toast.success(`Tracking mis à jour: ${data.updated} commande(s)`);
+      fetchStats();
     } catch (error: any) {
-      toast.error("Erreur lors de l'export");
+      toast.error("Erreur lors du rafraîchissement: " + error.message);
       console.error(error);
+    } finally {
+      setIsSyncing(false);
     }
   };
   return <DashboardLayout>
@@ -222,25 +144,20 @@ export default function Commandes() {
                   <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
                   Synchroniser SendCloud
                 </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleRefreshTracking}
+                  disabled={isSyncing}
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                  Rafraîchir tracking
+                </Button>
                 <Button variant="outline" onClick={() => navigate("/integrations/sendcloud-sync")}>
                   <Activity className="mr-2 h-4 w-4" />
                   Monitoring SendCloud
                 </Button>
               </>
             )}
-            <Button variant="outline" onClick={handleExportCSV}>
-              <Download className="mr-2 h-4 w-4" />
-              Exporter CSV
-            </Button>
-            <label htmlFor="csv-upload">
-              <Button variant="outline" asChild>
-                <span>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Importer CSV
-                </span>
-              </Button>
-            </label>
-            <Input id="csv-upload" type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
           </div>
         </div>
 

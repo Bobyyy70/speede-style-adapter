@@ -179,15 +179,72 @@ Deno.serve(async (req) => {
           .single();
 
         if (commandeError) {
-          console.error(`❌ Erreur insertion ${orderNumber}:`, commandeError);
-          results.push({
-            order_number: orderNumber,
-            success: false,
+          console.error(`❌ Error inserting commande:`, commandeError.message);
+          results.push({ 
+            order_number: orderNumber, 
+            success: false, 
             error: commandeError.message,
-            details: commandeError.details
+            details: commandeError.details 
           });
           errorCount++;
           continue;
+        }
+
+        console.log(`✅ Commande inserted: ${commande.id}`);
+
+        // Enrichir avec tracking si un parcel existe déjà
+        try {
+          const publicKey = Deno.env.get('SENDCLOUD_API_PUBLIC_KEY');
+          const secretKey = Deno.env.get('SENDCLOUD_API_SECRET_KEY');
+
+          if (publicKey && secretKey) {
+            const basicAuth = btoa(`${publicKey}:${secretKey}`);
+            const parcelResponse = await fetch(
+              `https://panel.sendcloud.sc/api/v2/parcels?external_order_id=${commande.sendcloud_id}`,
+              {
+                headers: {
+                  'Authorization': `Basic ${basicAuth}`,
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+
+            if (parcelResponse.ok) {
+              const parcelData = await parcelResponse.json();
+              if (parcelData.parcels && parcelData.parcels.length > 0) {
+                const parcel = parcelData.parcels[0];
+                
+                let statutWms = 'En attente de réappro';
+                if (parcel.status) {
+                  const statusId = parcel.status.id;
+                  if (statusId >= 1000 && statusId < 2000) {
+                    statutWms = 'En préparation';
+                  } else if (statusId >= 2000 && statusId < 3000) {
+                    statutWms = 'En cours de livraison';
+                  } else if (statusId >= 3000) {
+                    statutWms = 'Livré';
+                  }
+                }
+
+                await supabase
+                  .from('commande')
+                  .update({
+                    transporteur: parcel.carrier?.name || null,
+                    methode_expedition: parcel.shipping_method?.name || null,
+                    tracking_number: parcel.tracking_number || null,
+                    tracking_url: parcel.tracking_url || null,
+                    label_url: parcel.label?.label_printer || null,
+                    sendcloud_shipment_id: parcel.id?.toString() || null,
+                    statut_wms: statutWms,
+                  })
+                  .eq('id', commande.id);
+
+                console.log(`🔄 Enriched order ${commande.numero_commande} with tracking`);
+              }
+            }
+          }
+        } catch (enrichError: any) {
+          console.error(`⚠️ Error enriching order:`, enrichError.message);
         }
 
         console.log(`✅ Commande créée: ${commande.id}`);

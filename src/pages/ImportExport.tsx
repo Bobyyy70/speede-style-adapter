@@ -9,12 +9,15 @@ import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useAutoRules } from "@/hooks/useAutoRules";
 
 const ImportExport = () => {
   const { toast } = useToast();
   const { userRole, user, getViewingClientId } = useAuth();
+  const { applyAutoRules } = useAutoRules();
   const [importType, setImportType] = useState<"produits" | "commandes" | "emplacements">("produits");
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const handleExport = async () => {
     setExporting(true);
@@ -92,6 +95,92 @@ const ImportExport = () => {
     }
   };
 
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      Papa.parse(file, {
+        header: true,
+        complete: async (results) => {
+          try {
+            const rows = results.data.filter((row: any) => Object.values(row).some(v => v));
+
+            if (importType === 'commandes') {
+              const commandes = rows.map((row: any) => ({
+                numero_commande: row.numero_commande || "",
+                source: row.source || "Import CSV",
+                nom_client: row.nom_client || "",
+                email_client: row.email_client || "",
+                telephone_client: row.telephone_client || "",
+                adresse_nom: row.adresse_nom || row.nom_client || "",
+                adresse_ligne_1: row.adresse_ligne_1 || "",
+                adresse_ligne_2: row.adresse_ligne_2 || "",
+                code_postal: row.code_postal || "",
+                ville: row.ville || "",
+                pays_code: row.pays_code || "FR",
+                valeur_totale: parseFloat(row.valeur_totale) || 0,
+                devise: row.devise || "EUR",
+                statut_wms: "En attente de réappro",
+                methode_expedition: row.methode_expedition || "",
+                transporteur: row.transporteur || ""
+              }));
+
+              const { data: insertedCommandes, error } = await supabase
+                .from("commande")
+                .insert(commandes)
+                .select();
+
+              if (error) throw error;
+
+              // Appliquer les règles automatiques
+              if (insertedCommandes) {
+                for (const commande of insertedCommandes) {
+                  await applyAutoRules(commande.id);
+                }
+              }
+
+              toast({
+                title: "Import réussi",
+                description: `${commandes.length} commande(s) importée(s) avec règles appliquées`,
+              });
+            } else {
+              toast({
+                title: "Type non supporté",
+                description: "L'import de ce type de données n'est pas encore implémenté",
+                variant: "destructive",
+              });
+            }
+          } catch (error: any) {
+            toast({
+              title: "Erreur d'import",
+              description: error.message,
+              variant: "destructive",
+            });
+          } finally {
+            setImporting(false);
+          }
+        },
+        error: (error) => {
+          toast({
+            title: "Erreur de lecture",
+            description: "Le fichier CSV n'a pas pu être lu",
+            variant: "destructive",
+          });
+          setImporting(false);
+        }
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+      setImporting(false);
+    }
+  };
+
   const downloadTemplate = () => {
     let headers: string[] = [];
     let filename = "";
@@ -102,7 +191,7 @@ const ImportExport = () => {
         filename = "template_produits.csv";
         break;
       case "commandes":
-        headers = ["numero_commande", "client_nom", "statut_wms", "date_creation"];
+        headers = ["numero_commande", "source", "nom_client", "email_client", "telephone_client", "adresse_nom", "adresse_ligne_1", "adresse_ligne_2", "code_postal", "ville", "pays_code", "valeur_totale", "devise", "methode_expedition", "transporteur"];
         filename = "template_commandes.csv";
         break;
       case "emplacements":
@@ -172,7 +261,7 @@ const ImportExport = () => {
                         type="file"
                         accept=".csv"
                         className="hidden"
-                        onChange={() => {}}
+                        onChange={handleImport}
                       />
                     </label>
                   </Button>
@@ -184,9 +273,18 @@ const ImportExport = () => {
                 Télécharger le template
               </Button>
 
-              <Button className="w-full" disabled>
-                <Upload className="mr-2 h-4 w-4" />
-                Importer
+              <Button className="w-full" disabled={importing}>
+                {importing ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Import en cours...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Importer (sélectionnez un fichier)
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>

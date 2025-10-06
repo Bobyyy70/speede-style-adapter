@@ -383,10 +383,32 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
                   Lancer la préparation
                 </Button>
               )}
-              {canCreateShipment && (
-                <Button variant="default" size="sm">
+              {!commande.label_url && !commande.sendcloud_shipment_id && (
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      const { data, error } = await supabase.functions.invoke('sendcloud-create-parcel', {
+                        body: { commande_id: commandeId },
+                      });
+
+                      if (error) throw error;
+
+                      if (data.success) {
+                        toast({ title: 'Étiquette SendCloud générée' });
+                        refetch();
+                        onSuccess?.();
+                      } else {
+                        toast({ title: 'Erreur', description: data.error || 'Erreur lors de la création', variant: 'destructive' });
+                      }
+                    } catch (error: any) {
+                      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+                    }
+                  }}
+                >
                   <Send className="h-4 w-4 mr-2" />
-                  Créer expédition SendCloud
+                  Créer étiquette SendCloud
                 </Button>
               )}
             </div>

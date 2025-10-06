@@ -112,13 +112,17 @@ const ALL_COLUMNS = [{
   label: "Valeur",
   defaultVisible: true
 }, {
-  key: "methode_expedition",
-  label: "Méthode d'expédition",
-  defaultVisible: false
-}, {
   key: "transporteur",
   label: "Transporteur",
-  defaultVisible: false
+  defaultVisible: true
+}, {
+  key: "methode_expedition",
+  label: "Méthode",
+  defaultVisible: true
+}, {
+  key: "tracking_number",
+  label: "N° de suivi",
+  defaultVisible: true
 }, {
   key: "poids_total",
   label: "Poids total",
@@ -130,7 +134,7 @@ const ALL_COLUMNS = [{
 }, {
   key: "numero_facture_commerciale",
   label: "N° Facture",
-  defaultVisible: false
+  defaultVisible: true
 }, {
   key: "devise",
   label: "Devise",
@@ -319,21 +323,22 @@ export function CommandesList({
       setSelectedCommandes(filteredCommandes.map(c => c.id));
     }
   };
-  const getStatutBadgeVariant = (statut: string) => {
+  const getStatutBadge = (statut: string) => {
     switch (statut) {
       case "En attente de réappro":
-        return "destructive";
+        return <Badge className="bg-orange-500 hover:bg-orange-600">{statut}</Badge>;
       case "Prêt à préparer":
-        return "default";
+        return <Badge className="bg-blue-500 hover:bg-blue-600">{statut}</Badge>;
       case "En préparation":
-        return "secondary";
+        return <Badge className="bg-yellow-500 hover:bg-yellow-600">{statut}</Badge>;
       case "En attente d'expédition":
+        return <Badge className="bg-purple-500 hover:bg-purple-600">{statut}</Badge>;
       case "En cours de livraison":
-        return "outline";
+        return <Badge className="bg-indigo-500 hover:bg-indigo-600">{statut}</Badge>;
       case "Livré":
-        return "default";
+        return <Badge className="bg-green-500 hover:bg-green-600">{statut}</Badge>;
       default:
-        return "outline";
+        return <Badge variant="outline">{statut}</Badge>;
     }
   };
   const handleCreateSession = () => {
@@ -372,7 +377,18 @@ export function CommandesList({
       case "date_creation":
         return new Date(commande.date_creation).toLocaleDateString("fr-FR");
       case "statut_wms":
-        return <Badge variant={getStatutBadgeVariant(commande.statut_wms)}>{commande.statut_wms}</Badge>;
+        return getStatutBadge(commande.statut_wms);
+      case "tracking_number":
+        return commande.tracking_number ? (
+          <a 
+            href={commande.tracking_url || "#"} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-primary hover:underline font-mono text-xs"
+          >
+            {commande.tracking_number}
+          </a>
+        ) : "-";
       case "source":
         return commande.source;
       case "valeur_totale":
