@@ -141,36 +141,15 @@ const getNavigationForRole = (role: string | null): NavigationItem[] => {
     ];
   }
 
-  if (role === "gestionnaire") {
-    return [
-      ...baseNavigation,
-      { name: "Commandes", href: "/commandes", icon: ClipboardList },
-      { name: "Retours", href: "/commandes/retours", icon: Undo2 },
-      { 
-        name: "Stock", 
-        icon: Warehouse,
-        children: [
-          { name: "Réappro", href: "/commandes/reappro", icon: RefreshCw },
-        ]
-      },
-      { 
-        name: "Paramètres", 
-        icon: Settings,
-        children: [
-          { name: "Facturation", href: "/administratif/facturation", icon: Receipt },
-        ]
-      },
-    ];
-  }
 
   if (role === "client") {
     return [
-      { name: "Tableau de Bord", href: "/client/dashboard", icon: LayoutDashboard },
-      { name: "Mes Commandes", href: "/client/commandes", icon: ClipboardList },
-      { name: "Mes Produits", href: "/client/produits", icon: Boxes },
-      { name: "Mes Retours", href: "/client/retours", icon: Undo2 },
-      { name: "Attendus de Réception", href: "/client/reception", icon: PackageOpen },
-      { name: "Ma Facturation", href: "/client/facturation", icon: Receipt },
+      { name: "Tableau de Bord", href: "/", icon: LayoutDashboard },
+      { name: "Mes Commandes", href: "/commandes", icon: ClipboardList },
+      { name: "Mes Produits", href: "/produits", icon: Boxes },
+      { name: "Mes Retours", href: "/retours", icon: Undo2 },
+      { name: "Stock", href: "/produits", icon: Boxes },
+      { name: "Réception", href: "/reception", icon: PackageOpen },
     ];
   }
 

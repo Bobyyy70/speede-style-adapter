@@ -11,8 +11,13 @@ import { Upload, Download, Package, Clock, CheckCircle2, TrendingUp, Activity } 
 import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { useAutoRules } from "@/hooks/useAutoRules";
+import { useAuth } from "@/hooks/useAuth";
+import { RefreshCw } from "lucide-react";
+
 export default function Commandes() {
   const navigate = useNavigate();
+  const { user, userRole } = useAuth();
+  const [isSyncing, setIsSyncing] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     enAttente: 0,
@@ -27,11 +32,24 @@ export default function Commandes() {
   }, []);
   const fetchStats = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from("commande").select("statut_wms");
+      let query = supabase.from("commande").select("statut_wms");
+      
+      // Filter by client_id if user is a client
+      if (userRole === 'client' && user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        
+        if (profileData?.client_id) {
+          query = query.eq("client_id", profileData.client_id);
+        }
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
+      
       setStats({
         total: data?.length || 0,
         enAttente: data?.filter(c => c.statut_wms === "En attente de réappro").length || 0,
@@ -92,15 +110,43 @@ export default function Commandes() {
       }
     });
   };
+  const handleSyncSendCloud = async () => {
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sendcloud-sync-all');
+      if (error) throw error;
+      toast.success("Synchronisation SendCloud terminée avec succès");
+      fetchStats();
+    } catch (error: any) {
+      toast.error("Erreur lors de la synchronisation: " + error.message);
+      console.error(error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleExportCSV = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from("commande").select("*").order("date_creation", {
+      let query = supabase.from("commande").select("*").order("date_creation", {
         ascending: false
       });
+      
+      // Filter by client_id if user is a client
+      if (userRole === 'client' && user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        
+        if (profileData?.client_id) {
+          query = query.eq("client_id", profileData.client_id);
+        }
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
+      
       const csv = Papa.unparse(data || []);
       const blob = new Blob([csv], {
         type: "text/csv;charset=utf-8;"
@@ -128,10 +174,22 @@ export default function Commandes() {
           </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate("/integrations/sendcloud-sync")}>
-              <Activity className="mr-2 h-4 w-4" />
-              Monitoring SendCloud
-            </Button>
+            {userRole !== 'client' && (
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={handleSyncSendCloud}
+                  disabled={isSyncing}
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                  Synchroniser SendCloud
+                </Button>
+                <Button variant="outline" onClick={() => navigate("/integrations/sendcloud-sync")}>
+                  <Activity className="mr-2 h-4 w-4" />
+                  Monitoring SendCloud
+                </Button>
+              </>
+            )}
             <Button variant="outline" onClick={handleExportCSV}>
               <Download className="mr-2 h-4 w-4" />
               Exporter CSV
@@ -203,19 +261,19 @@ export default function Commandes() {
           </TabsList>
 
           <TabsContent value="toutes">
-            <CommandesList onUpdate={fetchStats} />
+            <CommandesList onUpdate={fetchStats} userRole={userRole} userId={user?.id} />
           </TabsContent>
 
           <TabsContent value="en-attente">
-            <CommandesList filter="En attente de réappro" onUpdate={fetchStats} />
+            <CommandesList filter="En attente de réappro" onUpdate={fetchStats} userRole={userRole} userId={user?.id} />
           </TabsContent>
 
           <TabsContent value="prete">
-            <CommandesList filter="prete" onUpdate={fetchStats} />
+            <CommandesList filter="prete" onUpdate={fetchStats} userRole={userRole} userId={user?.id} />
           </TabsContent>
 
           <TabsContent value="en-preparation">
-            <CommandesList filter="En préparation" onUpdate={fetchStats} />
+            <CommandesList filter="En préparation" onUpdate={fetchStats} userRole={userRole} userId={user?.id} />
           </TabsContent>
         </Tabs>
       </div>

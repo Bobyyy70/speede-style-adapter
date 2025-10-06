@@ -180,10 +180,14 @@ const DEFAULT_VISIBLE_COLUMNS = ALL_COLUMNS.filter(col => col.defaultVisible).ma
 interface CommandesListProps {
   filter?: string;
   onUpdate?: () => void;
+  userRole?: string | null;
+  userId?: string;
 }
 export function CommandesList({
   filter,
-  onUpdate
+  onUpdate,
+  userRole,
+  userId
 }: CommandesListProps = {}) {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [stats, setStats] = useState<StatsData>({
@@ -243,6 +247,20 @@ export function CommandesList({
         `).order("date_creation", {
         ascending: false
       });
+      
+      // Filter by client_id if user is a client
+      if (userRole === 'client' && userId) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", userId)
+          .single();
+        
+        if (profileData?.client_id) {
+          query = query.eq("client_id", profileData.client_id);
+        }
+      }
+      
       if (selectedStatut !== "all") {
         query = query.eq("statut_wms", selectedStatut);
       }

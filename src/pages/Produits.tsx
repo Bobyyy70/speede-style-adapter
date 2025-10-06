@@ -13,21 +13,38 @@ import { FicheProduitDialog } from "@/components/FicheProduitDialog";
 import { ProduitsKanban } from "@/components/ProduitsKanban";
 import { GestionConsommables } from "@/components/GestionConsommables";
 import { ImportCSVDialog } from "@/components/ImportCSVDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 const Produits = () => {
+  const { user, userRole } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [selectedProduitId, setSelectedProduitId] = useState<string | null>(null);
 
   const { data: produits = [], isLoading, refetch } = useQuery({
-    queryKey: ["produits"],
+    queryKey: ["produits", userRole, user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("produit")
         .select("*")
-        .eq("statut_actif", true)
-        .order("reference");
+        .eq("statut_actif", true);
       
+      // Filter by client_id if user is a client
+      if (userRole === 'client' && user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        
+        if (profileData?.client_id) {
+          query = query.eq("client_id", profileData.client_id);
+        }
+      }
+      
+      query = query.order("reference");
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },

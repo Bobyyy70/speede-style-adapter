@@ -11,22 +11,39 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Retours() {
+  const { user, userRole } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
 
   const { data: retours, isLoading, refetch } = useQuery({
-    queryKey: ["retours-produit"],
+    queryKey: ["retours-produit", userRole, user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("retour_produit")
         .select(`
           *,
           lignes:ligne_retour_produit(*)
-        `)
-        .order("date_creation", { ascending: false });
+        `);
       
+      // Filter by client_id if user is a client
+      if (userRole === 'client' && user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        
+        if (profileData?.client_id) {
+          query = query.eq("client_id", profileData.client_id);
+        }
+      }
+      
+      query = query.order("date_creation", { ascending: false });
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
