@@ -22,6 +22,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Function to get viewing client ID from URL or localStorage (defined outside component)
+const getViewingClientId = (): string | null => {
+  const params = new URLSearchParams(window.location.search);
+  const urlClientId = params.get("asClient");
+  if (urlClientId) return urlClientId;
+  
+  return localStorage.getItem("viewingAsClient");
+};
+
+// Check if currently viewing as client (defined outside component)
+const isViewingAsClient = (): boolean => {
+  return getViewingClientId() !== null;
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -29,20 +43,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-
-  // Function to get viewing client ID from URL or localStorage
-  const getViewingClientId = (): string | null => {
-    const params = new URLSearchParams(window.location.search);
-    const urlClientId = params.get("asClient");
-    if (urlClientId) return urlClientId;
-    
-    return localStorage.getItem("viewingAsClient");
-  };
-
-  // Check if currently viewing as client
-  const isViewingAsClient = (): boolean => {
-    return getViewingClientId() !== null;
-  };
 
   // Fetch user role
   const fetchUserRole = async (userId: string) => {
