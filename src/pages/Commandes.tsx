@@ -16,7 +16,7 @@ import { RefreshCw } from "lucide-react";
 
 export default function Commandes() {
   const navigate = useNavigate();
-  const { user, userRole } = useAuth();
+  const { user, userRole, getViewingClientId } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
@@ -34,8 +34,11 @@ export default function Commandes() {
     try {
       let query = supabase.from("commande").select("statut_wms");
       
-      // Filter by client_id if user is a client
-      if (userRole === 'client' && user) {
+      // Filter by client_id if viewing as client or if user is a client
+      const viewingClientId = getViewingClientId();
+      if (viewingClientId) {
+        query = query.eq("client_id", viewingClientId);
+      } else if (userRole === 'client' && user) {
         const { data: profileData } = await supabase
           .from("profiles")
           .select("client_id")
@@ -131,8 +134,11 @@ export default function Commandes() {
         ascending: false
       });
       
-      // Filter by client_id if user is a client
-      if (userRole === 'client' && user) {
+      // Filter by client_id if viewing as client or if user is a client
+      const viewingClientId = getViewingClientId();
+      if (viewingClientId) {
+        query = query.eq("client_id", viewingClientId);
+      } else if (userRole === 'client' && user) {
         const { data: profileData } = await supabase
           .from("profiles")
           .select("client_id")
@@ -261,19 +267,19 @@ export default function Commandes() {
           </TabsList>
 
           <TabsContent value="toutes">
-            <CommandesList onUpdate={fetchStats} userRole={userRole} userId={user?.id} />
+            <CommandesList onUpdate={fetchStats} userRole={userRole} userId={user?.id} viewingClientId={getViewingClientId()} />
           </TabsContent>
 
           <TabsContent value="en-attente">
-            <CommandesList filter="En attente de réappro" onUpdate={fetchStats} userRole={userRole} userId={user?.id} />
+            <CommandesList filter="En attente de réappro" onUpdate={fetchStats} userRole={userRole} userId={user?.id} viewingClientId={getViewingClientId()} />
           </TabsContent>
 
           <TabsContent value="prete">
-            <CommandesList filter="prete" onUpdate={fetchStats} userRole={userRole} userId={user?.id} />
+            <CommandesList filter="prete" onUpdate={fetchStats} userRole={userRole} userId={user?.id} viewingClientId={getViewingClientId()} />
           </TabsContent>
 
           <TabsContent value="en-preparation">
-            <CommandesList filter="En préparation" onUpdate={fetchStats} userRole={userRole} userId={user?.id} />
+            <CommandesList filter="En préparation" onUpdate={fetchStats} userRole={userRole} userId={user?.id} viewingClientId={getViewingClientId()} />
           </TabsContent>
         </Tabs>
       </div>

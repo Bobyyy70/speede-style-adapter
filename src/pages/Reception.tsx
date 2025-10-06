@@ -10,18 +10,21 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 
 export default function Reception() {
-  const { user, userRole } = useAuth();
+  const { user, userRole, getViewingClientId } = useAuth();
   const navigate = useNavigate();
 
   const { data: attendus = [], isLoading } = useQuery({
-    queryKey: ["attendu-reception", userRole, user?.id],
+    queryKey: ["attendu-reception", userRole, user?.id, getViewingClientId()],
     queryFn: async () => {
       let query = supabase
         .from("attendu_reception")
         .select("*");
       
-      // Filter by client_id if user is a client
-      if (userRole === 'client' && user) {
+      // Filter by client_id if viewing as client or if user is a client
+      const viewingClientId = getViewingClientId();
+      if (viewingClientId) {
+        query = query.eq("client_id", viewingClientId);
+      } else if (userRole === 'client' && user) {
         const { data: profileData } = await supabase
           .from("profiles")
           .select("client_id")

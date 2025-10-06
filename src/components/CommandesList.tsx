@@ -182,12 +182,14 @@ interface CommandesListProps {
   onUpdate?: () => void;
   userRole?: string | null;
   userId?: string;
+  viewingClientId?: string | null;
 }
 export function CommandesList({
   filter,
   onUpdate,
   userRole,
-  userId
+  userId,
+  viewingClientId
 }: CommandesListProps = {}) {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [stats, setStats] = useState<StatsData>({
@@ -248,8 +250,10 @@ export function CommandesList({
         ascending: false
       });
       
-      // Filter by client_id if user is a client
-      if (userRole === 'client' && userId) {
+      // Filter by client_id if viewing as client or if user is a client
+      if (viewingClientId) {
+        query = query.eq("client_id", viewingClientId);
+      } else if (userRole === 'client' && userId) {
         const { data: profileData } = await supabase
           .from("profiles")
           .select("client_id")

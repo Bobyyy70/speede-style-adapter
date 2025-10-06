@@ -16,21 +16,24 @@ import { ImportCSVDialog } from "@/components/ImportCSVDialog";
 import { useAuth } from "@/hooks/useAuth";
 
 const Produits = () => {
-  const { user, userRole } = useAuth();
+  const { user, userRole, getViewingClientId } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [selectedProduitId, setSelectedProduitId] = useState<string | null>(null);
 
   const { data: produits = [], isLoading, refetch } = useQuery({
-    queryKey: ["produits", userRole, user?.id],
+    queryKey: ["produits", userRole, user?.id, getViewingClientId()],
     queryFn: async () => {
       let query = supabase
         .from("produit")
         .select("*")
         .eq("statut_actif", true);
       
-      // Filter by client_id if user is a client
-      if (userRole === 'client' && user) {
+      // Filter by client_id if viewing as client or if user is a client
+      const viewingClientId = getViewingClientId();
+      if (viewingClientId) {
+        query = query.eq("client_id", viewingClientId);
+      } else if (userRole === 'client' && user) {
         const { data: profileData } = await supabase
           .from("profiles")
           .select("client_id")

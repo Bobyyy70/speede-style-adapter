@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useBreadcrumbs } from "@/hooks/useBreadcrumbs";
 import { useGlobalSearch } from "@/hooks/useGlobalSearch";
+import { AdminBanner } from "./AdminBanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -169,7 +170,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [clientList, setClientList] = useState<{ id: string; nom_entreprise: string }[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, userRole, signOut } = useAuth();
+  const { user, userRole, signOut, isViewingAsClient } = useAuth();
   const breadcrumbs = useBreadcrumbs();
   const { results: searchResults, isLoading: searchLoading } = useGlobalSearch(searchQuery);
   
@@ -239,6 +240,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Admin Banner if viewing as client */}
+      {isViewingAsClient() && <AdminBanner />}
+
       {/* Sidebar */}
       <aside
         className={cn(
@@ -357,7 +361,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         )}
       >
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-card border-b border-border">
+        <header className={`sticky z-40 bg-card border-b border-border ${isViewingAsClient() ? 'top-[48px]' : 'top-0'}`}>
           <div className="flex h-16 items-center justify-between px-6">
             <div className="flex items-center flex-1 gap-4 max-w-md">
               <Popover open={searchOpen} onOpenChange={setSearchOpen}>

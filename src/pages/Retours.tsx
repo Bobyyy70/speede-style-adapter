@@ -14,12 +14,12 @@ import { fr } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Retours() {
-  const { user, userRole } = useAuth();
+  const { user, userRole, getViewingClientId } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
 
   const { data: retours, isLoading, refetch } = useQuery({
-    queryKey: ["retours-produit", userRole, user?.id],
+    queryKey: ["retours-produit", userRole, user?.id, getViewingClientId()],
     queryFn: async () => {
       let query = supabase
         .from("retour_produit")
@@ -28,8 +28,11 @@ export default function Retours() {
           lignes:ligne_retour_produit(*)
         `);
       
-      // Filter by client_id if user is a client
-      if (userRole === 'client' && user) {
+      // Filter by client_id if viewing as client or if user is a client
+      const viewingClientId = getViewingClientId();
+      if (viewingClientId) {
+        query = query.eq("client_id", viewingClientId);
+      } else if (userRole === 'client' && user) {
         const { data: profileData } = await supabase
           .from("profiles")
           .select("client_id")

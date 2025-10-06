@@ -10,11 +10,14 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   userRole: AppRole | null;
+  viewingClientId: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, nomComplet: string) => Promise<void>;
   signOut: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
+  isViewingAsClient: () => boolean;
+  getViewingClientId: () => string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,8 +26,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
+  const [viewingClientId, setViewingClientId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  // Function to get viewing client ID from URL or localStorage
+  const getViewingClientId = (): string | null => {
+    const params = new URLSearchParams(window.location.search);
+    const urlClientId = params.get("asClient");
+    if (urlClientId) return urlClientId;
+    
+    return localStorage.getItem("viewingAsClient");
+  };
+
+  // Check if currently viewing as client
+  const isViewingAsClient = (): boolean => {
+    return getViewingClientId() !== null;
+  };
 
   // Fetch user role
   const fetchUserRole = async (userId: string) => {
@@ -46,6 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Update viewingClientId whenever URL changes
+    setViewingClientId(getViewingClientId());
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -186,11 +207,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         session,
         userRole,
+        viewingClientId,
         loading,
         signIn,
         signUp,
         signOut,
         hasRole,
+        isViewingAsClient,
+        getViewingClientId,
       }}
     >
       {children}

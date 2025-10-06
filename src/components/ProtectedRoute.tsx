@@ -25,9 +25,9 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
   if (allowedRoles && userRole) {
     const isAllowedDirect = allowedRoles.includes(userRole);
-    const isAdminAccessingClientArea = allowedRoles.includes('client') && (userRole === 'admin' || userRole === 'gestionnaire');
+    const isAdminViewingAsClient = allowedRoles.includes('client') && userRole === 'admin' && window.location.search.includes('asClient=');
 
-    if (!isAllowedDirect && !isAdminAccessingClientArea) {
+    if (!isAllowedDirect && !isAdminViewingAsClient) {
       return (
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center space-y-4">
