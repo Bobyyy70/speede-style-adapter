@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ interface AttenduReception {
 const AttenduReception = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [attendus, setAttendus] = useState<AttenduReception[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -50,18 +52,25 @@ const AttenduReception = () => {
     if (user) {
       fetchAttendus();
     }
-  }, [user]);
+  }, [user, searchParams]);
 
   const fetchAttendus = async () => {
     try {
       setLoading(true);
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user?.id)
-        .single();
+      
+      const asClient = searchParams.get("asClient");
+      let clientId = asClient;
 
-      if (!profile?.client_id) {
+      if (!asClient) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user?.id)
+          .single();
+        clientId = profile?.client_id;
+      }
+
+      if (!clientId) {
         toast({
           title: "Erreur",
           description: "Client non trouvé",
@@ -73,7 +82,7 @@ const AttenduReception = () => {
       const { data, error } = await supabase
         .from("attendu_reception")
         .select("*")
-        .eq("client_id", profile.client_id)
+        .eq("client_id", clientId)
         .order("date_creation", { ascending: false });
 
       if (error) throw error;
@@ -92,13 +101,19 @@ const AttenduReception = () => {
   const handleCreateAttendu = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user?.id)
-        .single();
+      const asClient = searchParams.get("asClient");
+      let clientId = asClient;
 
-      if (!profile?.client_id) {
+      if (!asClient) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user?.id)
+          .single();
+        clientId = profile?.client_id;
+      }
+
+      if (!clientId) {
         toast({
           title: "Erreur",
           description: "Client non trouvé",
@@ -109,7 +124,7 @@ const AttenduReception = () => {
 
       const { error } = await supabase.from("attendu_reception").insert([{
         numero_attendu: null as any,
-        client_id: profile.client_id,
+        client_id: clientId,
         ...formData,
         created_by: user?.id,
       }]);

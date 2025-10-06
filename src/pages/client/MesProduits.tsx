@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -19,29 +20,36 @@ interface Produit {
 
 export default function MesProduits() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [produits, setProduits] = useState<Produit[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchProduits();
-  }, [user]);
+  }, [user, searchParams]);
 
   const fetchProduits = async () => {
     try {
       if (!user) return;
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+      const asClient = searchParams.get("asClient");
+      let clientId = asClient;
 
-      if (!profile?.client_id) return;
+      if (!asClient) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        clientId = profile?.client_id;
+      }
+
+      if (!clientId) return;
 
       const { data, error } = await supabase
         .from("produit")
         .select("*")
-        .eq("client_id", profile.client_id)
+        .eq("client_id", clientId)
         .eq("statut_actif", true)
         .order("nom");
 

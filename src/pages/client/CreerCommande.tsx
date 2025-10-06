@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Plus, Trash2, Upload } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 interface LigneCommande {
   produit_id: string;
@@ -34,6 +34,7 @@ const CreerCommande = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [produits, setProduits] = useState<Produit[]>([]);
   const [lignes, setLignes] = useState<LigneCommande[]>([]);
   const [labelFile, setLabelFile] = useState<File | null>(null);
@@ -58,22 +59,28 @@ const CreerCommande = () => {
     if (user) {
       fetchProduits();
     }
-  }, [user]);
+  }, [user, searchParams]);
 
   const fetchProduits = async () => {
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user?.id)
-        .single();
+      const asClient = searchParams.get("asClient");
+      let clientId = asClient;
 
-      if (!profile?.client_id) return;
+      if (!asClient) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user?.id)
+          .single();
+        clientId = profile?.client_id;
+      }
+
+      if (!clientId) return;
 
       const { data, error } = await supabase
         .from("produit")
         .select("id, reference, nom, prix_unitaire, stock_actuel, poids_unitaire")
-        .eq("client_id", profile.client_id)
+        .eq("client_id", clientId)
         .eq("statut_actif", true)
         .order("nom");
 
@@ -179,13 +186,19 @@ const CreerCommande = () => {
     }
 
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user?.id)
-        .single();
+      const asClient = searchParams.get("asClient");
+      let clientId = asClient;
 
-      if (!profile?.client_id) {
+      if (!asClient) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user?.id)
+          .single();
+        clientId = profile?.client_id;
+      }
+
+      if (!clientId) {
         toast({
           title: "Erreur",
           description: "Client non trouvé",
@@ -204,7 +217,7 @@ const CreerCommande = () => {
       const { data: commande, error: commandeError } = await supabase
         .from("commande")
         .insert({
-          client_id: profile.client_id,
+          client_id: clientId,
           numero_commande: `CMD-${Date.now()}`,
           source: "manuel",
           statut_wms: "En attente de réappro",
