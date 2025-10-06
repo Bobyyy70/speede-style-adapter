@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -22,7 +22,28 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
   const [nomComplet, setNomComplet] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<AppRole>('client');
+  const [clientId, setClientId] = useState<string>("");
+  const [clients, setClients] = useState<Array<{ id: string; nom_entreprise: string }>>([]);
   const [loading, setLoading] = useState(false);
+
+  // Charger les clients quand le dialog s'ouvre
+  useEffect(() => {
+    if (open) {
+      fetchClients();
+    }
+  }, [open]);
+
+  const fetchClients = async () => {
+    const { data, error } = await supabase
+      .from("client")
+      .select("id, nom_entreprise")
+      .eq("actif", true)
+      .order("nom_entreprise");
+
+    if (!error && data) {
+      setClients(data);
+    }
+  };
 
   const handleInvite = async () => {
     if (!email || !nomComplet || !password) {
@@ -30,38 +51,44 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       return;
     }
 
+    if (role === "client" && !clientId) {
+      toast.error("Veuillez sélectionner un client");
+      return;
+    }
+
     setLoading(true);
     try {
-      // Créer l'utilisateur via l'API Supabase auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Créer l'utilisateur via l'API admin
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email,
         password,
-        options: {
-          data: {
-            nom_complet: nomComplet
-          },
-          emailRedirectTo: `${window.location.origin}/`
+        email_confirm: true,
+        user_metadata: {
+          nom_complet: nomComplet
         }
       });
 
       if (authError) throw authError;
       if (!authData.user) throw new Error("Erreur lors de la création de l'utilisateur");
 
-      // Le trigger PostgreSQL va créer automatiquement le profil et assigner le rôle par défaut
-      // Mais on veut assigner le rôle choisi, donc on attend un peu puis on update
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Assigner le rôle
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: authData.user.id,
+          role: role
+        });
 
-      // Mettre à jour le rôle si différent du défaut
-      if (role !== 'client') {
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .update({ role: role })
-          .eq('user_id', authData.user.id);
+      if (roleError) throw roleError;
 
-        if (roleError) {
-          console.error('Erreur lors de l\'assignation du rôle:', roleError);
-          // On continue quand même car l'utilisateur est créé
-        }
+      // Si c'est un client, assigner le client_id au profil
+      if (role === "client" && clientId) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({ client_id: clientId })
+          .eq("id", authData.user.id);
+
+        if (profileError) throw profileError;
       }
 
       toast.success(`Utilisateur ${email} créé avec succès`);
@@ -69,6 +96,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       setNomComplet("");
       setPassword("");
       setRole('client');
+      setClientId("");
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -151,6 +179,30 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
               </SelectContent>
             </Select>
           </div>
+
+          {role === "client" && (
+            <div className="space-y-2">
+              <Label htmlFor="client">Client associé *</Label>
+              <Select value={clientId} onValueChange={setClientId}>
+                <SelectTrigger id="client">
+                  <SelectValue placeholder="Sélectionner un client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.length === 0 ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      Aucun client disponible
+                    </div>
+                  ) : (
+                    clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.nom_entreprise}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
