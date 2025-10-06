@@ -16,7 +16,7 @@ import { ImportCSVDialog } from "@/components/ImportCSVDialog";
 import { useAuth } from "@/hooks/useAuth";
 
 const Produits = () => {
-  const { user, userRole, getViewingClientId } = useAuth();
+  const { user, userRole, getViewingClientId, isViewingAsClient } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [selectedProduitId, setSelectedProduitId] = useState<string | null>(null);
@@ -161,7 +161,7 @@ const Produits = () => {
                     <CardDescription>Liste des références en stock</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <ImportCSVDialog onSuccess={() => refetch()} />
+                    {userRole !== 'client' && !isViewingAsClient() && <ImportCSVDialog onSuccess={() => refetch()} />}
                     <Button
                       variant={viewMode === "list" ? "default" : "outline"}
                       size="sm"

@@ -243,6 +243,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const getRoleBadgeVariant = (role: string | null) => {
+    // Si admin en mode Vue Client, afficher comme client
+    if (isViewingAsClient()) {
+      return "outline" as const;
+    }
+    
     switch (role) {
       case "admin":
         return "destructive" as const;
@@ -258,6 +263,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const getRoleLabel = (role: string | null) => {
+    // Si admin en mode Vue Client, afficher "Client"
+    if (isViewingAsClient()) {
+      return "Client";
+    }
+    
     switch (role) {
       case "admin":
         return "Administrateur";

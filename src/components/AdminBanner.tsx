@@ -1,5 +1,6 @@
-import { X } from "lucide-react";
+import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
@@ -44,24 +45,24 @@ export function AdminBanner() {
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg">
-      <div className="container mx-auto px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🔍</span>
-          <span className="font-medium">
-            Mode Vue Client : <span className="font-bold">{clientName}</span>
-          </span>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleExitViewMode}
-          className="text-white hover:bg-orange-700 hover:text-white"
-        >
-          <X className="mr-2 h-4 w-4" />
-          Retour à mon espace Admin
-        </Button>
+    <TooltipProvider>
+      <div className="fixed bottom-4 right-4 z-50">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={handleExitViewMode}
+              size="icon"
+              className="h-12 w-12 rounded-full shadow-lg bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              <Eye className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left" className="max-w-xs">
+            <p className="font-semibold">Vue Client: {clientName}</p>
+            <p className="text-xs text-muted-foreground">Cliquer pour revenir à l'espace admin</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

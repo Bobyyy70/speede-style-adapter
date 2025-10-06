@@ -16,7 +16,7 @@ import { RefreshCw } from "lucide-react";
 
 export default function Commandes() {
   const navigate = useNavigate();
-  const { user, userRole, getViewingClientId } = useAuth();
+  const { user, userRole, getViewingClientId, isViewingAsClient } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedClientFilter, setSelectedClientFilter] = useState<string | null>(null);
   const [clientList, setClientList] = useState<{ id: string; nom_entreprise: string }[]>([]);
@@ -212,7 +212,7 @@ export default function Commandes() {
                 ))}
               </select>
             )}
-            {userRole !== 'client' && (
+            {userRole !== 'client' && !isViewingAsClient() && (
               <>
                 <Button 
                   variant="outline" 

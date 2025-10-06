@@ -612,7 +612,22 @@ const Parametres = () => {
         <div className="flex gap-4 flex-1 min-h-0">
           {/* Navigation verticale */}
           <nav className="w-56 bg-card border rounded-lg p-3 flex flex-col gap-2">
-            {mainTabs.map(tab => {})}
+            {mainTabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-3 p-6 rounded-lg transition-all min-h-[120px]",
+                  "hover:bg-accent hover:text-accent-foreground",
+                  activeTab === tab.id
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-transparent"
+                )}
+              >
+                <tab.icon className="h-10 w-10" />
+                <span className="text-base font-semibold text-center">{tab.label}</span>
+              </button>
+            ))}
             
             {/* Séparateur visuel */}
             <div className="border-t my-2" />
