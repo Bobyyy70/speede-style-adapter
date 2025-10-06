@@ -76,25 +76,11 @@ type NavigationItem = {
         { label: 'Tableau de Bord', icon: LayoutDashboard, path: '/' },
         { label: 'Commandes', icon: Package, path: '/commandes' },
         { label: 'Réceptions', icon: TruckIcon, path: '/reception' },
-        { label: 'Préparation', icon: ClipboardList, path: '/preparation' },
-        { label: 'Expédition', icon: Send, path: '/expedition' },
         { label: 'Retours', icon: RotateCcw, path: '/retours' },
         { label: 'Produits', icon: Boxes, path: '/produits' },
-        { label: 'Emplacements', icon: MapPin, path: '/emplacements' },
         { label: 'Mouvements', icon: Activity, path: '/mouvements' },
-        { label: 'Réappro', icon: RefreshCw, path: '/reappro' },
-        { label: 'Bacs & Adresses', icon: Box, path: '/bacs-adresses' },
-        { label: 'Gestion Clients', icon: Users, path: '/gestion-clients' },
-        { label: 'Transporteurs', icon: Truck, path: '/transporteurs' },
-        { label: 'Services', icon: Settings, path: '/services-logistiques' },
-        { label: 'Workflows', icon: Workflow, path: '/workflows' },
-        { label: 'Facturation', icon: DollarSign, path: '/facturation' },
-        { label: 'Utilisateurs', icon: UserCog, path: '/utilisateurs' },
-        { label: 'Connecteurs', icon: Plug, path: '/connecteurs' },
-        { label: 'SendCloud', icon: Cloud, path: '/sendcloud-sync' },
         { label: 'Import/Export', icon: FileSpreadsheet, path: '/import-export' },
-        { label: 'Notifications', icon: Bell, path: '/notifications' },
-        { label: 'Chatbot IA', icon: MessageSquare, path: '/chatbot-ia' },
+        { label: 'Connecteurs', icon: Plug, path: '/connecteurs' },
         { label: 'Paramètres', icon: Settings, path: '/parametres' },
       ];
     }
@@ -104,34 +90,10 @@ type NavigationItem = {
         { label: 'Tableau de Bord', icon: LayoutDashboard, path: '/' },
         { label: 'Commandes', icon: Package, path: '/commandes' },
         { label: 'Réception', icon: TruckIcon, path: '/reception' },
-        { label: 'Préparation', icon: ClipboardList, path: '/preparation' },
         { label: 'Picking Mobile', icon: Smartphone, path: '/picking-mobile' },
-        { label: 'Expédition', icon: Send, path: '/expedition' },
         { label: 'Retours', icon: RotateCcw, path: '/retours' },
         { label: 'Produits', icon: Boxes, path: '/produits' },
-        { label: 'Emplacements', icon: MapPin, path: '/emplacements' },
         { label: 'Mouvements', icon: Activity, path: '/mouvements' },
-        { label: 'Réappro', icon: RefreshCw, path: '/reappro' },
-      ];
-    }
-    
-    if (role === 'gestionnaire') {
-      return [
-        { label: 'Tableau de Bord', icon: LayoutDashboard, path: '/' },
-        { label: 'Commandes', icon: Package, path: '/commandes' },
-        { label: 'Réceptions', icon: TruckIcon, path: '/reception' },
-        { label: 'Préparation', icon: ClipboardList, path: '/preparation' },
-        { label: 'Expédition', icon: Send, path: '/expedition' },
-        { label: 'Retours', icon: RotateCcw, path: '/retours' },
-        { label: 'Produits', icon: Boxes, path: '/produits' },
-        { label: 'Emplacements', icon: MapPin, path: '/emplacements' },
-        { label: 'Mouvements', icon: Activity, path: '/mouvements' },
-        { label: 'Réappro', icon: RefreshCw, path: '/reappro' },
-        { label: 'Gestion Clients', icon: Users, path: '/gestion-clients' },
-        { label: 'Workflows', icon: Workflow, path: '/workflows' },
-        { label: 'Facturation', icon: DollarSign, path: '/facturation' },
-        { label: 'Notifications', icon: Bell, path: '/notifications' },
-        { label: 'Chatbot IA', icon: MessageSquare, path: '/chatbot-ia' },
       ];
     }
     

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Download, Package, Clock, CheckCircle2, TrendingUp, Activity } from "lucide-react";
+import { Upload, Download, Package, Clock, CheckCircle2, TrendingUp, Activity, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { useAutoRules } from "@/hooks/useAutoRules";
@@ -119,6 +119,31 @@ export default function Commandes() {
       console.error(error);
     }
   };
+
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncSendCloud = async () => {
+    setIsSyncing(true);
+    try {
+      toast.loading("Synchronisation SendCloud en cours...", { id: 'sync-sendcloud' });
+      
+      const { data, error } = await supabase.functions.invoke('sendcloud-sync-all');
+      
+      if (error) throw error;
+      
+      toast.success(
+        `Synchronisation terminée: ${data.processed} nouvelles commandes, ${data.existing} existantes, ${data.errors} erreurs`,
+        { id: 'sync-sendcloud', duration: 5000 }
+      );
+      
+      await fetchStats();
+    } catch (error: any) {
+      toast.error(`Erreur synchronisation: ${error.message}`, { id: 'sync-sendcloud' });
+      console.error(error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
   return <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -128,9 +153,13 @@ export default function Commandes() {
           </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate("/integrations/sendcloud-sync")}>
-              <Activity className="mr-2 h-4 w-4" />
-              Monitoring SendCloud
+            <Button 
+              variant="outline" 
+              onClick={handleSyncSendCloud}
+              disabled={isSyncing}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              Synchroniser SendCloud
             </Button>
             <Button variant="outline" onClick={handleExportCSV}>
               <Download className="mr-2 h-4 w-4" />
