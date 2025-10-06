@@ -1,8 +1,11 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plug } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Connecteurs() {
+  const { userRole } = useAuth();
+  
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -13,7 +16,7 @@ export default function Connecteurs() {
           <div>
             <h1 className="text-3xl font-bold">Connecteurs</h1>
             <p className="text-muted-foreground">
-              Gestion des intégrations et connecteurs externes
+              {userRole === 'client' ? 'Consultez les intégrations disponibles' : 'Gestion des intégrations et connecteurs externes'}
             </p>
           </div>
         </div>
@@ -22,7 +25,7 @@ export default function Connecteurs() {
           <CardHeader>
             <CardTitle>Connecteurs Disponibles</CardTitle>
             <CardDescription>
-              Intégrations avec des systèmes tiers
+              {userRole === 'client' ? 'Intégrations configurées pour votre compte' : 'Intégrations avec des systèmes tiers'}
             </CardDescription>
           </CardHeader>
           <CardContent>

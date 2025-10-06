@@ -70,7 +70,7 @@ const App = () => (
             <Route
               path="/stock/mouvements"
               element={
-                <ProtectedRoute allowedRoles={['admin', 'operateur']}>
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'client']}>
                   <Mouvements />
                 </ProtectedRoute>
               }
@@ -94,7 +94,7 @@ const App = () => (
             <Route
               path="/stock/produits"
               element={
-                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire', 'client']}>
                   <Produits />
                 </ProtectedRoute>
               }
@@ -142,7 +142,7 @@ const App = () => (
             <Route
               path="/commandes/retours"
               element={
-                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
                   <Retours />
                 </ProtectedRoute>
               }
@@ -150,7 +150,7 @@ const App = () => (
             <Route
               path="/integrations/transporteurs"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute allowedRoles={['admin', 'client']}>
                   <Transporteurs />
                 </ProtectedRoute>
               }
@@ -158,7 +158,7 @@ const App = () => (
             <Route
               path="/integrations/connecteurs"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute allowedRoles={['admin', 'client']}>
                   <Connecteurs />
                 </ProtectedRoute>
               }
@@ -182,7 +182,7 @@ const App = () => (
             <Route
               path="/parametres"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute allowedRoles={['admin', 'client']}>
                   <Parametres />
                 </ProtectedRoute>
               }
@@ -198,7 +198,7 @@ const App = () => (
             <Route
               path="/gestion-donnees/import-export"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute allowedRoles={['admin', 'client']}>
                   <ImportExport />
                 </ProtectedRoute>
               }

@@ -17,6 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ValidationResult {
   valid: any[];
@@ -34,6 +35,7 @@ interface ImportReport {
 
 const Parametres = () => {
   const { toast } = useToast();
+  const { userRole, user } = useAuth();
   const [activeTab, setActiveTab] = useState<"general" | "users" | "notifications" | "import-export" | "data" | "statistics" | "client-view">("general");
   const [importType, setImportType] = useState<"produits" | "commandes" | "emplacements">("produits");
   const [csvData, setCsvData] = useState<any[]>([]);
@@ -47,10 +49,14 @@ const Parametres = () => {
 
   const mainTabs = [
     { id: "general" as const, label: "Général", icon: Settings },
-    { id: "users" as const, label: "Utilisateurs", icon: Users },
-    { id: "notifications" as const, label: "Notifications", icon: BellDot },
+    ...(userRole === 'admin' ? [
+      { id: "users" as const, label: "Utilisateurs", icon: Users },
+      { id: "notifications" as const, label: "Notifications", icon: BellDot },
+    ] : []),
     { id: "import-export" as const, label: "Import/Export", icon: Database },
-    { id: "data" as const, label: "Données", icon: Server },
+    ...(userRole === 'admin' ? [
+      { id: "data" as const, label: "Données", icon: Server },
+    ] : []),
   ];
 
   const statisticsTab = { id: "statistics" as const, label: "Statistiques", icon: TrendingUp };
@@ -348,32 +354,61 @@ const Parametres = () => {
       let data: any[] = [];
       let filename = "";
 
+      // Get client_id if user is client
+      const userClientId = userRole === 'client' && user ? 
+        (await supabase.from("profiles").select("client_id").eq("id", user.id).single()).data?.client_id : 
+        null;
+
       if (type === "stock") {
-        const { data: produits, error } = await supabase
+        let query = supabase
           .from("produit")
           .select("reference, nom, stock_actuel, stock_minimum, prix_unitaire")
           .order("reference");
         
+        if (userClientId) {
+          query = query.eq("client_id", userClientId);
+        }
+        
+        const { data: produits, error } = await query;
         if (error) throw error;
         data = produits || [];
         filename = "export_stock.csv";
       } else if (type === "commandes") {
-        const { data: commandes, error } = await supabase
+        let query = supabase
           .from("commande")
           .select("numero_commande, nom_client, statut_wms, date_creation, valeur_totale")
           .order("date_creation", { ascending: false })
           .limit(1000);
         
+        if (userClientId) {
+          query = query.eq("client_id", userClientId);
+        }
+        
+        const { data: commandes, error } = await query;
         if (error) throw error;
         data = commandes || [];
         filename = "export_commandes.csv";
       } else if (type === "mouvements") {
-        const { data: mouvements, error } = await supabase
+        let query = supabase
           .from("mouvement_stock")
           .select("numero_mouvement, type_mouvement, quantite, date_mouvement")
           .order("date_mouvement", { ascending: false })
           .limit(1000);
         
+        // Filter mouvements by client's products
+        if (userClientId) {
+          const { data: clientProducts } = await supabase
+            .from("produit")
+            .select("id")
+            .eq("client_id", userClientId);
+          
+          const productIds = clientProducts?.map(p => p.id) || [];
+          if (productIds.length > 0) {
+            query = query.in("produit_id", productIds);
+          }
+        }
+        
+        const { data: mouvements, error } = await query;
         if (error) throw error;
         data = mouvements || [];
         filename = "export_mouvements.csv";

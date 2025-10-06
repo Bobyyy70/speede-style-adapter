@@ -170,9 +170,9 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
     return [
       { name: "Tableau de Bord", href: "/", icon: LayoutDashboard },
       { name: "Commandes", href: "/commandes", icon: ClipboardList },
-      { name: "Retours", href: "/retours", icon: Undo2 },
-      { name: "Produits", href: "/produits", icon: Boxes },
-      { name: "Stock", href: "/produits", icon: Warehouse },
+      { name: "Retours", href: "/commandes/retours", icon: Undo2 },
+      { name: "Produits", href: "/stock/produits", icon: Boxes },
+      { name: "Stock", href: "/stock/produits", icon: Warehouse },
       { name: "Réception", href: "/client/attendu-reception", icon: PackageOpen },
       { name: "Mouvements", href: "/stock/mouvements", icon: ArrowRightLeft },
       { 

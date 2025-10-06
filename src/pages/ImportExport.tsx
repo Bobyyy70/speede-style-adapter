@@ -8,9 +8,11 @@ import { useState } from "react";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const ImportExport = () => {
   const { toast } = useToast();
+  const { userRole, user, getViewingClientId } = useAuth();
   const [importType, setImportType] = useState<"produits" | "commandes" | "emplacements">("produits");
   const [exporting, setExporting] = useState(false);
 
@@ -20,20 +22,39 @@ const ImportExport = () => {
       let data: any[] = [];
       let filename = "";
 
+      // Get client_id if user is client or viewing as client
+      let clientIdToFilter: string | null = null;
+      const viewingClientId = getViewingClientId();
+      
+      if (viewingClientId) {
+        clientIdToFilter = viewingClientId;
+      } else if (userRole === 'client' && user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        clientIdToFilter = profileData?.client_id || null;
+      }
+
       switch (importType) {
         case "produits":
-          const { data: produits, error: produitsError } = await supabase
-            .from('produit')
-            .select('*');
+          let queryProduits = supabase.from('produit').select('*');
+          if (clientIdToFilter) {
+            queryProduits = queryProduits.eq("client_id", clientIdToFilter);
+          }
+          const { data: produits, error: produitsError } = await queryProduits;
           if (produitsError) throw produitsError;
           data = produits || [];
           filename = "export_produits.csv";
           break;
 
         case "commandes":
-          const { data: commandes, error: commandesError } = await supabase
-            .from('commande')
-            .select('*');
+          let queryCommandes = supabase.from('commande').select('*');
+          if (clientIdToFilter) {
+            queryCommandes = queryCommandes.eq("client_id", clientIdToFilter);
+          }
+          const { data: commandes, error: commandesError } = await queryCommandes;
           if (commandesError) throw commandesError;
           data = commandes || [];
           filename = "export_commandes.csv";
