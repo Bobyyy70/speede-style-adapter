@@ -66,35 +66,56 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
           data: {
             nom_complet: nomComplet
           },
-          emailRedirectTo: `${window.location.origin}/`
+          emailRedirectTo: `${window.location.origin}/auth`
         }
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        // Si l'utilisateur existe déjà, envoyer un email de reset password
+        if (authError.message.includes('already registered') || authError.message.includes('User already registered')) {
+          toast.info("Utilisateur déjà enregistré. Envoi d'un email de réinitialisation...");
+          const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/auth`
+          });
+          if (resetError) throw resetError;
+          toast.success(`Email de réinitialisation envoyé à ${email}`);
+          onOpenChange(false);
+          return;
+        }
+        throw authError;
+      }
       if (!authData.user) throw new Error("Erreur lors de la création de l'utilisateur");
 
       // Attendre que le trigger crée le profil
       await new Promise(resolve => setTimeout(resolve, 1000));
 
+      // Upsert le profil avec le client_id si applicable
+      const profileData: any = {
+        id: authData.user.id,
+        email,
+        nom_complet: nomComplet
+      };
+      if (role === "client" && clientId) {
+        profileData.client_id = clientId;
+      }
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert(profileData);
+
+      if (profileError) throw profileError;
+
       // Assigner le rôle
       const { error: roleError } = await supabase
         .from('user_roles')
-        .insert({
+        .upsert({
           user_id: authData.user.id,
           role: role
+        }, {
+          onConflict: 'user_id,role'
         });
 
       if (roleError) throw roleError;
-
-      // Si c'est un client, assigner le client_id au profil
-      if (role === "client" && clientId) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({ client_id: clientId })
-          .eq("id", authData.user.id);
-
-        if (profileError) throw profileError;
-      }
 
       toast.success(`Utilisateur ${email} créé avec succès`);
       setEmail("");
