@@ -1,17 +1,14 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { getClientId } from "@/lib/clientHelpers";
-import { AlertCircle, Home } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 
 interface Commande {
   id: string;
@@ -25,11 +22,9 @@ interface Commande {
 
 export default function MesCommandes() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
-  const [clientError, setClientError] = useState(false);
 
   useEffect(() => {
     fetchCommandes();
@@ -38,10 +33,20 @@ export default function MesCommandes() {
   const fetchCommandes = async () => {
     try {
       if (!user) return;
-      setLoading(true);
-      setClientError(false);
-      
-      const { clientId } = await getClientId(user, searchParams, null);
+
+      const asClient = searchParams.get('asClient');
+      let clientId: string | null = asClient;
+
+      if (!clientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        clientId = profile?.client_id || null;
+      }
+
+      if (!clientId) return;
 
       const { data, error } = await supabase
         .from("commande")
@@ -52,15 +57,12 @@ export default function MesCommandes() {
       if (error) throw error;
       setCommandes(data || []);
     } catch (error: any) {
-      if (error.message.includes("Aucun client")) {
-        setClientError(true);
-      } else {
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les commandes",
-          variant: "destructive",
-        });
-      }
+      console.error("Error fetching commandes:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les commandes",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -77,23 +79,6 @@ export default function MesCommandes() {
 
     return <Badge variant={variants[statut] || "default"}>{statut}</Badge>;
   };
-
-  if (clientError) {
-    return (
-      <DashboardLayout>
-        <div className="flex flex-col items-center justify-center h-64 space-y-4">
-          <AlertCircle className="h-12 w-12 text-muted-foreground" />
-          <p className="text-lg text-muted-foreground">
-            Aucun client sélectionné. Veuillez utiliser le menu "Vue Client" pour en choisir un.
-          </p>
-          <Button onClick={() => navigate("/")}>
-            <Home className="mr-2 h-4 w-4" />
-            Retour au tableau de bord
-          </Button>
-        </div>
-      </DashboardLayout>
-    );
-  }
 
   return (
     <DashboardLayout>
