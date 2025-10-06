@@ -1648,6 +1648,45 @@ export type Database = {
           },
         ]
       }
+      sendcloud_sync_log: {
+        Row: {
+          date_sync: string
+          details: Json | null
+          duree_ms: number | null
+          erreur_message: string | null
+          id: string
+          nb_commandes_creees: number | null
+          nb_commandes_existantes: number | null
+          nb_commandes_trouvees: number | null
+          nb_erreurs: number | null
+          statut: string
+        }
+        Insert: {
+          date_sync?: string
+          details?: Json | null
+          duree_ms?: number | null
+          erreur_message?: string | null
+          id?: string
+          nb_commandes_creees?: number | null
+          nb_commandes_existantes?: number | null
+          nb_commandes_trouvees?: number | null
+          nb_erreurs?: number | null
+          statut: string
+        }
+        Update: {
+          date_sync?: string
+          details?: Json | null
+          duree_ms?: number | null
+          erreur_message?: string | null
+          id?: string
+          nb_commandes_creees?: number | null
+          nb_commandes_existantes?: number | null
+          nb_commandes_trouvees?: number | null
+          nb_erreurs?: number | null
+          statut?: string
+        }
+        Relationships: []
+      }
       service_logistique: {
         Row: {
           actif: boolean | null
