@@ -203,7 +203,15 @@ const GestionClients = () => {
           .from('client')
           .insert([formData]);
 
-        if (error) throw error;
+        if (error) {
+          // Message plus explicite pour les erreurs RLS
+          if (error.message.includes('row-level security') || error.message.includes('block_public_insert_client')) {
+            toast.error("Vous devez avoir le rôle Administrateur pour créer des clients. Veuillez contacter votre administrateur système.");
+          } else {
+            toast.error(error.message);
+          }
+          throw error;
+        }
         toast.success("Client créé avec succès");
       }
 
@@ -213,7 +221,6 @@ const GestionClients = () => {
       fetchClients();
     } catch (error: any) {
       console.error('Erreur lors de l\'enregistrement:', error);
-      toast.error(error.message || "Erreur lors de l'enregistrement");
     }
   };
 
