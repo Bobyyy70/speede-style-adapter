@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Download, Package, Clock, CheckCircle2, TrendingUp, Activity } from "lucide-react";
+import { Upload, Download, Package, Clock, CheckCircle2, TrendingUp, Activity, Filter } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
 import Papa from "papaparse";
 import { useAutoRules } from "@/hooks/useAutoRules";
@@ -20,6 +22,11 @@ export default function Commandes() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedClientFilter, setSelectedClientFilter] = useState<string | null>(null);
   const [clientList, setClientList] = useState<{ id: string; nom_entreprise: string }[]>([]);
+  const [statusFilters, setStatusFilters] = useState<string[]>([
+    "En attente de réappro",
+    "Prêt à préparer",
+    "En préparation"
+  ]);
   const [stats, setStats] = useState({
     total: 0,
     enAttente: 0,
@@ -29,6 +36,24 @@ export default function Commandes() {
   const {
     applyAutoRules
   } = useAutoRules();
+
+  // Charger les filtres statuts depuis localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('commandes_status_filters');
+    if (saved) {
+      try {
+        setStatusFilters(JSON.parse(saved));
+      } catch (e) {
+        console.error('Erreur parsing filtres:', e);
+      }
+    }
+  }, []);
+
+  // Sauvegarder les filtres statuts dans localStorage
+  useEffect(() => {
+    localStorage.setItem('commandes_status_filters', JSON.stringify(statusFilters));
+  }, [statusFilters]);
+
   useEffect(() => {
     fetchStats();
     if (userRole === 'admin' || userRole === 'gestionnaire') {
@@ -121,18 +146,72 @@ export default function Commandes() {
           </div>
           <div className="flex gap-2">
             {(userRole === 'admin' || userRole === 'gestionnaire') && clientList.length > 0 && (
-              <select
-                className="px-3 py-2 border rounded-md"
-                value={selectedClientFilter || 'all'}
-                onChange={(e) => setSelectedClientFilter(e.target.value === 'all' ? null : e.target.value)}
-              >
-                <option value="all">Tous les clients</option>
-                {clientList.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.nom_entreprise}
-                  </option>
-                ))}
-              </select>
+              <>
+                <select
+                  className="px-3 py-2 border rounded-md"
+                  value={selectedClientFilter || 'all'}
+                  onChange={(e) => setSelectedClientFilter(e.target.value === 'all' ? null : e.target.value)}
+                >
+                  <option value="all">Tous les clients</option>
+                  {clientList.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.nom_entreprise}
+                    </option>
+                  ))}
+                </select>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-[280px] justify-start">
+                      <Filter className="mr-2 h-4 w-4" />
+                      {statusFilters.length === 0 ? "Aucun statut" : `${statusFilters.length} statut(s)`}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[280px] p-0" align="start">
+                    <div className="p-4 space-y-2">
+                      <h4 className="font-medium text-sm mb-3">Filtrer par statut</h4>
+                      {[
+                        "En attente de réappro",
+                        "Prêt à préparer",
+                        "En préparation",
+                        "Expédié",
+                        "Livré",
+                        "Produits introuvables"
+                      ].map((status) => (
+                        <div key={status} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`status-${status}`}
+                            checked={statusFilters.includes(status)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setStatusFilters([...statusFilters, status]);
+                              } else {
+                                setStatusFilters(statusFilters.filter(s => s !== status));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor={`status-${status}`}
+                            className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                          >
+                            {status}
+                          </label>
+                        </div>
+                      ))}
+                      {statusFilters.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full mt-2"
+                          onClick={() => setStatusFilters([])}
+                        >
+                          Réinitialiser
+                        </Button>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </>
             )}
             {userRole !== 'client' && !isViewingAsClient() && (
               <>
@@ -222,6 +301,7 @@ export default function Commandes() {
               userId={user?.id} 
               viewingClientId={getViewingClientId()} 
               clientFilter={selectedClientFilter}
+              statusFilters={statusFilters}
             />
           </TabsContent>
 
@@ -233,6 +313,7 @@ export default function Commandes() {
               userId={user?.id} 
               viewingClientId={getViewingClientId()} 
               clientFilter={selectedClientFilter}
+              statusFilters={statusFilters}
             />
           </TabsContent>
 
@@ -244,6 +325,7 @@ export default function Commandes() {
               userId={user?.id} 
               viewingClientId={getViewingClientId()} 
               clientFilter={selectedClientFilter}
+              statusFilters={statusFilters}
             />
           </TabsContent>
 
@@ -255,6 +337,7 @@ export default function Commandes() {
               userId={user?.id} 
               viewingClientId={getViewingClientId()} 
               clientFilter={selectedClientFilter}
+              statusFilters={statusFilters}
             />
           </TabsContent>
         </Tabs>

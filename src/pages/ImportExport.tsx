@@ -295,7 +295,7 @@ const ImportExport = () => {
                 });
               }
             } else if (importType === 'produits') {
-              // 🔥 Utiliser le client_id récupéré au début
+              // Helpers pour parsing
               const toNumberOrNull = (val: any) => {
                 if (val === undefined || val === null || val === "") return null;
                 const n = Number(String(val).replace(",", "."));
@@ -307,25 +307,72 @@ const ImportExport = () => {
                 return Number.isFinite(n) ? n : null;
               };
 
-              const produits = rows.map((row: any) => ({
-                reference: String(row.reference || row.Reference || row.SKU || row.sku || '').trim(),
-                nom: row.nom || row.Nom || row.name || row.Name,
-                code_barre_ean: row.ean || row.EAN || row.code_barre || row.barcode || null,
-                prix_unitaire: toNumberOrNull(row.prix ?? row.price ?? row.prix_unitaire),
-                poids_unitaire: toNumberOrNull(row.poids ?? row.weight ?? row.poids_unitaire),
-                stock_minimum: (toIntOrNull(row.stock_min ?? row.min_stock) ?? 0),
-                stock_maximum: toIntOrNull(row.stock_max ?? row.max_stock),
-                description: row.description || row.Description || null,
-                categorie_emballage: (toIntOrNull(row.categorie ?? row.category) ?? 1),
-                statut_actif: true,
-                client_id: clientIdFromProfile, // 🔥 FORCER le client_id du profil
-              })).filter((p: any) => p.reference && p.nom);
+              // Parser dimensions "47 x 32 x 29" → [47, 32, 29]
+              const parseDimensions = (dimStr: string) => {
+                if (!dimStr) return [null, null, null];
+                const parts = String(dimStr).split('x').map(s => toNumberOrNull(s.trim()));
+                return [parts[0] || null, parts[1] || null, parts[2] || null];
+              };
+
+              // Parser poids "12.62 KG" → 12.62
+              const parseWeight = (weightStr: string) => {
+                if (!weightStr) return null;
+                const match = String(weightStr).match(/[\d.,]+/);
+                return match ? toNumberOrNull(match[0]) : null;
+              };
+
+              const produits = await Promise.all(rows.map(async (row: any) => {
+                let finalClientId = clientIdFromProfile;
+                const marque = row.Marque || row.marque || null;
+
+                // Mapper Marque → client_id pour Link-OS
+                if (marque) {
+                  if (marque === "Thomas") {
+                    const { data: linkosClient } = await supabase
+                      .from('client')
+                      .select('id')
+                      .eq('nom_entreprise', 'Link-OS')
+                      .maybeSingle();
+                    if (linkosClient) finalClientId = linkosClient.id;
+                  } else if (marque === "Elete Electrolyte") {
+                    const { data: linkosClient } = await supabase
+                      .from('client')
+                      .select('id')
+                      .eq('nom_entreprise', 'Link-OS')
+                      .maybeSingle();
+                    if (linkosClient) finalClientId = linkosClient.id;
+                  }
+                }
+
+                const dims = parseDimensions(row.Dimensions || row.dimensions || '');
+                const reference = String(row.reference || row.Reference || row.SKU || row.sku || row.EAN || row.ean || '').trim();
+
+                return {
+                  reference,
+                  nom: row.nom || row.Nom || row.name || row.Name,
+                  marque,
+                  code_barre_ean: row.ean || row.EAN || row.code_barre || row.barcode || null,
+                  prix_unitaire: toNumberOrNull(row.prix ?? row.price ?? row.prix_unitaire ?? row['Prix de vente HT']),
+                  poids_unitaire: parseWeight(row.poids ?? row.Poids ?? row.weight ?? row.poids_unitaire),
+                  longueur_cm: dims[0],
+                  largeur_cm: dims[1],
+                  hauteur_cm: dims[2],
+                  stock_minimum: (toIntOrNull(row.stock_min ?? row.min_stock) ?? 0),
+                  stock_maximum: toIntOrNull(row.stock_max ?? row.max_stock),
+                  description: row.description || row.Description || null,
+                  categorie_emballage: (toIntOrNull(row.categorie ?? row.category) ?? 1),
+                  statut_actif: true,
+                  client_id: finalClientId,
+                };
+              }));
+
+              const validProduits = produits.filter((p: any) => p.reference && p.nom);
 
               // Déduplication: garder la dernière occurrence de chaque référence
-              const deduplicatedMap = new Map<string, typeof produits[0]>();
+              const deduplicatedMap = new Map<string, any>();
               const duplicateRefs: string[] = [];
               
-              produits.forEach(p => {
+              validProduits.forEach(p => {
                 if (deduplicatedMap.has(p.reference)) {
                   if (!duplicateRefs.includes(p.reference)) {
                     duplicateRefs.push(p.reference);

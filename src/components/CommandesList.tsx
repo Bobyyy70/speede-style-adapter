@@ -188,6 +188,7 @@ interface CommandesListProps {
   userId?: string;
   viewingClientId?: string | null;
   clientFilter?: string | null;
+  statusFilters?: string[];
 }
 export function CommandesList({
   filter,
@@ -195,7 +196,8 @@ export function CommandesList({
   userRole,
   userId,
   viewingClientId,
-  clientFilter
+  clientFilter,
+  statusFilters
 }: CommandesListProps = {}) {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [stats, setStats] = useState<StatsData>({
@@ -224,7 +226,7 @@ export function CommandesList({
   }, [filter]);
   useEffect(() => {
     fetchCommandes();
-  }, [selectedStatut, selectedSource, clientFilter, viewingClientId]);
+  }, [selectedStatut, selectedSource, clientFilter, viewingClientId, statusFilters]);
   const fetchCommandes = async () => {
     setLoading(true);
     try {
@@ -277,7 +279,10 @@ export function CommandesList({
         }
       }
       
-      if (selectedStatut !== "all") {
+      if (statusFilters && statusFilters.length > 0) {
+        // Si statusFilters est fourni, on l'utilise au lieu de selectedStatut
+        query = query.in("statut_wms", statusFilters);
+      } else if (selectedStatut !== "all") {
         query = query.eq("statut_wms", selectedStatut);
       }
       if (selectedSource !== "all") {
