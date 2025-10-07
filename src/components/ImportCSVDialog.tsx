@@ -74,7 +74,7 @@ export const ImportCSVDialog = ({ onSuccess }: ImportCSVDialogProps) => {
         complete: async (results) => {
           const rows = (results.data as any[]).filter(r => Object.values(r).some(v => v !== null && v !== undefined && String(v).trim() !== ''));
           const produits = rows.map((row) => ({
-            reference: row.reference || row.Reference || row.SKU || row.sku,
+            reference: String(row.reference || row.Reference || row.SKU || row.sku || '').trim(),
             nom: row.nom || row.Nom || row.name || row.Name,
             code_barre_ean: row.ean || row.EAN || row.code_barre || row.barcode || null,
             prix_unitaire: toNumberOrNull(row.prix ?? row.price ?? row.prix_unitaire),
@@ -90,7 +90,26 @@ export const ImportCSVDialog = ({ onSuccess }: ImportCSVDialogProps) => {
           // Filtrer les lignes invalides (reference et nom requis)
           const validProduits = produits.filter(p => p.reference && p.nom);
 
-          if (validProduits.length === 0) {
+          // Déduplication: garder la dernière occurrence de chaque référence
+          const deduplicatedMap = new Map<string, typeof validProduits[0]>();
+          const duplicateRefs: string[] = [];
+          
+          validProduits.forEach(p => {
+            if (deduplicatedMap.has(p.reference)) {
+              if (!duplicateRefs.includes(p.reference)) {
+                duplicateRefs.push(p.reference);
+              }
+            }
+            deduplicatedMap.set(p.reference, p);
+          });
+
+          const finalProduits = Array.from(deduplicatedMap.values());
+
+          if (duplicateRefs.length > 0) {
+            toast.warning(`${duplicateRefs.length} référence(s) dupliquée(s) détectée(s) dans le CSV (dernière occurrence conservée): ${duplicateRefs.slice(0, 3).join(', ')}${duplicateRefs.length > 3 ? '...' : ''}`);
+          }
+
+          if (finalProduits.length === 0) {
             toast.error("Aucun produit valide trouvé dans le CSV");
             return;
           }
@@ -102,8 +121,8 @@ export const ImportCSVDialog = ({ onSuccess }: ImportCSVDialogProps) => {
           let errorCount = 0;
           let firstError: string | null = null;
 
-          for (let i = 0; i < validProduits.length; i += batchSize) {
-            const batch = validProduits.slice(i, i + batchSize);
+          for (let i = 0; i < finalProduits.length; i += batchSize) {
+            const batch = finalProduits.slice(i, i + batchSize);
             const { data, error } = await supabase
               .from("produit")
               .upsert(batch, { onConflict: 'reference' })

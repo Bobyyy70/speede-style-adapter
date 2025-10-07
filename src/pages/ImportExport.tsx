@@ -172,31 +172,53 @@ const ImportExport = () => {
               };
 
               const produits = rows.map((row: any) => ({
-                reference: row.reference || row.Reference || row.SKU || row.sku,
+                reference: String(row.reference || row.Reference || row.SKU || row.sku || '').trim(),
                 nom: row.nom || row.Nom || row.name || row.Name,
                 code_barre_ean: row.ean || row.EAN || row.code_barre || row.barcode || null,
                 prix_unitaire: toNumberOrNull(row.prix ?? row.price ?? row.prix_unitaire),
                 poids_unitaire: toNumberOrNull(row.poids ?? row.weight ?? row.poids_unitaire),
                 stock_minimum: (toIntOrNull(row.stock_min ?? row.min_stock) ?? 0),
-                stock_maximum: toIntOrNull(row.stock_max ?? row.max_stack),
+                stock_maximum: toIntOrNull(row.stock_max ?? row.max_stock),
                 description: row.description || row.Description || null,
                 categorie_emballage: (toIntOrNull(row.categorie ?? row.category) ?? 1),
                 statut_actif: true,
                 client_id: row.client_id || clientId || null,
               })).filter((p: any) => p.reference && p.nom);
 
-              if (produits.length === 0) throw new Error("Aucun produit valide trouvé dans le CSV");
+              // Déduplication: garder la dernière occurrence de chaque référence
+              const deduplicatedMap = new Map<string, typeof produits[0]>();
+              const duplicateRefs: string[] = [];
+              
+              produits.forEach(p => {
+                if (deduplicatedMap.has(p.reference)) {
+                  if (!duplicateRefs.includes(p.reference)) {
+                    duplicateRefs.push(p.reference);
+                  }
+                }
+                deduplicatedMap.set(p.reference, p);
+              });
+
+              const finalProduits = Array.from(deduplicatedMap.values());
+
+              if (duplicateRefs.length > 0) {
+                toast({
+                  title: "Doublons détectés",
+                  description: `${duplicateRefs.length} référence(s) dupliquée(s) trouvée(s) (dernière occurrence conservée)`,
+                });
+              }
+
+              if (finalProduits.length === 0) throw new Error("Aucun produit valide trouvé dans le CSV");
 
               const { data, error } = await supabase
                 .from('produit')
-                .upsert(produits, { onConflict: 'reference' })
+                .upsert(finalProduits, { onConflict: 'reference' })
                 .select('id');
               
               if (error) throw error;
 
               toast({
                 title: "Import réussi",
-                description: `${data?.length || produits.length} produit(s) importé(s) ou mis à jour`,
+                description: `${data?.length || finalProduits.length} produit(s) importé(s) ou mis à jour`,
               });
             } else {
               toast({
