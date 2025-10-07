@@ -9,6 +9,7 @@ interface SendCloudProduct {
   sku: string;
   name: string;
   quantity: number;
+  ean?: string;
   unit_price?: { value: number; currency: string };
   total_price?: { value: number; currency: string };
   measurement?: { weight?: { value: number; unit: string } };
@@ -252,20 +253,33 @@ Deno.serve(async (req) => {
         // Traiter les produits
         let tousProduitsStockOk = true;
         let tousProduitsTrouves = true;
+        const produitsCommande: any[] = [];
 
         for (const product of sendcloudData.order_products) {
-          // Chercher le produit par SKU
-          const { data: produit } = await supabase
+          // Chercher le produit par SKU puis par EAN
+          let { data: produit } = await supabase
             .from('produit')
-            .select('id, nom, reference, stock_actuel, poids_unitaire, prix_unitaire')
+            .select('id, nom, reference, marque, client_id, stock_actuel, poids_unitaire, prix_unitaire')
             .eq('reference', product.sku)
             .maybeSingle();
 
+          // Si pas trouvé par SKU, essayer par EAN
+          if (!produit && product.ean) {
+            ({ data: produit } = await supabase
+              .from('produit')
+              .select('id, nom, reference, marque, client_id, stock_actuel, poids_unitaire, prix_unitaire')
+              .eq('code_barre_ean', product.ean)
+              .maybeSingle());
+          }
+
           if (!produit) {
-            console.log(`⚠️ Produit non trouvé: ${product.sku}`);
+            console.log(`⚠️ Produit non trouvé: SKU=${product.sku}, EAN=${product.ean || 'N/A'}`);
             tousProduitsTrouves = false;
             continue;
           }
+
+          // Stocker le produit pour inférer le client plus tard
+          produitsCommande.push(produit);
 
           // Vérifier le stock
           const { data: stockData } = await supabase
@@ -307,7 +321,48 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Mettre à jour le statut de la commande
+        // Inférer client_id et sous_client depuis la marque du premier produit
+        let clientId = null;
+        let sousClient = null;
+        
+        if (produitsCommande.length > 0) {
+          const premierProduit = produitsCommande[0];
+          const marque = premierProduit.marque?.toLowerCase() || '';
+          
+          if (marque.includes('heatzy')) {
+            const { data: heatzyClient } = await supabase
+              .from('client')
+              .select('id')
+              .eq('nom_entreprise', 'HEATZY')
+              .maybeSingle();
+            clientId = heatzyClient?.id;
+          } else if (marque.includes('thomas')) {
+            const { data: linkosClient } = await supabase
+              .from('client')
+              .select('id')
+              .eq('nom_entreprise', 'Link-OS')
+              .maybeSingle();
+            clientId = linkosClient?.id;
+            sousClient = 'Thomas';
+          } else if (marque.includes('elete') || marque.includes('electrolyte')) {
+            const { data: linkosClient } = await supabase
+              .from('client')
+              .select('id')
+              .eq('nom_entreprise', 'Link-OS')
+              .maybeSingle();
+            clientId = linkosClient?.id;
+            sousClient = 'Elite Water';
+          } else {
+            const { data: hefaClient } = await supabase
+              .from('client')
+              .select('id')
+              .eq('nom_entreprise', 'HEFAGROUP OÜ')
+              .maybeSingle();
+            clientId = hefaClient?.id;
+          }
+        }
+
+        // Mettre à jour le statut et client de la commande
         const nouveauStatut = !tousProduitsTrouves 
           ? 'Produits introuvables' 
           : tousProduitsStockOk 
@@ -316,7 +371,11 @@ Deno.serve(async (req) => {
 
         await supabase
           .from('commande')
-          .update({ statut_wms: nouveauStatut })
+          .update({ 
+            statut_wms: nouveauStatut,
+            client_id: clientId,
+            sous_client: sousClient
+          })
           .eq('id', commande.id);
 
         console.log(`✅ ${orderNumber} - Statut: ${nouveauStatut}`);

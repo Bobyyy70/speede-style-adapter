@@ -320,6 +320,7 @@ export type Database = {
           sendcloud_id: string | null
           sendcloud_shipment_id: string | null
           source: string
+          sous_client: string | null
           statut_wms: string
           tags: string[] | null
           telephone_client: string | null
@@ -365,6 +366,7 @@ export type Database = {
           sendcloud_id?: string | null
           sendcloud_shipment_id?: string | null
           source: string
+          sous_client?: string | null
           statut_wms?: string
           tags?: string[] | null
           telephone_client?: string | null
@@ -410,6 +412,7 @@ export type Database = {
           sendcloud_id?: string | null
           sendcloud_shipment_id?: string | null
           source?: string
+          sous_client?: string | null
           statut_wms?: string
           tags?: string[] | null
           telephone_client?: string | null

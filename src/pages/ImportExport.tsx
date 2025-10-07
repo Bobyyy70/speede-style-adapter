@@ -127,43 +127,173 @@ const ImportExport = () => {
             const rows = results.data.filter((row: any) => Object.values(row).some(v => v));
 
             if (importType === 'commandes') {
-              const commandes = rows.map((row: any) => ({
-                numero_commande: row.numero_commande || "",
-                source: row.source || "Import CSV",
-                nom_client: row.nom_client || "",
-                email_client: row.email_client || "",
-                telephone_client: row.telephone_client || "",
-                adresse_nom: row.adresse_nom || row.nom_client || "",
-                adresse_ligne_1: row.adresse_ligne_1 || "",
-                adresse_ligne_2: row.adresse_ligne_2 || "",
-                code_postal: row.code_postal || "",
-                ville: row.ville || "",
-                pays_code: row.pays_code || "FR",
-                valeur_totale: parseFloat(row.valeur_totale) || 0,
-                devise: row.devise || "EUR",
-                statut_wms: "En attente de réappro",
-                methode_expedition: row.methode_expedition || "",
-                transporteur: row.transporteur || ""
-              }));
+              // Détecter le format: Link-OS ou standard
+              const isLinkOSFormat = rows.some((row: any) => row['Date de la commande*'] && row['Compte']);
+              
+              if (isLinkOSFormat) {
+                // Import Link-OS CSV
+                const { data: linkosClient } = await supabase
+                  .from('client')
+                  .select('id')
+                  .eq('nom_entreprise', 'Link-OS')
+                  .single();
 
-              const { data: insertedCommandes, error } = await supabase
-                .from("commande")
-                .insert(commandes)
-                .select();
+                if (!linkosClient) throw new Error("Client Link-OS introuvable");
 
-              if (error) throw error;
+                let successCount = 0;
+                let errorCount = 0;
 
-              // Appliquer les règles automatiques
-              if (insertedCommandes) {
-                for (const commande of insertedCommandes) {
-                  await applyAutoRules(commande.id);
+                for (const row of rows) {
+                  try {
+                    // Mapper Compte → sous_client
+                    const compte = String(row['Compte'] || '').trim();
+                    const sousClient = compte === 'Eletewater' ? 'Elite Water' : compte;
+
+                    // Parser les produits dynamiques (produit_0, quantité_0, produit_1, etc.)
+                    const produits: Array<{ reference: string; quantite: number }> = [];
+                    for (let i = 0; i < 10; i++) {
+                      const refKey = `produit_${i}`;
+                      const qtyKey = `quantité_${i}`;
+                      if (row[refKey] && row[qtyKey]) {
+                        produits.push({
+                          reference: String(row[refKey]).trim(),
+                          quantite: parseInt(row[qtyKey]) || 1
+                        });
+                      }
+                    }
+
+                    if (produits.length === 0) {
+                      console.log(`⚠️ Aucun produit trouvé pour commande ${row['Numéro de commande']}`);
+                      errorCount++;
+                      continue;
+                    }
+
+                    // Créer la commande
+                    const { data: commande, error: cmdError } = await supabase
+                      .from('commande')
+                      .insert({
+                        numero_commande: row['Numéro de commande'] || '',
+                        source: 'Link-OS',
+                        client_id: linkosClient.id,
+                        sous_client: sousClient,
+                        nom_client: [row['Prénom*'], row['Nom*']].filter(Boolean).join(' ').trim() || row['Société'] || '',
+                        adresse_nom: [row['Prénom*'], row['Nom*']].filter(Boolean).join(' ').trim() || row['Société'] || '',
+                        adresse_ligne_1: row['Adresse1*'] || '',
+                        adresse_ligne_2: row['Adresse2'] || '',
+                        code_postal: row['Code postal*'] || '',
+                        ville: row['Ville*'] || '',
+                        pays_code: 'FR',
+                        email_client: row['Adresse mail*'] || '',
+                        telephone_client: row['Téléphone*'] || '',
+                        tracking_number: row['Numéro de tracking'] || null,
+                        transporteur: row['Transporteur*'] || null,
+                        methode_expedition: row['Offre de transport'] || null,
+                        valeur_totale: parseFloat(row['Prix de la commande']) || 0,
+                        devise: 'EUR',
+                        statut_wms: 'En attente de réappro',
+                        date_creation: row['Date de la commande*'] || new Date().toISOString()
+                      })
+                      .select()
+                      .single();
+
+                    if (cmdError) throw cmdError;
+
+                    // Traiter les produits et réserver le stock
+                    let tousProduitsOk = true;
+                    for (const prod of produits) {
+                      // Chercher le produit
+                      const { data: produit } = await supabase
+                        .from('produit')
+                        .select('id, nom, poids_unitaire, prix_unitaire')
+                        .or(`reference.eq.${prod.reference},code_barre_ean.eq.${prod.reference}`)
+                        .maybeSingle();
+
+                      if (!produit) {
+                        console.log(`⚠️ Produit ${prod.reference} introuvable`);
+                        tousProduitsOk = false;
+                        continue;
+                      }
+
+                      // Créer ligne_commande
+                      await supabase.from('ligne_commande').insert({
+                        commande_id: commande.id,
+                        produit_id: produit.id,
+                        produit_reference: prod.reference,
+                        produit_nom: produit.nom,
+                        quantite_commandee: prod.quantite,
+                        prix_unitaire: produit.prix_unitaire || 0,
+                        valeur_totale: (produit.prix_unitaire || 0) * prod.quantite,
+                        poids_unitaire: produit.poids_unitaire,
+                        statut_ligne: 'en_attente'
+                      });
+
+                      // Réserver le stock
+                      await supabase.rpc('reserver_stock', {
+                        p_produit_id: produit.id,
+                        p_quantite: prod.quantite,
+                        p_commande_id: commande.id,
+                        p_reference_origine: commande.numero_commande
+                      });
+                    }
+
+                    // Mettre à jour le statut final
+                    const nouveauStatut = !tousProduitsOk ? 'Produits introuvables' : 'Prêt à préparer';
+                    await supabase
+                      .from('commande')
+                      .update({ statut_wms: nouveauStatut })
+                      .eq('id', commande.id);
+
+                    successCount++;
+                  } catch (err: any) {
+                    console.error(`Erreur commande ${row['Numéro de commande']}:`, err);
+                    errorCount++;
+                  }
                 }
-              }
 
-              toast({
-                title: "Import réussi",
-                description: `${commandes.length} commande(s) importée(s) avec règles appliquées`,
-              });
+                toast({
+                  title: "Import Link-OS réussi",
+                  description: `${successCount} commande(s) importée(s), ${errorCount} erreur(s)`,
+                });
+              } else {
+                // Import standard
+                const commandes = rows.map((row: any) => ({
+                  numero_commande: row.numero_commande || "",
+                  source: row.source || "Import CSV",
+                  nom_client: row.nom_client || "",
+                  email_client: row.email_client || "",
+                  telephone_client: row.telephone_client || "",
+                  adresse_nom: row.adresse_nom || row.nom_client || "",
+                  adresse_ligne_1: row.adresse_ligne_1 || "",
+                  adresse_ligne_2: row.adresse_ligne_2 || "",
+                  code_postal: row.code_postal || "",
+                  ville: row.ville || "",
+                  pays_code: row.pays_code || "FR",
+                  valeur_totale: parseFloat(row.valeur_totale) || 0,
+                  devise: row.devise || "EUR",
+                  statut_wms: "En attente de réappro",
+                  methode_expedition: row.methode_expedition || "",
+                  transporteur: row.transporteur || ""
+                }));
+
+                const { data: insertedCommandes, error } = await supabase
+                  .from("commande")
+                  .insert(commandes)
+                  .select();
+
+                if (error) throw error;
+
+                // Appliquer les règles automatiques
+                if (insertedCommandes) {
+                  for (const commande of insertedCommandes) {
+                    await applyAutoRules(commande.id);
+                  }
+                }
+
+                toast({
+                  title: "Import réussi",
+                  description: `${commandes.length} commande(s) importée(s) avec règles appliquées`,
+                });
+              }
             } else if (importType === 'produits') {
               // 🔥 Utiliser le client_id récupéré au début
               const toNumberOrNull = (val: any) => {
