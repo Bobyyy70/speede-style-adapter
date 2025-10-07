@@ -178,7 +178,7 @@ const ImportExport = () => {
                 prix_unitaire: toNumberOrNull(row.prix ?? row.price ?? row.prix_unitaire),
                 poids_unitaire: toNumberOrNull(row.poids ?? row.weight ?? row.poids_unitaire),
                 stock_minimum: (toIntOrNull(row.stock_min ?? row.min_stock) ?? 0),
-                stock_maximum: toIntOrNull(row.stock_max ?? row.max_stock),
+                stock_maximum: toIntOrNull(row.stock_max ?? row.max_stack),
                 description: row.description || row.Description || null,
                 categorie_emballage: (toIntOrNull(row.categorie ?? row.category) ?? 1),
                 statut_actif: true,
@@ -187,12 +187,16 @@ const ImportExport = () => {
 
               if (produits.length === 0) throw new Error("Aucun produit valide trouvé dans le CSV");
 
-              const { error } = await supabase.from('produit').insert(produits);
+              const { data, error } = await supabase
+                .from('produit')
+                .upsert(produits, { onConflict: 'reference' })
+                .select('id');
+              
               if (error) throw error;
 
               toast({
                 title: "Import réussi",
-                description: `${produits.length} produit(s) importé(s)`,
+                description: `${data?.length || produits.length} produit(s) importé(s) ou mis à jour`,
               });
             } else {
               toast({

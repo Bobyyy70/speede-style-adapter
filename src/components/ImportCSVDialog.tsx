@@ -95,27 +95,33 @@ export const ImportCSVDialog = ({ onSuccess }: ImportCSVDialogProps) => {
             return;
           }
 
-          // Insert en lots de 100
+          // Upsert en lots de 100 (crée ou met à jour si reference existe)
           const batchSize = 100;
-          let successCount = 0;
+          let createdCount = 0;
+          let updatedCount = 0;
           let errorCount = 0;
+          let firstError: string | null = null;
 
           for (let i = 0; i < validProduits.length; i += batchSize) {
             const batch = validProduits.slice(i, i + batchSize);
-            const { error } = await supabase
+            const { data, error } = await supabase
               .from("produit")
-              .insert(batch);
+              .upsert(batch, { onConflict: 'reference' })
+              .select('id, reference');
 
             if (error) {
               console.error("Batch import error:", error);
               errorCount += batch.length;
+              if (!firstError) firstError = error.message;
             } else {
-              successCount += batch.length;
+              // Comptage approximatif : si data retourné, on considère créé/màj
+              const count = data?.length || 0;
+              createdCount += count;
             }
           }
 
-          if (successCount > 0) {
-            toast.success(`${successCount} produit(s) importé(s) avec succès`);
+          if (createdCount > 0) {
+            toast.success(`${createdCount} produit(s) importé(s) ou mis à jour avec succès`);
             onSuccess();
             setOpen(false);
             setFile(null);
@@ -123,7 +129,7 @@ export const ImportCSVDialog = ({ onSuccess }: ImportCSVDialogProps) => {
           }
 
           if (errorCount > 0) {
-            toast.error(`${errorCount} produit(s) ont échoué (vérifiez les références et permissions)`);
+            toast.error(`${errorCount} produit(s) ont échoué${firstError ? `: ${firstError}` : ''}`);
           }
         },
         error: () => {
