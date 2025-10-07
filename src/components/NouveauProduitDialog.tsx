@@ -60,7 +60,7 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
     setLoading(true);
 
     try {
-      const { error } = await supabase.from("produit").insert([
+      const { data: newProduct, error } = await supabase.from("produit").insert([
         {
           reference: formData.reference,
           nom: formData.nom,
@@ -100,9 +100,25 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
           instructions_stockage: formData.instructions_stockage || null,
           statut_actif: true,
         },
-      ]);
+      ])
+      .select('id, stock_minimum')
+      .single();
 
       if (error) throw error;
+
+      // Créer automatiquement un mouvement "En attente de réappro"
+      if (newProduct) {
+        await supabase.from('mouvement_stock').insert({
+          numero_mouvement: '', // Sera auto-généré par le trigger
+          type_mouvement: 'entrée_prévue',
+          statut_mouvement: 'attente_arrivage_reappro',
+          produit_id: newProduct.id,
+          quantite: newProduct.stock_minimum || 0,
+          reference_origine: 'CREATION-MANUELLE',
+          type_origine: 'creation',
+          remarques: 'Produit créé - En attente de réception'
+        });
+      }
 
       toast({
         title: "Produit créé",

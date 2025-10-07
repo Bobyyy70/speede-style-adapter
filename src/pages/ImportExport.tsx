@@ -219,6 +219,7 @@ const ImportExport = () => {
               // Créer automatiquement les mouvements "En attente de réappro"
               if (data && data.length > 0) {
                 const mouvements = data.map(product => ({
+                  numero_mouvement: '', // Sera auto-généré par le trigger
                   type_mouvement: 'entrée_prévue',
                   statut_mouvement: 'attente_arrivage_reappro',
                   produit_id: product.id,
