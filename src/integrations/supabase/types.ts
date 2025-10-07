@@ -80,8 +80,8 @@ export type Database = {
             foreignKeyName: "attendu_reception_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["client_id"]
+            referencedRelation: "client"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -427,8 +427,8 @@ export type Database = {
             foreignKeyName: "commande_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["client_id"]
+            referencedRelation: "client"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "commande_type_carton_id_fkey"
@@ -1281,8 +1281,8 @@ export type Database = {
             foreignKeyName: "produit_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["client_id"]
+            referencedRelation: "client"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1487,8 +1487,8 @@ export type Database = {
             foreignKeyName: "retour_produit_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["client_id"]
+            referencedRelation: "client"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "retour_produit_commande_origine_id_fkey"
@@ -2138,8 +2138,8 @@ export type Database = {
             foreignKeyName: "commande_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["client_id"]
+            referencedRelation: "client"
+            referencedColumns: ["id"]
           },
         ]
       }

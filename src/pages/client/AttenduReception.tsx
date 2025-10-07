@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Package, TruckIcon, CheckCircle, AlertCircle, Plus, Eye } from "lucide-react";
+import { Package, TruckIcon, CheckCircle, AlertCircle, Plus, Eye, X } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -48,6 +48,49 @@ const AttenduReception = () => {
     instructions_speciales: "",
   });
 
+  const [lignesProduits, setLignesProduits] = useState<Array<{
+    produit_id: string;
+    produit_reference: string;
+    produit_nom: string;
+    quantite_attendue: number;
+  }>>([]);
+
+  const [produits, setProduits] = useState<any[]>([]);
+  const [selectedProduitId, setSelectedProduitId] = useState<string>("");
+  const [quantiteAttendue, setQuantiteAttendue] = useState<string>("");
+
+  const ajouterLigneProduit = () => {
+    if (!selectedProduitId || !quantiteAttendue || parseInt(quantiteAttendue) <= 0) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un produit et une quantité valide",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const produit = produits.find(p => p.id === selectedProduitId);
+    if (!produit) return;
+
+    setLignesProduits([...lignesProduits, {
+      produit_id: produit.id,
+      produit_reference: produit.reference,
+      produit_nom: produit.nom,
+      quantite_attendue: parseInt(quantiteAttendue),
+    }]);
+
+    setSelectedProduitId("");
+    setQuantiteAttendue("");
+    toast({
+      title: "Succès",
+      description: "Produit ajouté à l'attendu",
+    });
+  };
+
+  const retirerLigneProduit = (index: number) => {
+    setLignesProduits(lignesProduits.filter((_, i) => i !== index));
+  };
+
   useEffect(() => {
     if (user) {
       fetchAttendus();
@@ -79,6 +122,18 @@ const AttenduReception = () => {
         return;
       }
 
+      // 🔥 Charger les produits du client pour le dropdown
+      const { data: produitsData } = await supabase
+        .from('produit')
+        .select('id, reference, nom, stock_actuel')
+        .eq('client_id', clientId)
+        .eq('statut_actif', true)
+        .order('nom');
+      
+      if (produitsData) {
+        setProduits(produitsData);
+      }
+
       const { data, error } = await supabase
         .from("attendu_reception")
         .select("*")
@@ -100,6 +155,16 @@ const AttenduReception = () => {
 
   const handleCreateAttendu = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (lignesProduits.length === 0) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez ajouter au moins un produit",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       const asClient = searchParams.get("asClient");
       let clientId = asClient;
@@ -122,18 +187,41 @@ const AttenduReception = () => {
         return;
       }
 
-      const { error } = await supabase.from("attendu_reception").insert([{
-        numero_attendu: null as any,
-        client_id: clientId,
-        ...formData,
-        created_by: user?.id,
-      }]);
+      // 🔥 Créer l'attendu de réception
+      const { data: newAttendu, error } = await supabase
+        .from("attendu_reception")
+        .insert([{
+          numero_attendu: null as any,
+          client_id: clientId,
+          ...formData,
+          created_by: user?.id,
+        }])
+        .select()
+        .single();
 
       if (error) throw error;
 
+      // 🔥 Créer les lignes d'attendu de réception
+      if (newAttendu) {
+        const { error: lignesError } = await supabase
+          .from('ligne_attendu_reception')
+          .insert(
+            lignesProduits.map(ligne => ({
+              attendu_reception_id: newAttendu.id,
+              produit_id: ligne.produit_id,
+              produit_reference: ligne.produit_reference,
+              produit_nom: ligne.produit_nom,
+              quantite_attendue: ligne.quantite_attendue,
+              statut_ligne: 'attendu' as const,
+            }))
+          );
+
+        if (lignesError) throw lignesError;
+      }
+
       toast({
         title: "Succès",
-        description: "Attendu de réception créé",
+        description: `Attendu de réception créé avec ${lignesProduits.length} produit(s)`,
       });
 
       setCreateDialogOpen(false);
@@ -146,6 +234,9 @@ const AttenduReception = () => {
         remarques: "",
         instructions_speciales: "",
       });
+      setLignesProduits([]);
+      setSelectedProduitId("");
+      setQuantiteAttendue("");
       fetchAttendus();
     } catch (error: any) {
       toast({
@@ -322,11 +413,92 @@ const AttenduReception = () => {
                         rows={3}
                       />
                     </div>
+
+                    <div className="space-y-4 border-t pt-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold">Produits attendus *</Label>
+                        <Badge variant="secondary">{lignesProduits.length} produit(s)</Badge>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <div className="md:col-span-2">
+                          <Label htmlFor="produit">Produit</Label>
+                          <Select value={selectedProduitId} onValueChange={setSelectedProduitId}>
+                            <SelectTrigger id="produit">
+                              <SelectValue placeholder="Sélectionner un produit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {produits.map(produit => (
+                                <SelectItem key={produit.id} value={produit.id}>
+                                  {produit.reference} - {produit.nom}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <Label htmlFor="quantite">Quantité</Label>
+                            <Input
+                              id="quantite"
+                              type="number"
+                              min="1"
+                              value={quantiteAttendue}
+                              onChange={(e) => setQuantiteAttendue(e.target.value)}
+                              placeholder="0"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <Button type="button" onClick={ajouterLigneProduit} size="icon">
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {lignesProduits.length > 0 && (
+                        <div className="border rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Référence</TableHead>
+                                <TableHead>Produit</TableHead>
+                                <TableHead className="text-right">Quantité</TableHead>
+                                <TableHead className="w-12"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {lignesProduits.map((ligne, index) => (
+                                <TableRow key={index}>
+                                  <TableCell className="font-mono text-sm">{ligne.produit_reference}</TableCell>
+                                  <TableCell>{ligne.produit_nom}</TableCell>
+                                  <TableCell className="text-right font-semibold">{ligne.quantite_attendue}</TableCell>
+                                  <TableCell>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => retirerLigneProduit(index)}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex justify-end gap-2">
                       <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
                         Annuler
                       </Button>
-                      <Button type="submit">Créer l'Attendu</Button>
+                      <Button type="submit" disabled={lignesProduits.length === 0}>
+                        Créer l'Attendu ({lignesProduits.length} produit(s))
+                      </Button>
                     </div>
                   </form>
                 </DialogContent>

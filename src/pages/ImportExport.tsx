@@ -101,6 +101,25 @@ const ImportExport = () => {
 
     setImporting(true);
     try {
+      // 🔥 Récupérer le client_id AVANT de parser le fichier
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', user?.id)
+        .single();
+
+      if (profileError || !profile?.client_id) {
+        toast({
+          title: "Erreur",
+          description: "Vous devez être associé à un client pour importer des données",
+          variant: "destructive",
+        });
+        setImporting(false);
+        return;
+      }
+
+      const clientIdFromProfile = profile.client_id;
+
       Papa.parse(file, {
         header: true,
         complete: async (results) => {
@@ -146,20 +165,7 @@ const ImportExport = () => {
                 description: `${commandes.length} commande(s) importée(s) avec règles appliquées`,
               });
             } else if (importType === 'produits') {
-              // Déterminer client_id si nécessaire
-              let clientId: string | null = getViewingClientId() || null;
-              if (!clientId && userRole === 'client' && user) {
-                const { data: profile } = await supabase
-                  .from('profiles')
-                  .select('client_id')
-                  .eq('id', user.id)
-                  .maybeSingle();
-                clientId = profile?.client_id || null;
-              }
-              if (userRole === 'client' && !clientId) {
-                throw new Error("Impossible de déterminer votre client pour l'import des produits");
-              }
-
+              // 🔥 Utiliser le client_id récupéré au début
               const toNumberOrNull = (val: any) => {
                 if (val === undefined || val === null || val === "") return null;
                 const n = Number(String(val).replace(",", "."));
@@ -182,7 +188,7 @@ const ImportExport = () => {
                 description: row.description || row.Description || null,
                 categorie_emballage: (toIntOrNull(row.categorie ?? row.category) ?? 1),
                 statut_actif: true,
-                client_id: row.client_id || clientId || null,
+                client_id: clientIdFromProfile, // 🔥 FORCER le client_id du profil
               })).filter((p: any) => p.reference && p.nom);
 
               // Déduplication: garder la dernière occurrence de chaque référence

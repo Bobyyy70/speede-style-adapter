@@ -49,24 +49,20 @@ export const ImportCSVDialog = ({ onSuccess }: ImportCSVDialogProps) => {
 
     setImporting(true);
     try {
-      // Déterminer le client_id pour respecter les RLS (surtout pour les clients)
-      let clientId: string | null = getViewingClientId() || null;
-      if (!clientId && userRole === 'client' && user) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('client_id')
-          .eq('id', user.id)
-          .maybeSingle();
-        if (profileError) {
-          console.error('Profile fetch error:', profileError);
-        }
-        clientId = profile?.client_id ?? null;
-      }
-      if (userRole === 'client' && !clientId) {
-        toast.error("Impossible de déterminer votre client. Contactez un administrateur.");
+      // 🔥 FORCER la récupération du client_id pour TOUS les rôles
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', user?.id)
+        .single();
+
+      if (profileError || !profile?.client_id) {
+        toast.error("Vous devez être associé à un client pour importer des produits");
         setImporting(false);
         return;
       }
+
+      const clientId = profile.client_id;
 
       Papa.parse(file, {
         header: true,
@@ -84,7 +80,7 @@ export const ImportCSVDialog = ({ onSuccess }: ImportCSVDialogProps) => {
             description: row.description || row.Description || null,
             categorie_emballage: (toIntOrNull(row.categorie ?? row.category) ?? 1),
             statut_actif: true,
-            client_id: row.client_id || clientId || null,
+            client_id: clientId, // 🔥 FORCER le client_id du profil connecté
           }));
 
           // Filtrer les lignes invalides (reference et nom requis)

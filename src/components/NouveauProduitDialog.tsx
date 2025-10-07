@@ -60,8 +60,37 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
     setLoading(true);
 
     try {
+      // Récupérer le client_id du profil utilisateur
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) {
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: "Vous devez être connecté",
+        });
+        setLoading(false);
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile?.client_id) {
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: "Vous devez être associé à un client pour créer un produit",
+        });
+        setLoading(false);
+        return;
+      }
+
       const { data: newProduct, error } = await supabase.from("produit").insert([
         {
+          client_id: profile.client_id, // 🔥 Ajout automatique du client_id
           reference: formData.reference,
           nom: formData.nom,
           description: formData.description || null,
