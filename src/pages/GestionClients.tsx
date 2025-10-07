@@ -183,32 +183,73 @@ const GestionClients = () => {
     setDialogOpen(true);
   };
 
+  const normalizeSiret = (siret: string): string => {
+    return siret.replace(/\D/g, '').slice(0, 14);
+  };
+
   const handleSave = async () => {
     if (!formData.nom_entreprise.trim()) {
       toast.error("Le nom de l'entreprise est obligatoire");
       return;
     }
 
+    // Normaliser le SIRET
+    const normalizedSiret = formData.siret.trim() ? normalizeSiret(formData.siret) : null;
+    
+    // Validation SIRET si fourni
+    if (normalizedSiret && normalizedSiret.length !== 14) {
+      toast.error("Le SIRET doit contenir exactement 14 chiffres");
+      return;
+    }
+
+    const payload = {
+      ...formData,
+      siret: normalizedSiret,
+      actif: true, // Toujours true, jamais null
+    };
+
     try {
       if (editingClient) {
         const { error } = await supabase
           .from('client')
-          .update(formData)
+          .update(payload)
           .eq('id', editingClient.id);
 
         if (error) throw error;
         toast.success("Client modifié avec succès");
       } else {
+        // Vérifier si SIRET existe déjà
+        if (normalizedSiret) {
+          const { data: existing } = await supabase
+            .from('client')
+            .select('id, nom_entreprise')
+            .eq('siret', normalizedSiret)
+            .maybeSingle();
+
+          if (existing) {
+            toast.error(`Ce SIRET existe déjà pour "${existing.nom_entreprise}". Modification de la fiche existante...`);
+            // Ouvrir la fiche existante en mode édition
+            const fullClient = clients.find(c => c.id === existing.id);
+            if (fullClient) {
+              handleOpenDialog(fullClient);
+            }
+            return;
+          }
+        }
+
+        // Insertion normale
         const { error } = await supabase
           .from('client')
-          .insert([formData]);
+          .insert([payload]);
 
         if (error) {
-          // Message plus explicite pour les erreurs RLS
-          if (error.message.includes('row-level security') || error.message.includes('block_public_insert_client')) {
-            toast.error("Vous devez avoir le rôle Administrateur pour créer des clients. Veuillez contacter votre administrateur système.");
+          // Gestion des erreurs spécifiques
+          if (error.code === '23505') {
+            toast.error("Ce SIRET existe déjà dans la base de données");
+          } else if (error.message.includes('row-level security') || error.message.includes('new row violates')) {
+            toast.error("Erreur de permissions. Vérifiez que vous avez le rôle Administrateur.");
           } else {
-            toast.error(error.message);
+            toast.error(`Erreur: ${error.message}`);
           }
           throw error;
         }

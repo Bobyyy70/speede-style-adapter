@@ -31,7 +31,7 @@ interface Produit {
 }
 
 const CreerCommande = () => {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -40,6 +40,10 @@ const CreerCommande = () => {
   const [labelFile, setLabelFile] = useState<File | null>(null);
   const [labelUrl, setLabelUrl] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
+  
+  // Pour admin/gestionnaire: liste des clients et client sélectionné
+  const [clients, setClients] = useState<Array<{ id: string; nom_entreprise: string }>>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
   
   const [formData, setFormData] = useState({
     nom_client: "",
@@ -57,25 +61,60 @@ const CreerCommande = () => {
 
   useEffect(() => {
     if (user) {
+      // Si admin/gestionnaire et pas de asClient, charger liste clients
+      const asClient = searchParams.get("asClient");
+      if (!asClient && (userRole === 'admin' || userRole === 'gestionnaire')) {
+        fetchClientsList();
+      } else {
+        fetchProduits();
+      }
+    }
+  }, [user, userRole, searchParams]);
+
+  useEffect(() => {
+    // Recharger produits quand client sélectionné change
+    if (selectedClientId) {
       fetchProduits();
     }
-  }, [user, searchParams]);
+  }, [selectedClientId]);
+
+  const fetchClientsList = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('client')
+        .select('id, nom_entreprise')
+        .eq('actif', true)
+        .order('nom_entreprise');
+
+      if (error) throw error;
+      setClients(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchProduits = async () => {
     try {
       const asClient = searchParams.get("asClient");
-      let clientId = asClient;
+      let clientId = asClient || selectedClientId;
 
-      if (!asClient) {
+      if (!clientId) {
         const { data: profile } = await supabase
           .from("profiles")
           .select("client_id")
           .eq("id", user?.id)
-          .single();
-        clientId = profile?.client_id;
+          .maybeSingle();
+        clientId = profile?.client_id || null;
       }
 
-      if (!clientId) return;
+      if (!clientId) {
+        setProduits([]);
+        return;
+      }
 
       const { data, error } = await supabase
         .from("produit")
@@ -187,21 +226,21 @@ const CreerCommande = () => {
 
     try {
       const asClient = searchParams.get("asClient");
-      let clientId = asClient;
+      let clientId = asClient || selectedClientId;
 
-      if (!asClient) {
+      if (!clientId) {
         const { data: profile } = await supabase
           .from("profiles")
           .select("client_id")
           .eq("id", user?.id)
-          .single();
-        clientId = profile?.client_id;
+          .maybeSingle();
+        clientId = profile?.client_id || null;
       }
 
       if (!clientId) {
         toast({
           title: "Erreur",
-          description: "Client non trouvé",
+          description: "Veuillez sélectionner un client",
           variant: "destructive",
         });
         return;
@@ -276,6 +315,9 @@ const CreerCommande = () => {
     }
   };
 
+  const asClient = searchParams.get("asClient");
+  const needsClientSelection = !asClient && (userRole === 'admin' || userRole === 'gestionnaire');
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -285,6 +327,31 @@ const CreerCommande = () => {
             Créez une commande manuellement pour vos besoins spécifiques
           </p>
         </div>
+
+        {needsClientSelection && (
+          <Card className="border-primary">
+            <CardHeader>
+              <CardTitle>Sélection du Client *</CardTitle>
+              <CardDescription>
+                Choisissez le client pour lequel créer cette commande
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionnez un client..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nom_entreprise}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <Card>

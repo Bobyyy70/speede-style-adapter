@@ -44,19 +44,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Fetch user role
+  // Fetch user role using RPC to avoid RLS issues
   const fetchUserRole = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
+      const { data, error } = await supabase.rpc('get_user_role', { user_id: userId });
+      
       if (error) throw error;
-      setUserRole(data?.role as AppRole || null);
+      setUserRole(data as AppRole || null);
     } catch (error) {
       console.error('Error fetching user role:', error);
       setUserRole(null);

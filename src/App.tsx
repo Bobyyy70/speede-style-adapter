@@ -37,6 +37,7 @@ import ClientRetours from "./pages/client/MesRetours";
 import ClientFacturation from "./pages/client/MaFacturation";
 import ClientAttenduReception from "./pages/client/AttenduReception";
 import ClientCreerCommande from "./pages/client/CreerCommande";
+import AdminBootstrap from "./pages/AdminBootstrap";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/admin-bootstrap" element={<AdminBootstrap />} />
             <Route
               path="/"
               element={
