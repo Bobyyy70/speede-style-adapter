@@ -75,7 +75,18 @@ const GestionClients = () => {
         .select('*')
         .order('date_creation', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // Gestion des erreurs RLS
+        if (error.message.includes('permission denied') || error.message.includes('row-level security')) {
+          console.error('Erreur de permissions RLS:', error);
+          toast.error("Permissions insuffisantes. Rôle 'admin' requis pour gérer les clients.");
+          setClients([]);
+        } else {
+          throw error;
+        }
+        return;
+      }
+
       setClients(data || []);
     } catch (error: any) {
       console.error('Erreur lors du chargement des clients:', error);
@@ -328,8 +339,11 @@ const GestionClients = () => {
             {loading ? (
               <div className="text-center py-8">Chargement...</div>
             ) : clients.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Aucun client trouvé
+              <div className="text-center py-8 space-y-2">
+                <p className="text-muted-foreground">Aucun client trouvé</p>
+                <p className="text-sm text-amber-600">
+                  Si vous devriez voir des clients, vérifiez vos permissions (rôle admin requis)
+                </p>
               </div>
             ) : (
               <Table>

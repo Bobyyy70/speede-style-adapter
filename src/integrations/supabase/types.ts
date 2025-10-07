@@ -2157,8 +2157,23 @@ export type Database = {
         }
         Relationships: []
       }
+      users_overview: {
+        Row: {
+          client_id: string | null
+          client_nom: string | null
+          email: string | null
+          id: string | null
+          nom_complet: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      backfill_missing_profiles: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

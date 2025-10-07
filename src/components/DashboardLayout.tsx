@@ -484,6 +484,14 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Affichage du rôle utilisateur */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-lg">
+                <span className="text-sm text-muted-foreground">{user?.email}</span>
+                <Badge variant={getRoleBadgeVariant(userRole)}>
+                  {getRoleLabel(userRole)}
+                </Badge>
+              </div>
+
               {(userRole === 'admin' || userRole === 'gestionnaire') && <div className="flex items-center gap-1">
                   
                   {clientList.length > 0 && <DropdownMenu>

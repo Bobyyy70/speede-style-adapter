@@ -53,54 +53,32 @@ const Utilisateurs = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Récupérer tous les profils avec leurs rôles et clients
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          email,
-          nom_complet,
-          client_id
-        `)
-        .order('created_at', { ascending: false });
+      // Utiliser la vue users_overview qui combine profils, rôles et clients
+      const { data, error } = await supabase
+        .from('users_overview')
+        .select('*')
+        .order('email', { ascending: true });
 
-      if (profilesError) throw profilesError;
-
-      // Récupérer les rôles
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-
-      if (rolesError) throw rolesError;
-
-      // Récupérer les noms des clients (avec gestion d'erreur si table n'existe pas)
-      let clients: any[] = [];
-      try {
-        const { data: clientsData, error: clientsError } = await supabase
-          .from('client' as any)
-          .select('id, nom_entreprise');
-
-        if (!clientsError && clientsData) {
-          clients = clientsData;
+      if (error) {
+        // Gestion des erreurs RLS
+        if (error.message.includes('permission denied') || error.message.includes('row-level security')) {
+          console.error('Erreur de permissions RLS:', error);
+          toast.error("Permissions insuffisantes. Rôle 'admin' ou 'gestionnaire' requis.");
+          setUsers([]);
+        } else {
+          throw error;
         }
-      } catch (clientError) {
-        console.warn('Table client non disponible - migration SQL requise:', clientError);
+        return;
       }
 
-      // Combiner les données
-      const usersData: UserData[] = (profiles || []).map(profile => {
-        const userRole = roles?.find(r => r.user_id === profile.id);
-        const client = clients?.find((c: any) => c.id === profile.client_id);
-        
-        return {
-          id: profile.id,
-          email: profile.email || "",
-          nom_complet: profile.nom_complet,
-          role: userRole?.role as AppRole || null,
-          client_id: profile.client_id,
-          client_nom: client?.nom_entreprise || null
-        };
-      });
+      const usersData: UserData[] = (data || []).map(row => ({
+        id: row.id,
+        email: row.email || "",
+        nom_complet: row.nom_complet,
+        role: row.role as AppRole || null,
+        client_id: row.client_id,
+        client_nom: row.client_nom
+      }));
 
       setUsers(usersData);
     } catch (error: any) {
@@ -208,8 +186,11 @@ const Utilisateurs = () => {
             {loading ? (
               <div className="text-center py-8">Chargement...</div>
             ) : users.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Aucun utilisateur trouvé
+              <div className="text-center py-8 space-y-2">
+                <p className="text-muted-foreground">Aucun utilisateur trouvé</p>
+                <p className="text-sm text-amber-600">
+                  Si vous devriez voir des utilisateurs, vérifiez vos permissions (rôle admin requis)
+                </p>
               </div>
             ) : (
               <Table>
