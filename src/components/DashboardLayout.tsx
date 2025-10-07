@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import logo from "@/assets/logo.jpg";
 // Icons imports
-import { LayoutDashboard, Settings, LogOut, Search, Menu, X, Bell, ArrowRightLeft, ClipboardList, RefreshCw, MapPin, Undo2, TruckIcon, Plug, FolderTree, Boxes, Warehouse, PackageOpen, PackagePlus, UserCog, Receipt, ArrowDownUp, ShipWheel, Cable, Building2, Eye, ChevronDown } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, Search, Menu, X, Bell, ArrowRightLeft, ClipboardList, RefreshCw, MapPin, Undo2, TruckIcon, Plug, FolderTree, Boxes, Warehouse, PackageOpen, PackagePlus, UserCog, Receipt, ArrowDownUp, ShipWheel, Cable, Building2, Eye, ChevronDown, PlusCircle } from "lucide-react";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -43,8 +43,16 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       icon: LayoutDashboard
     }, {
       name: "Commandes",
-      href: "/commandes",
-      icon: ClipboardList
+      icon: ClipboardList,
+      children: [{
+        name: "Gestion des commandes",
+        href: "/commandes",
+        icon: ClipboardList
+      }, {
+        name: "Création de commande",
+        href: "/client/commandes/creer",
+        icon: PlusCircle
+      }]
     }, {
       name: "Retours",
       href: "/commandes/retours",
@@ -90,8 +98,16 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
   if (role === "admin") {
     return [...baseNavigation, {
       name: "Commandes",
-      href: "/commandes",
-      icon: ClipboardList
+      icon: ClipboardList,
+      children: [{
+        name: "Gestion des commandes",
+        href: "/commandes",
+        icon: ClipboardList
+      }, {
+        name: "Création de commande",
+        href: "/client/commandes/creer",
+        icon: PlusCircle
+      }]
     }, {
       name: "Préparation",
       href: "/commandes/preparation",
@@ -173,8 +189,16 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
   if (role === "operateur") {
     return [...baseNavigation, {
       name: "Commandes",
-      href: "/commandes",
-      icon: ClipboardList
+      icon: ClipboardList,
+      children: [{
+        name: "Gestion des commandes",
+        href: "/commandes",
+        icon: ClipboardList
+      }, {
+        name: "Création de commande",
+        href: "/client/commandes/creer",
+        icon: PlusCircle
+      }]
     }, {
       name: "Préparation",
       href: "/commandes/preparation",
@@ -212,8 +236,16 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       icon: LayoutDashboard
     }, {
       name: "Commandes",
-      href: "/commandes",
-      icon: ClipboardList
+      icon: ClipboardList,
+      children: [{
+        name: "Gestion des commandes",
+        href: "/commandes",
+        icon: ClipboardList
+      }, {
+        name: "Création de commande",
+        href: "/client/commandes/creer",
+        icon: PlusCircle
+      }]
     }, {
       name: "Retours",
       href: "/commandes/retours",
