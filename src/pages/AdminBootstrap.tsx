@@ -20,13 +20,13 @@ export default function AdminBootstrap() {
 
   useEffect(() => {
     checkAdminExists();
-  }, []);
+  }, [user, userRole]);
 
   const checkAdminExists = async () => {
     try {
       const { data, error } = await supabase
         .from('user_roles')
-        .select('id')
+        .select('id, user_id')
         .eq('role', 'admin')
         .limit(1)
         .maybeSingle();
@@ -34,8 +34,8 @@ export default function AdminBootstrap() {
       if (error) throw error;
       setAdminExists(!!data);
 
-      // Si un admin existe déjà et que l'utilisateur en est un, rediriger
-      if (data && userRole === 'admin') {
+      // Si un admin existe et que c'est l'utilisateur connecté, rediriger
+      if (data && user && data.user_id === user.id) {
         navigate('/');
       }
     } catch (error) {
