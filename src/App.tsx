@@ -74,14 +74,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/commandes"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
-                  <Commandes />
-                </ProtectedRoute>
-              }
-            />
+          <Route
+            path="/commandes"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire', 'client']}>
+                <Commandes />
+              </ProtectedRoute>
+            }
+          />
             <Route
               path="/commandes/reappro"
               element={
