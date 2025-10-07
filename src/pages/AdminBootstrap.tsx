@@ -8,8 +8,8 @@ import { Shield, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 /**
- * AdminBootstrap - Page de démarrage pour créer le premier admin
- * Accessible uniquement si aucun admin n'existe dans le système
+ * AdminBootstrap - Page de diagnostic et promotion admin
+ * Accessible par tout utilisateur connecté pour vérifier/obtenir le rôle admin
  */
 export default function AdminBootstrap() {
   const { user, userRole } = useAuth();
@@ -17,6 +17,7 @@ export default function AdminBootstrap() {
   const [checking, setChecking] = useState(true);
   const [adminExists, setAdminExists] = useState(false);
   const [making, setMaking] = useState(false);
+  const [showPromotion, setShowPromotion] = useState(false);
 
   useEffect(() => {
     checkAdminExists();
@@ -46,16 +47,14 @@ export default function AdminBootstrap() {
   };
 
   const makeAdmin = async () => {
-    if (!user) return;
+    if (!user?.email) return;
     
     setMaking(true);
     try {
-      const { error } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: user.id,
-          role: 'admin'
-        });
+      // Utiliser la fonction SQL sécurisée pour promouvoir l'utilisateur
+      const { error } = await supabase.rpc('promote_user_to_admin', {
+        user_email: user.email
+      });
 
       if (error) throw error;
 
@@ -64,7 +63,7 @@ export default function AdminBootstrap() {
       // Recharger la page pour mettre à jour le rôle
       window.location.href = '/';
     } catch (error: any) {
-      console.error('Erreur création admin:', error);
+      console.error('Erreur promotion admin:', error);
       toast.error(`Erreur: ${error.message}`);
     } finally {
       setMaking(false);
@@ -79,23 +78,86 @@ export default function AdminBootstrap() {
     );
   }
 
-  if (adminExists) {
+  if (adminExists && userRole === 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-md">
           <CardHeader>
-            <CardTitle>Système déjà configuré</CardTitle>
+            <CardTitle className="text-green-600">✓ Vous êtes admin</CardTitle>
             <CardDescription>
-              Un administrateur existe déjà dans le système
+              Votre compte dispose des droits administrateur
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Contactez votre administrateur pour obtenir un rôle.
-            </p>
+          <CardContent className="space-y-4">
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">
+                <strong>Compte:</strong>
+              </p>
+              <p className="text-sm font-mono">{user?.email}</p>
+              <p className="text-sm text-muted-foreground mt-2 mb-1">
+                <strong>Rôle:</strong>
+              </p>
+              <p className="text-sm font-semibold text-green-600">Administrateur</p>
+            </div>
             <Button onClick={() => navigate('/')} className="w-full">
-              Retour à l'accueil
+              Accéder au tableau de bord
             </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (adminExists && !showPromotion) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>Diagnostic de compte</CardTitle>
+            <CardDescription>
+              Vérification de vos permissions
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-1">
+                <strong>Compte:</strong>
+              </p>
+              <p className="text-sm font-mono">{user?.email}</p>
+              <p className="text-sm text-muted-foreground mt-2 mb-1">
+                <strong>Rôle actuel:</strong>
+              </p>
+              <p className="text-sm font-semibold text-orange-600">
+                {userRole || 'Aucun rôle assigné'}
+              </p>
+            </div>
+            
+            <div className="text-sm text-muted-foreground space-y-2 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-900">
+              <p className="font-medium text-yellow-900 dark:text-yellow-200">
+                ⚠️ Permissions insuffisantes
+              </p>
+              <p className="text-xs">
+                Vous n'avez pas le rôle administrateur. Si vous devez gérer ce système, cliquez ci-dessous pour vous promouvoir en admin.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Button 
+                onClick={() => setShowPromotion(true)} 
+                variant="default"
+                className="w-full"
+              >
+                <Shield className="mr-2 h-4 w-4" />
+                Me promouvoir en Admin
+              </Button>
+              <Button 
+                onClick={() => navigate('/')} 
+                variant="outline"
+                className="w-full"
+              >
+                Retour à l'accueil
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -129,46 +191,81 @@ export default function AdminBootstrap() {
           <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
             <Shield className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle>Configuration initiale</CardTitle>
+          <CardTitle>
+            {adminExists ? 'Promotion administrateur' : 'Configuration initiale'}
+          </CardTitle>
           <CardDescription>
-            Aucun administrateur n'existe dans le système
+            {adminExists 
+              ? 'Obtenir les droits administrateur' 
+              : 'Aucun administrateur n\'existe dans le système'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="bg-muted p-4 rounded-lg">
-            <p className="text-sm text-muted-foreground mb-2">
-              <strong>Compte connecté:</strong>
+            <p className="text-sm text-muted-foreground mb-1">
+              <strong>Compte:</strong>
             </p>
             <p className="text-sm font-mono">{user.email}</p>
+            <p className="text-sm text-muted-foreground mt-2 mb-1">
+              <strong>Rôle actuel:</strong>
+            </p>
+            <p className="text-sm font-semibold text-orange-600">
+              {userRole || 'Aucun rôle assigné'}
+            </p>
           </div>
           
           <div className="text-sm text-muted-foreground space-y-2">
-            <p>
-              Vous êtes le premier utilisateur du système. Cliquez sur le bouton ci-dessous pour devenir administrateur.
-            </p>
-            <p className="text-xs">
-              En tant qu'administrateur, vous pourrez créer des clients, gérer les utilisateurs et configurer le système.
-            </p>
-          </div>
-
-          <Button 
-            onClick={makeAdmin} 
-            disabled={making}
-            className="w-full"
-            size="lg"
-          >
-            {making ? (
+            {!adminExists ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Configuration...
+                <p>
+                  Vous êtes le premier utilisateur du système. Cliquez sur le bouton ci-dessous pour devenir administrateur.
+                </p>
+                <p className="text-xs">
+                  En tant qu'administrateur, vous pourrez créer des clients, gérer les utilisateurs et configurer le système.
+                </p>
               </>
             ) : (
               <>
-                <Shield className="mr-2 h-4 w-4" />
-                Devenir Administrateur
+                <p>
+                  Cliquez sur le bouton ci-dessous pour vous promouvoir en administrateur.
+                </p>
+                <p className="text-xs bg-yellow-50 dark:bg-yellow-950/20 p-2 rounded border border-yellow-200 dark:border-yellow-900">
+                  ⚠️ Cette action remplacera votre rôle actuel par le rôle administrateur.
+                </p>
               </>
             )}
-          </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Button 
+              onClick={makeAdmin} 
+              disabled={making}
+              className="w-full"
+              size="lg"
+            >
+              {making ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Promotion en cours...
+                </>
+              ) : (
+                <>
+                  <Shield className="mr-2 h-4 w-4" />
+                  Devenir Administrateur
+                </>
+              )}
+            </Button>
+            
+            {adminExists && (
+              <Button 
+                onClick={() => setShowPromotion(false)} 
+                variant="outline"
+                className="w-full"
+              >
+                Annuler
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

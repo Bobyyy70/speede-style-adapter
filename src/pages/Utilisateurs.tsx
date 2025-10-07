@@ -63,7 +63,13 @@ const Utilisateurs = () => {
         // Gestion des erreurs RLS
         if (error.message.includes('permission denied') || error.message.includes('row-level security')) {
           console.error('Erreur de permissions RLS:', error);
-          toast.error("Permissions insuffisantes. Rôle 'admin' ou 'gestionnaire' requis.");
+          toast.error("Permissions insuffisantes. Cliquez pour obtenir l'accès admin.", {
+            action: {
+              label: "Obtenir accès admin",
+              onClick: () => window.location.href = '/admin-bootstrap',
+            },
+            duration: 10000,
+          });
           setUsers([]);
         } else {
           throw error;

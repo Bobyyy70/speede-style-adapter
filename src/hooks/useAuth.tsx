@@ -111,18 +111,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "Bienvenue dans le WMS Speed E-Log",
       });
 
-      // Get user role to redirect appropriately
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      // Redirect based on role
-      if (roleData?.role === 'client') {
-        navigate('/client/dashboard');
+      // Get user role using RPC to redirect appropriately
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        const { data: role } = await supabase.rpc('get_user_role', { user_id: currentUser.id });
+        
+        // Redirect based on role
+        if (role === 'client') {
+          navigate('/client/dashboard');
+        } else {
+          navigate('/');
+        }
       } else {
         navigate('/');
       }
