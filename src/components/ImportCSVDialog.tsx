@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import Papa from "papaparse";
 import { Badge } from "@/components/ui/badge";
-
+import { useAuth } from "@/hooks/useAuth";
 interface ImportCSVDialogProps {
   onSuccess: () => void;
 }
@@ -16,7 +16,18 @@ export const ImportCSVDialog = ({ onSuccess }: ImportCSVDialogProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<any[]>([]);
+  const { userRole, user, getViewingClientId } = useAuth();
 
+  const toNumberOrNull = (val: any) => {
+    if (val === undefined || val === null || val === "") return null;
+    const n = Number(String(val).replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  };
+  const toIntOrNull = (val: any) => {
+    if (val === undefined || val === null || val === "") return null;
+    const n = parseInt(String(val), 10);
+    return Number.isFinite(n) ? n : null;
+  };
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
@@ -38,33 +49,53 @@ export const ImportCSVDialog = ({ onSuccess }: ImportCSVDialogProps) => {
 
     setImporting(true);
     try {
+      // Déterminer le client_id pour respecter les RLS (surtout pour les clients)
+      let clientId: string | null = getViewingClientId() || null;
+      if (!clientId && userRole === 'client' && user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('client_id')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (profileError) {
+          console.error('Profile fetch error:', profileError);
+        }
+        clientId = profile?.client_id ?? null;
+      }
+      if (userRole === 'client' && !clientId) {
+        toast.error("Impossible de déterminer votre client. Contactez un administrateur.");
+        setImporting(false);
+        return;
+      }
+
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
         complete: async (results) => {
-          const rows = results.data as any[];
+          const rows = (results.data as any[]).filter(r => Object.values(r).some(v => v !== null && v !== undefined && String(v).trim() !== ''));
           const produits = rows.map((row) => ({
             reference: row.reference || row.Reference || row.SKU || row.sku,
             nom: row.nom || row.Nom || row.name || row.Name,
-            code_barre_ean: row.ean || row.EAN || row.code_barre || row.barcode,
-            prix_unitaire: parseFloat(row.prix || row.price || "0") || null,
-            poids_unitaire: parseFloat(row.poids || row.weight || "0") || null,
-            stock_minimum: parseInt(row.stock_min || row.min_stock || "0") || 0,
-            stock_maximum: parseInt(row.stock_max || row.max_stock || "0") || null,
+            code_barre_ean: row.ean || row.EAN || row.code_barre || row.barcode || null,
+            prix_unitaire: toNumberOrNull(row.prix ?? row.price ?? row.prix_unitaire),
+            poids_unitaire: toNumberOrNull(row.poids ?? row.weight ?? row.poids_unitaire),
+            stock_minimum: (toIntOrNull(row.stock_min ?? row.min_stock) ?? 0),
+            stock_maximum: toIntOrNull(row.stock_max ?? row.max_stock),
             description: row.description || row.Description || null,
-            categorie_emballage: parseInt(row.categorie || row.category || "1") || 1,
+            categorie_emballage: (toIntOrNull(row.categorie ?? row.category) ?? 1),
             statut_actif: true,
+            client_id: row.client_id || clientId || null,
           }));
 
-          // Filter out invalid rows (no reference)
-          const validProduits = produits.filter(p => p.reference);
+          // Filtrer les lignes invalides (reference et nom requis)
+          const validProduits = produits.filter(p => p.reference && p.nom);
 
           if (validProduits.length === 0) {
             toast.error("Aucun produit valide trouvé dans le CSV");
             return;
           }
 
-          // Insert in batches of 100
+          // Insert en lots de 100
           const batchSize = 100;
           let successCount = 0;
           let errorCount = 0;
@@ -92,9 +123,12 @@ export const ImportCSVDialog = ({ onSuccess }: ImportCSVDialogProps) => {
           }
 
           if (errorCount > 0) {
-            toast.error(`${errorCount} produit(s) ont échoué (références dupliquées ?)`);
+            toast.error(`${errorCount} produit(s) ont échoué (vérifiez les références et permissions)`);
           }
         },
+        error: () => {
+          toast.error("Le fichier CSV n'a pas pu être lu");
+        }
       });
     } catch (error: any) {
       console.error("Import error:", error);

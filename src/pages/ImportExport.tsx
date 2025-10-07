@@ -145,6 +145,55 @@ const ImportExport = () => {
                 title: "Import réussi",
                 description: `${commandes.length} commande(s) importée(s) avec règles appliquées`,
               });
+            } else if (importType === 'produits') {
+              // Déterminer client_id si nécessaire
+              let clientId: string | null = getViewingClientId() || null;
+              if (!clientId && userRole === 'client' && user) {
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('client_id')
+                  .eq('id', user.id)
+                  .maybeSingle();
+                clientId = profile?.client_id || null;
+              }
+              if (userRole === 'client' && !clientId) {
+                throw new Error("Impossible de déterminer votre client pour l'import des produits");
+              }
+
+              const toNumberOrNull = (val: any) => {
+                if (val === undefined || val === null || val === "") return null;
+                const n = Number(String(val).replace(",", "."));
+                return Number.isFinite(n) ? n : null;
+              };
+              const toIntOrNull = (val: any) => {
+                if (val === undefined || val === null || val === "") return null;
+                const n = parseInt(String(val), 10);
+                return Number.isFinite(n) ? n : null;
+              };
+
+              const produits = rows.map((row: any) => ({
+                reference: row.reference || row.Reference || row.SKU || row.sku,
+                nom: row.nom || row.Nom || row.name || row.Name,
+                code_barre_ean: row.ean || row.EAN || row.code_barre || row.barcode || null,
+                prix_unitaire: toNumberOrNull(row.prix ?? row.price ?? row.prix_unitaire),
+                poids_unitaire: toNumberOrNull(row.poids ?? row.weight ?? row.poids_unitaire),
+                stock_minimum: (toIntOrNull(row.stock_min ?? row.min_stock) ?? 0),
+                stock_maximum: toIntOrNull(row.stock_max ?? row.max_stock),
+                description: row.description || row.Description || null,
+                categorie_emballage: (toIntOrNull(row.categorie ?? row.category) ?? 1),
+                statut_actif: true,
+                client_id: row.client_id || clientId || null,
+              })).filter((p: any) => p.reference && p.nom);
+
+              if (produits.length === 0) throw new Error("Aucun produit valide trouvé dans le CSV");
+
+              const { error } = await supabase.from('produit').insert(produits);
+              if (error) throw error;
+
+              toast({
+                title: "Import réussi",
+                description: `${produits.length} produit(s) importé(s)`,
+              });
             } else {
               toast({
                 title: "Type non supporté",
