@@ -126,16 +126,30 @@ export const ImportCSVDialog = ({ onSuccess }: ImportCSVDialogProps) => {
             const { data, error } = await supabase
               .from("produit")
               .upsert(batch, { onConflict: 'reference' })
-              .select('id, reference');
+              .select('id, reference, stock_minimum');
 
             if (error) {
               console.error("Batch import error:", error);
               errorCount += batch.length;
               if (!firstError) firstError = error.message;
             } else {
-              // Comptage approximatif : si data retourné, on considère créé/màj
               const count = data?.length || 0;
               createdCount += count;
+              
+              // Créer automatiquement les mouvements "En attente de réappro"
+              if (data && data.length > 0) {
+                const mouvements = data.map(product => ({
+                  type_mouvement: 'entrée_prévue',
+                  statut_mouvement: 'attente_arrivage_reappro',
+                  produit_id: product.id,
+                  quantite: product.stock_minimum || 0,
+                  reference_origine: 'IMPORT-CSV',
+                  type_origine: 'import',
+                  remarques: 'Produit importé - En attente de réception'
+                }));
+
+                await supabase.from('mouvement_stock').insert(mouvements);
+              }
             }
           }
 

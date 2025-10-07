@@ -81,9 +81,8 @@ const Mouvements = () => {
         })
       );
 
-      return pipelineByProduct.filter(p => 
-        Object.values(p.quantites).some(q => q > 0) || p.produit.stock_actuel > 0
-      );
+      // Afficher tous les produits actifs (même sans mouvement)
+      return pipelineByProduct;
     },
   });
 
@@ -188,8 +187,15 @@ const Mouvements = () => {
                     {filteredPipeline.map((item) => (
                       <TableRow key={item.produit.id}>
                         <TableCell className="font-medium">
-                          <div className="text-sm">{item.produit.nom}</div>
-                          <div className="text-xs text-muted-foreground">{item.produit.reference}</div>
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <div className="text-sm">{item.produit.nom}</div>
+                              <div className="text-xs text-muted-foreground">{item.produit.reference}</div>
+                            </div>
+                            {item.quantites.attente_arrivage_reappro > 0 && (
+                              <Badge variant="outline" className="text-xs">Nouveau</Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className={`text-center ${getQuantiteCellClass(item.quantites.attente_arrivage_reappro)}`}>
                           {item.quantites.attente_arrivage_reappro || "-"}

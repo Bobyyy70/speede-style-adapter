@@ -212,9 +212,24 @@ const ImportExport = () => {
               const { data, error } = await supabase
                 .from('produit')
                 .upsert(finalProduits, { onConflict: 'reference' })
-                .select('id');
+                .select('id, stock_minimum');
               
               if (error) throw error;
+
+              // Créer automatiquement les mouvements "En attente de réappro"
+              if (data && data.length > 0) {
+                const mouvements = data.map(product => ({
+                  type_mouvement: 'entrée_prévue',
+                  statut_mouvement: 'attente_arrivage_reappro',
+                  produit_id: product.id,
+                  quantite: product.stock_minimum || 0,
+                  reference_origine: 'IMPORT-CSV',
+                  type_origine: 'import',
+                  remarques: 'Produit importé - En attente de réception'
+                }));
+
+                await supabase.from('mouvement_stock').insert(mouvements);
+              }
 
               toast({
                 title: "Import réussi",
