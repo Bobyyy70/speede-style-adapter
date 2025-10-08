@@ -120,19 +120,20 @@ export default function SendCloudSync() {
     setStats({ total, success, errors, avgDuration });
   };
 
-  const handleManualSync = async (customDate?: Date) => {
+  const handleManualSync = async (customDate?: Date, mode?: string) => {
     setSyncing(true);
     try {
-      const body = customDate ? { 
-        mode: 'initial',
-        startDate: format(customDate, 'yyyy-MM-dd')
-      } : {};
+      const body = mode === 'full' 
+        ? { mode: 'full' }
+        : customDate 
+          ? { mode: 'initial', startDate: format(customDate, 'yyyy-MM-dd') }
+          : {};
       
       const { error } = await supabase.functions.invoke('sendcloud-sync-orders', { body });
       
       if (error) throw error;
       
-      toast.success("Synchronisation lancée avec succès");
+      toast.success(mode === 'full' ? "Full scan (90j) lancé avec succès" : "Synchronisation lancée avec succès");
       await fetchSyncLogs();
       await fetchLogs();
     } catch (error: any) {
@@ -237,10 +238,16 @@ export default function SendCloudSync() {
                   Les commandes SendCloud sont récupérées automatiquement toutes les 5 minutes
                 </CardDescription>
               </div>
-              <Button onClick={() => handleManualSync()} disabled={syncing} variant="outline">
-                <Play className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                Forcer une sync
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => handleManualSync()} disabled={syncing} variant="outline">
+                  <Play className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                  Sync rapide
+                </Button>
+                <Button onClick={() => handleManualSync(undefined, 'full')} disabled={syncing} variant="secondary">
+                  <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                  Full scan (90j)
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

@@ -47,14 +47,18 @@ Deno.serve(async (req) => {
 
     // Récupérer le mode et la date de début depuis le body
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
-    const mode = body.mode || 'initial';
+    const mode = body.mode || 'incremental';
     const customStartDate = body.startDate; // Format YYYY-MM-DD
 
     console.log(`[SendCloud Sync] Mode: ${mode}`);
 
     // Calculer la fenêtre temporelle selon le mode
-    let dateMin: Date;
-    if (customStartDate) {
+    let dateMin: Date | null = null;
+    if (mode === 'full') {
+      // Mode full: 90 jours en arrière
+      dateMin = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      console.log(`[SendCloud Sync] Full scan mode: fetching orders from last 90 days`);
+    } else if (customStartDate) {
       // Date personnalisée fournie (format YYYY-MM-DD)
       dateMin = new Date(customStartDate);
       console.log(`[SendCloud Sync] Using custom start date: ${customStartDate}`);
@@ -65,26 +69,32 @@ Deno.serve(async (req) => {
       // Dernières 24h pour sync initiale
       dateMin = new Date(Date.now() - 24 * 60 * 60 * 1000);
     }
-    const dateMinISO = dateMin.toISOString();
+    const dateMinISO = dateMin ? dateMin.toISOString() : null;
 
-    // Utiliser l'API v3 de SendCloud (Orders API) avec filtres de statut
+    // Utiliser l'API v3 de SendCloud (Orders API) avec stratégie multi-critères
     const authHeader = 'Basic ' + btoa(`${sendcloudPublicKey}:${sendcloudSecretKey}`);
     
-    console.log(`[SendCloud Sync] Fetching pending/unshipped/cancelled orders since ${dateMinISO}...`);
+    console.log(`[SendCloud Sync] Fetching orders with multi-criteria strategy${dateMinISO ? ` since ${dateMinISO}` : ' (no date filter)'}...`);
 
     const allOrders: SendCloudOrder[] = [];
     
-    // Récupérer plusieurs statuts en parallèle (pending = non finalisées, unshipped = non expédiées)
-    const statusesToFetch = ['pending', 'unshipped', 'cancelled'];
+    // Stratégie multi-critères pour capturer toutes les commandes utiles
+    const searchCriteria = [
+      { label: 'unshipped', params: 'shipment_status=unshipped' },
+      { label: 'non-finalisées', params: 'is_fully_created=false' },
+      { label: 'avec-erreurs', params: 'contains_errors=true' },
+    ];
     
-    for (const status of statusesToFetch) {
+    for (const criteria of searchCriteria) {
       let page = 1;
       let hasMorePages = true;
 
       while (hasMorePages) {
-        const sendcloudUrl = `https://panel.sendcloud.sc/api/v3/orders?created_at__gte=${dateMinISO}&shipment_status=${status}&page=${page}&page_size=100`;
+        // Utiliser updated_at au lieu de created_at pour capturer les modifications
+        const dateFilter = dateMinISO ? `&updated_at__gte=${dateMinISO}` : '';
+        const sendcloudUrl = `https://panel.sendcloud.sc/api/v3/orders?${criteria.params}${dateFilter}&page=${page}&page_size=100`;
         
-        console.log(`[SendCloud Sync] Fetching ${status} page ${page}...`);
+        console.log(`[SendCloud Sync] API Call [${criteria.label}] page ${page}: ${sendcloudUrl}`);
 
         const sendcloudResponse = await fetch(sendcloudUrl, {
           method: 'GET',
@@ -96,12 +106,15 @@ Deno.serve(async (req) => {
 
         if (!sendcloudResponse.ok) {
           const errorText = await sendcloudResponse.text();
-          console.error(`[SendCloud Sync] Error fetching ${status}:`, errorText);
+          console.error(`[SendCloud Sync] Error fetching ${criteria.label}:`, errorText);
           break;
         }
 
         const sendcloudData = await sendcloudResponse.json();
-        const pageOrders = sendcloudData.orders || [];
+        // Parsing robuste: essayer plusieurs chemins
+        const pageOrders = sendcloudData.orders || sendcloudData.data?.orders || sendcloudData.results || [];
+        
+        console.log(`[SendCloud Sync] ${criteria.label} page ${page}: ${pageOrders.length} orders received`);
         
         if (pageOrders.length === 0) {
           hasMorePages = false;
@@ -110,7 +123,7 @@ Deno.serve(async (req) => {
           page++;
           
           if (page > 50) {
-            console.log(`[SendCloud Sync] Safety limit reached for ${status}`);
+            console.log(`[SendCloud Sync] Safety limit reached for ${criteria.label}`);
             hasMorePages = false;
           }
         }
@@ -170,11 +183,11 @@ Deno.serve(async (req) => {
       ...(byOrderNumbers.data || []).map((c: any) => c.numero_commande),
     ]);
 
-    // Récupérer les commandes déjà expédiées/archivées à exclure
+    // Récupérer les commandes déjà expédiées/archivées/préparées à exclure
     const { data: excludedCommandes } = await supabase
       .from('commande')
       .select('sendcloud_id, numero_commande')
-      .in('statut_wms', ['Expédiée', 'Livré', 'Archivé']);
+      .in('statut_wms', ['Expédiée', 'Livré', 'Archivé', 'Préparée', 'Prête à expédier']);
     
     const excludedSet = new Set([
       ...(excludedCommandes || []).map((c: any) => c.sendcloud_id),
