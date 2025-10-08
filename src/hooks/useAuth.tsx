@@ -53,6 +53,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (error) throw error;
       console.log('[useAuth] Role fetched:', data);
+      
+      // If no role found, check if user has a client_id in profiles
+      if (!data) {
+        console.log('[useAuth] No role found, checking profile for client_id...');
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('client_id')
+          .eq('id', userId)
+          .single();
+        
+        if (!profileError && profile?.client_id) {
+          console.log('[useAuth] Fallback to client via profile');
+          setUserRole('client');
+          return;
+        }
+      }
+      
       setUserRole(data as AppRole || null);
     } catch (error) {
       console.error('[useAuth] Error fetching user role:', error);

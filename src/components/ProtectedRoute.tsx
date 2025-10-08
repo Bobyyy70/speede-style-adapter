@@ -25,20 +25,6 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
   // If allowedRoles is specified, enforce strict role checking
   if (allowedRoles) {
-    // If no role assigned yet, block access (except during loading)
-    if (!loading && !userRole) {
-      return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <h1 className="text-2xl font-bold text-destructive">Aucun rôle assigné</h1>
-            <p className="text-muted-foreground">
-              Contactez un administrateur pour vous assigner un rôle.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
     const isAllowedDirect = userRole && allowedRoles.includes(userRole);
     const isAdminViewingAsClient = allowedRoles.includes('client') && userRole === 'admin' && window.location.search.includes('asClient=');
 
