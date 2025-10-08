@@ -17,7 +17,7 @@ export function GenererEmplacementsDialog({ open, onOpenChange, onSuccess }: Gen
   const [loading, setLoading] = useState(false);
   const [allees, setAllees] = useState("A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z");
   const [nbRacks, setNbRacks] = useState("50");
-  const [positions, setPositions] = useState("A,B,C,D");
+  const [positions, setPositions] = useState("a,b,c,d");
   const [capaciteKg, setCapaciteKg] = useState("500");
   const [capaciteUnites, setCapaciteUnites] = useState("100");
 
@@ -90,10 +90,10 @@ export function GenererEmplacementsDialog({ open, onOpenChange, onSuccess }: Gen
               id="positions"
               value={positions}
               onChange={(e) => setPositions(e.target.value)}
-              placeholder="A,B,C,D"
+              placeholder="a,b,c,d"
             />
             <p className="text-xs text-muted-foreground">
-              A = en bas, B = au-dessus, etc.
+              a = en bas, b = au-dessus, etc.
             </p>
           </div>
 
@@ -125,7 +125,7 @@ export function GenererEmplacementsDialog({ open, onOpenChange, onSuccess }: Gen
           <div className="rounded-md bg-muted p-3 text-sm">
             <p className="font-medium mb-1">Aperçu:</p>
             <p className="text-muted-foreground">
-              Exemple de codes: A1_A, A1_B, A2_A, B1_A...
+              Exemple de codes: A1_a, A1_b, A2_a, B1_a...
             </p>
             <p className="text-muted-foreground mt-1">
               Total estimé: {allees.split(',').length} × {nbRacks} × {positions.split(',').length} = {allees.split(',').length * parseInt(nbRacks || "0") * positions.split(',').length} emplacements

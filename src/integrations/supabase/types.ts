@@ -2186,6 +2186,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      generer_emplacements_auto: {
+        Args: {
+          p_allees?: string
+          p_capacite_kg?: number
+          p_capacite_unites?: number
+          p_nb_racks?: number
+          p_positions?: string
+        }
+        Returns: number
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
