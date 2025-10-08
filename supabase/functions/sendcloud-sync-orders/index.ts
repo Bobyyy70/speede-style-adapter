@@ -74,8 +74,8 @@ Deno.serve(async (req) => {
 
     const allOrders: SendCloudOrder[] = [];
     
-    // Récupérer plusieurs statuts en parallèle
-    const statusesToFetch = ['unshipped', 'cancelled'];
+    // Récupérer plusieurs statuts en parallèle (pending = non finalisées, unshipped = non expédiées)
+    const statusesToFetch = ['pending', 'unshipped', 'cancelled'];
     
     for (const status of statusesToFetch) {
       let page = 1;
@@ -170,10 +170,23 @@ Deno.serve(async (req) => {
       ...(byOrderNumbers.data || []).map((c: any) => c.numero_commande),
     ]);
 
-    // Filtrer les nouvelles commandes
+    // Récupérer les commandes déjà expédiées/archivées à exclure
+    const { data: excludedCommandes } = await supabase
+      .from('commande')
+      .select('sendcloud_id, numero_commande')
+      .in('statut_wms', ['Expédiée', 'Livré', 'Archivé']);
+    
+    const excludedSet = new Set([
+      ...(excludedCommandes || []).map((c: any) => c.sendcloud_id),
+      ...(excludedCommandes || []).map((c: any) => c.numero_commande),
+    ].filter(Boolean));
+
+    // Filtrer les nouvelles commandes (non existantes et non exclues)
     const newOrders = orders.filter(order => 
       !existingSet.has(order.id.toString()) && 
-      !existingSet.has(order.order_number)
+      !existingSet.has(order.order_number) &&
+      !excludedSet.has(order.id.toString()) &&
+      !excludedSet.has(order.order_number)
     );
 
     console.log(`[SendCloud Sync] ${newOrders.length} new orders to create, ${orders.length - newOrders.length} already exist`);

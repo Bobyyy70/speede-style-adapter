@@ -37,33 +37,57 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
     },
   });
 
+  // Fetch session de préparation associée
+  const { data: session } = useQuery({
+    queryKey: ["session_commande", commandeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("session_commande")
+        .select(`
+          *,
+          session_preparation:session_id (
+            id,
+            nom_session,
+            statut
+          )
+        `)
+        .eq("commande_id", commandeId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!commandeId,
+  });
+
   const isHorsUE = commande?.pays_code && !COUNTRIES_UE.includes(commande.pays_code.toUpperCase());
 
   const documentTypes = [
     {
-      categorie: "douane",
-      label: "Douane",
-      icon: FileText,
+      categorie: "interne",
+      label: "Préparation",
+      icon: Package,
       docs: [
-        { type: "cn23", label: "CN23 - Déclaration douane", required: isHorsUE },
-        { type: "invoice", label: "Facture commerciale", required: isHorsUE },
+        { type: "picking_slip", label: "Bon de picking (préparation)", required: true },
       ],
     },
     {
       categorie: "transport",
-      label: "Transport",
-      icon: Package,
+      label: "Transport & Expédition",
+      icon: FileText,
       docs: [
         { type: "packing_list", label: "Packing List (Bordereau de colisage)", required: true },
-        { type: "delivery_note", label: "Bon de livraison", required: false },
+        { type: "delivery_note", label: "Bon de livraison", required: true },
+        { type: "transport_ticket", label: "Ticket de transport", required: false },
       ],
     },
     {
-      categorie: "interne",
-      label: "Interne WMS",
+      categorie: "douane",
+      label: "Douane & Facturation",
       icon: FileText,
       docs: [
-        { type: "picking_slip", label: "Bordereau de préparation", required: true },
+        { type: "invoice", label: "Facture commerciale", required: true },
+        { type: "cn23", label: "CN23 - Déclaration douane", required: isHorsUE },
       ],
     },
   ];
@@ -176,6 +200,32 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Session de préparation */}
+        {session?.session_preparation && (
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-primary" />
+                <div>
+                  <div className="text-sm font-semibold">Session: {session.session_preparation.nom_session}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Statut: <Badge variant="outline" className="ml-1">{session.session_preparation.statut}</Badge>
+                  </div>
+                </div>
+              </div>
+              {session.session_id && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => window.open(`/preparation?session=${session.session_id}`, '_blank')}
+                >
+                  Voir la session
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
         {isHorsUE && (
           <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
             <p className="text-sm text-amber-800 dark:text-amber-200">

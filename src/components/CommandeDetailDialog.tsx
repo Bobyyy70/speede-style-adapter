@@ -192,16 +192,122 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
           </div>
         )}
 
-        <Tabs defaultValue="lignes" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="lignes">Lignes</TabsTrigger>
-            <TabsTrigger value="adresses">Adresses</TabsTrigger>
-            <TabsTrigger value="transport">Transport</TabsTrigger>
+        <Tabs defaultValue="details" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="details">Détails</TabsTrigger>
+            <TabsTrigger value="produits">Produits</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="services">Services</TabsTrigger>
+            <TabsTrigger value="services">Services & Historique</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="lignes" className="space-y-4 mt-4">
+          <TabsContent value="details" className="space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Adresse de livraison */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Adresse de livraison
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="font-semibold">{commande.adresse_nom}</div>
+                  <div>{commande.adresse_ligne_1}</div>
+                  {commande.adresse_ligne_2 && <div>{commande.adresse_ligne_2}</div>}
+                  <div>{commande.code_postal} {commande.ville}</div>
+                  <div className="font-medium">{commande.pays_code}</div>
+                  {commande.telephone_client && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Phone className="h-3 w-3" />
+                      {commande.telephone_client}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Adresse de facturation */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Adresse de facturation
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {commande.facturation_nom ? (
+                    <>
+                      <div className="font-semibold">{commande.facturation_nom}</div>
+                      <div>{commande.facturation_ligne_1}</div>
+                      {commande.facturation_ligne_2 && <div>{commande.facturation_ligne_2}</div>}
+                      <div>{commande.facturation_code_postal} {commande.facturation_ville}</div>
+                      <div className="font-medium">{commande.facturation_pays_code}</div>
+                    </>
+                  ) : (
+                    <div className="text-muted-foreground text-sm">Identique à l'adresse de livraison</div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Transport */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Truck className="h-4 w-4" />
+                  Informations de transport
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-sm text-muted-foreground mb-1">Transporteur</div>
+                    <div className="font-semibold">
+                      {commande.transporteur_choisi || commande.transporteur || "Non assigné"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground mb-1">Méthode</div>
+                    <div className="font-semibold">{commande.methode_expedition || "-"}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground mb-1">Poids réel</div>
+                    <div className="font-semibold">
+                      {commande.poids_reel_kg ? `${commande.poids_reel_kg} kg` : "-"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground mb-1">Poids volumétrique</div>
+                    <div className="font-semibold">
+                      {commande.poids_volumetrique_kg ? `${commande.poids_volumetrique_kg} kg` : "-"}
+                    </div>
+                  </div>
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">SendCloud</div>
+                  {commande.sendcloud_id && (
+                    <div className="text-sm">ID: <span className="font-mono">{commande.sendcloud_id}</span></div>
+                  )}
+                  {commande.tracking_number && (
+                    <div className="text-sm">
+                      Tracking: <a href={commande.tracking_url || "#"} target="_blank" rel="noopener" className="font-mono text-primary hover:underline">
+                        {commande.tracking_number}
+                      </a>
+                    </div>
+                  )}
+                  {commande.label_url && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={commande.label_url} target="_blank" rel="noopener">
+                        Voir l'étiquette
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="produits" className="space-y-4 mt-4">
             <Card>
               <CardHeader>
                 <CardTitle>Produits commandés</CardTitle>
@@ -257,119 +363,15 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
             </Card>
           </TabsContent>
 
-          <TabsContent value="adresses" className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Adresse de livraison
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="font-semibold">{commande.adresse_nom}</div>
-                  <div>{commande.adresse_ligne_1}</div>
-                  {commande.adresse_ligne_2 && <div>{commande.adresse_ligne_2}</div>}
-                  <div>{commande.code_postal} {commande.ville}</div>
-                  <div className="font-medium">{commande.pays_code}</div>
-                  {commande.telephone_client && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Phone className="h-3 w-3" />
-                      {commande.telephone_client}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Adresse de facturation
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {commande.facturation_nom ? (
-                    <>
-                      <div className="font-semibold">{commande.facturation_nom}</div>
-                      <div>{commande.facturation_ligne_1}</div>
-                      {commande.facturation_ligne_2 && <div>{commande.facturation_ligne_2}</div>}
-                      <div>{commande.facturation_code_postal} {commande.facturation_ville}</div>
-                      <div className="font-medium">{commande.facturation_pays_code}</div>
-                    </>
-                  ) : (
-                    <div className="text-muted-foreground text-sm">Identique à l'adresse de livraison</div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="transport" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Truck className="h-4 w-4" />
-                  Informations de transport
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Transporteur</Label>
-                    <div className="font-semibold mt-1">
-                      {commande.transporteur_choisi || commande.transporteur || "Non assigné"}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Méthode</Label>
-                    <div className="font-semibold mt-1">{commande.methode_expedition || "-"}</div>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Poids réel</Label>
-                    <div className="font-semibold mt-1">
-                      {commande.poids_reel_kg ? `${commande.poids_reel_kg} kg` : "-"}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Poids volumétrique</Label>
-                    <div className="font-semibold mt-1">
-                      {commande.poids_volumetrique_kg ? `${commande.poids_volumetrique_kg} kg` : "-"}
-                    </div>
-                  </div>
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm text-muted-foreground">SendCloud</Label>
-                  {commande.sendcloud_id && (
-                    <div className="text-sm">ID: <span className="font-mono">{commande.sendcloud_id}</span></div>
-                  )}
-                  {commande.tracking_number && (
-                    <div className="text-sm">
-                      Tracking: <a href={commande.tracking_url || "#"} target="_blank" rel="noopener" className="font-mono text-primary hover:underline">
-                        {commande.tracking_number}
-                      </a>
-                    </div>
-                  )}
-                  {commande.label_url && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={commande.label_url} target="_blank" rel="noopener">
-                        Voir l'étiquette
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="documents" className="space-y-4 mt-4">
             <DocumentsSection commandeId={commandeId} commande={commande} />
           </TabsContent>
 
           <TabsContent value="services" className="space-y-4 mt-4">
-            <ServicesSection commandeId={commandeId} />
-            <HistoireTimeline commande={commande} />
+            <div className="space-y-4">
+              <ServicesSection commandeId={commandeId} />
+              <HistoireTimeline commande={commande} />
+            </div>
           </TabsContent>
         </Tabs>
 
