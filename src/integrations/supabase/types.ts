@@ -1344,6 +1344,7 @@ export type Database = {
           email: string | null
           id: string
           nom_complet: string | null
+          tabs_access: string[] | null
           updated_at: string
         }
         Insert: {
@@ -1352,6 +1353,7 @@ export type Database = {
           email?: string | null
           id: string
           nom_complet?: string | null
+          tabs_access?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -1360,6 +1362,7 @@ export type Database = {
           email?: string | null
           id?: string
           nom_complet?: string | null
+          tabs_access?: string[] | null
           updated_at?: string
         }
         Relationships: []

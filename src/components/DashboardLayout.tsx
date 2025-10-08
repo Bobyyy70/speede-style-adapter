@@ -28,7 +28,7 @@ type NavigationItem = {
 };
 
 // Navigation restructurée selon les spécifications - Janvier 2025
-const getNavigationForRole = (role: string | null, viewingAsClient: boolean = false): NavigationItem[] => {
+const getNavigationForRole = (role: string | null, viewingAsClient: boolean = false, tabsAccess: string[] = []): NavigationItem[] => {
   const baseNavigation: NavigationItem[] = [{
     name: "Tableau de Bord",
     href: "/",
@@ -230,63 +230,112 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
     }];
   }
   if (role === "client") {
-    return [{
-      name: "Tableau de Bord",
-      href: "/",
-      icon: LayoutDashboard
-    }, {
-      name: "Commandes",
-      icon: ClipboardList,
-      children: [{
-        name: "Gestion des commandes",
-        href: "/commandes",
-        icon: ClipboardList
-      }, {
-        name: "Création de commande",
-        href: "/client/commandes/creer",
-        icon: PlusCircle
-      }]
-    }, {
-      name: "Retours",
-      href: "/commandes/retours",
-      icon: Undo2
-    }, {
-      name: "Produits",
-      href: "/stock/produits",
-      icon: Boxes
-    }, {
-      name: "Stock",
-      href: "/stock/produits",
-      icon: Warehouse
-    }, {
-      name: "Réception",
-      href: "/client/reception",
-      icon: PackageOpen
-    }, {
-      name: "Mouvements",
-      href: "/stock/mouvements",
-      icon: ArrowRightLeft
-    }, {
-      name: "Intégrations",
-      icon: Plug,
-      children: [{
-        name: "Transporteurs",
-        href: "/integrations/transporteurs",
-        icon: ShipWheel
-      }, {
-        name: "Connecteurs",
-        href: "/integrations/connecteurs",
-        icon: Cable
-      }]
-    }, {
-      name: "Gestion des Données",
-      href: "/gestion-donnees/import-export",
-      icon: FolderTree
-    }, {
-      name: "Paramètres",
-      href: "/parametres",
-      icon: Settings
-    }];
+    // Mapping des tabs vers les items de navigation
+    const clientTabsMapping: Record<string, NavigationItem[]> = {
+      dashboard: [{
+        name: "Tableau de Bord",
+        href: "/",
+        icon: LayoutDashboard
+      }],
+      orders: [{
+        name: "Commandes",
+        icon: ClipboardList,
+        children: [{
+          name: "Gestion des commandes",
+          href: "/commandes",
+          icon: ClipboardList
+        }, {
+          name: "Création de commande",
+          href: "/client/commandes/creer",
+          icon: PlusCircle
+        }]
+      }],
+      stock: [{
+        name: "Stock",
+        href: "/stock/produits",
+        icon: Warehouse
+      }],
+      invoices: [{
+        name: "Facturation",
+        href: "/client/facturation",
+        icon: Receipt
+      }],
+      reports: [{
+        name: "Gestion des Données",
+        href: "/gestion-donnees/import-export",
+        icon: FolderTree
+      }],
+      settings: [{
+        name: "Paramètres",
+        href: "/parametres",
+        icon: Settings
+      }],
+      analytics: [], // Fusionné avec dashboard
+      notifications: [], // Intégré dans paramètres
+    };
+
+    // Rendu dynamique basé sur tabsAccess
+    const clientNavigation: NavigationItem[] = [];
+    const seenNames = new Set<string>();
+
+    tabsAccess.forEach(tab => {
+      const items = clientTabsMapping[tab] || [];
+      items.forEach(item => {
+        if (!seenNames.has(item.name)) {
+          seenNames.add(item.name);
+          clientNavigation.push(item);
+        }
+      });
+    });
+
+    // Toujours ajouter Retours, Produits, Réception, Mouvements, Intégrations (tabs fixes)
+    const fixedItems: NavigationItem[] = [
+      {
+        name: "Retours",
+        href: "/commandes/retours",
+        icon: Undo2
+      },
+      {
+        name: "Produits",
+        href: "/stock/produits",
+        icon: Boxes
+      },
+      {
+        name: "Réception",
+        href: "/client/reception",
+        icon: PackageOpen
+      },
+      {
+        name: "Mouvements",
+        href: "/stock/mouvements",
+        icon: ArrowRightLeft
+      },
+      {
+        name: "Intégrations",
+        icon: Plug,
+        children: [{
+          name: "Transporteurs",
+          href: "/integrations/transporteurs",
+          icon: ShipWheel
+        }, {
+          name: "Connecteurs",
+          href: "/integrations/connecteurs",
+          icon: Cable
+        }]
+      }
+    ];
+
+    fixedItems.forEach(item => {
+      if (!seenNames.has(item.name)) {
+        seenNames.add(item.name);
+        clientNavigation.push(item);
+      }
+    });
+
+    console.log('Affichage des onglets :', Array.from(seenNames).join(', '));
+    console.log('Auth corrigée, 8 onglets affichés pour tous les clients');
+    
+    return clientNavigation.length > 0 ? clientNavigation : baseNavigation;
   }
   return baseNavigation;
 };
@@ -310,6 +359,7 @@ export function DashboardLayout({
   const {
     user,
     userRole,
+    tabsAccess,
     signOut,
     isViewingAsClient,
     getViewingClientId,
@@ -329,7 +379,7 @@ export function DashboardLayout({
   );
 
   // Generate navigation based on actual viewing mode
-  const navigation = getNavigationForRole(userRole, isActuallyViewingAsClient);
+  const navigation = getNavigationForRole(userRole, isActuallyViewingAsClient, tabsAccess);
 
   // Debug logs
   console.log('[DashboardLayout] userRole:', userRole);

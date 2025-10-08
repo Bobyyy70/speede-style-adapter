@@ -6,11 +6,14 @@ import { toast } from '@/hooks/use-toast';
 
 type AppRole = 'admin' | 'operateur' | 'gestionnaire' | 'client';
 
+const DEFAULT_TABS = ['dashboard', 'stock', 'orders', 'invoices', 'reports', 'settings', 'analytics', 'notifications'];
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   userRole: AppRole | null;
   viewingClientId: string | null;
+  tabsAccess: string[];
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, nomComplet: string) => Promise<void>;
@@ -42,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
+  const [tabsAccess, setTabsAccess] = useState<string[]>(DEFAULT_TABS);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -125,9 +129,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           setTimeout(() => {
             fetchUserRole(session.user.id);
+            // Set tabs from app_metadata or default
+            const tabs = session.user.app_metadata?.tabs_access || DEFAULT_TABS;
+            setTabsAccess(tabs);
           }, 0);
         } else {
           setUserRole(null);
+          setTabsAccess(DEFAULT_TABS);
         }
         
         setLoading(false);
@@ -142,6 +150,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         setTimeout(() => {
           fetchUserRole(session.user.id);
+          const tabs = session.user.app_metadata?.tabs_access || DEFAULT_TABS;
+          setTabsAccess(tabs);
         }, 0);
       }
       
@@ -150,6 +160,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Subscribe to realtime updates for tabs_access
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel('profile-tabs-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('[useAuth] Profile tabs updated via realtime:', payload.new);
+          const newTabs = (payload.new as any).tabs_access || DEFAULT_TABS;
+          setTabsAccess(newTabs);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -160,17 +197,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
 
-      toast({
-        title: "Connexion réussie",
-        description: "Bienvenue dans le WMS Speed E-Log",
-      });
-
-      // Get user role using RPC to redirect appropriately
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        const { data: role } = await supabase.rpc('get_user_role', { user_id: currentUser.id });
+      // Get session after sign in
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      if (currentSession?.user) {
+        const userId = currentSession.user.id;
         
-        // Redirect based on role
+        // Backfill profiles if needed
+        await supabase.rpc('backfill_missing_profiles');
+        
+        // Get or create profile with tabs_access
+        let { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('client_id, tabs_access')
+          .eq('id', userId)
+          .single();
+        
+        if (!profile) {
+          // Create profile with default tabs
+          const { data: newProfile } = await supabase
+            .from('profiles')
+            .insert({
+              id: userId,
+              email: currentSession.user.email,
+              nom_complet: currentSession.user.email,
+              tabs_access: DEFAULT_TABS,
+            })
+            .select('client_id, tabs_access')
+            .single();
+          profile = newProfile;
+        } else if (!profile.tabs_access || profile.tabs_access.length === 0) {
+          // Update profile with default tabs
+          const { data: updatedProfile } = await supabase
+            .from('profiles')
+            .update({ tabs_access: DEFAULT_TABS })
+            .eq('id', userId)
+            .select('client_id, tabs_access')
+            .single();
+          profile = updatedProfile;
+        }
+        
+        // Update app_metadata via edge function
+        const tabs = profile?.tabs_access || DEFAULT_TABS;
+        await supabase.functions.invoke('update-user-tabs-access', {
+          body: { user_id: userId, tabs_access: tabs },
+        });
+        
+        // Set tabs in state
+        const finalTabs = currentSession.user.app_metadata?.tabs_access || profile?.tabs_access || DEFAULT_TABS;
+        setTabsAccess(finalTabs);
+        console.log('Affichage des onglets :', finalTabs.join(', '));
+        
+        // Get role and redirect
+        const { data: role } = await supabase.rpc('get_user_role', { user_id: userId });
+        
         if (role === 'client') {
           navigate('/client/dashboard');
         } else {
@@ -179,6 +259,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         navigate('/');
       }
+
+      toast({
+        title: "Connexion réussie",
+        description: "Bienvenue dans le WMS Speed E-Log",
+      });
     } catch (error: any) {
       toast({
         title: "Erreur de connexion",
@@ -255,6 +340,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         userRole,
         viewingClientId,
+        tabsAccess,
         loading,
         signIn,
         signUp,
