@@ -110,35 +110,59 @@ Deno.serve(async (req) => {
 
     for (const sendcloudData of orders) {
       const orderNumber = sendcloudData.order_number || sendcloudData.order_id || String(sendcloudData.id);
+      const status = (sendcloudData as any).status || 'pending';
       
       try {
-        console.log(`\n🔄 Traitement: ${orderNumber}`);
+        console.log(`\n🔄 Traitement: ${orderNumber} (status: ${status})`);
 
-        // Vérifier si la commande existe déjà avec deux requêtes distinctes
-        const [bySendcloudId, byOrderNumber] = await Promise.all([
-          supabase
+        // Si commande annulée, l'archiver directement
+        if (status === 'cancelled') {
+          console.log(`🗑️ Commande annulée: ${orderNumber}`);
+          
+          // Vérifier si elle existe déjà
+          const { data: existing } = await supabase
             .from('commande')
-            .select('id, numero_commande')
-            .eq('sendcloud_id', String(sendcloudData.id))
-            .maybeSingle(),
-          supabase
-            .from('commande')
-            .select('id, numero_commande')
-            .eq('numero_commande', orderNumber)
-            .maybeSingle()
-        ]);
-
-        const existingCommande = bySendcloudId.data || byOrderNumber.data;
-
-        if (existingCommande) {
-          console.log(`⚠️ Déjà existante: ${existingCommande.numero_commande}`);
-          results.push({
-            order_number: orderNumber,
-            success: true,
-            already_exists: true,
-            commande_id: existingCommande.id
-          });
-          existingCount++;
+            .select('id')
+            .or(`sendcloud_id.eq.${String(sendcloudData.id)},numero_commande.eq.${orderNumber}`)
+            .maybeSingle();
+          
+          if (existing) {
+            // Archiver l'existante
+            await supabase
+              .from('commande')
+              .update({ statut_wms: 'Archivé', remarques: 'Commande annulée sur SendCloud' })
+              .eq('id', existing.id);
+            
+            results.push({
+              order_number: orderNumber,
+              success: true,
+              already_exists: true,
+              commande_id: existing.id
+            });
+            existingCount++;
+          } else {
+            // Créer directement archivée
+            const { data: newArchived } = await supabase
+              .from('commande')
+              .insert({
+                sendcloud_id: String(sendcloudData.id),
+                numero_commande: orderNumber,
+                nom_client: sendcloudData.name || 'Client inconnu',
+                statut_wms: 'Archivé',
+                source: 'sendcloud',
+                valeur_totale: 0,
+                remarques: 'Commande annulée sur SendCloud'
+              })
+              .select('id')
+              .single();
+            
+            results.push({
+              order_number: orderNumber,
+              success: true,
+              commande_id: newArchived?.id
+            });
+            successCount++;
+          }
           continue;
         }
 
@@ -156,10 +180,10 @@ Deno.serve(async (req) => {
         
         console.log(`📍 Adresse: ${city}, ${postalCode}, Pays: ${paysCode}`);
 
-        // Insérer la commande
+        // Utiliser UPSERT pour éviter les doublons (conflit sur sendcloud_id ou (source, numero_commande))
         const { data: commande, error: commandeError } = await supabase
           .from('commande')
-          .insert({
+          .upsert({
             sendcloud_id: String(sendcloudData.id),
             numero_commande: orderNumber,
             nom_client: clientName,
@@ -175,6 +199,9 @@ Deno.serve(async (req) => {
             devise: sendcloudData.currency || 'EUR',
             statut_wms: 'En attente de réappro',
             source: 'sendcloud'
+          }, {
+            onConflict: 'sendcloud_id',
+            ignoreDuplicates: false
           })
           .select()
           .single();

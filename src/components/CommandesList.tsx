@@ -3,18 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, TrendingUp, Package, Clock, CheckCircle2, Columns, Eye } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Search, Plus, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSessionDialog } from "./CreateSessionDialog";
 import { CommandeDetailDialog } from "./CommandeDetailDialog";
-import { SendCloudActions } from "./SendCloudActions";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Commande {
   id: string;
@@ -24,27 +19,10 @@ interface Commande {
   statut_wms: string;
   source: string;
   valeur_totale: number;
-  methode_expedition?: string;
-  transporteur?: string;
-  poids_total?: number;
-  sendcloud_id?: string;
-  sendcloud_shipment_id?: string;
-  label_url?: string;
-  tracking_number?: string;
-  tracking_url?: string;
-  numero_facture_commerciale?: string;
-  devise?: string;
-  date_modification?: string;
   ville?: string;
-  code_postal?: string;
   pays_code?: string;
-  adresse_ligne_1?: string;
-  adresse_ligne_2?: string;
-  adresse_nom?: string;
-  email_client?: string;
-  telephone_client?: string;
-  remarques?: string;
 }
+
 interface StatsData {
   total: number;
   en_attente: number;
@@ -52,135 +30,24 @@ interface StatsData {
   en_preparation: number;
   expedie: number;
 }
-const STATUTS = [{
-  value: "all",
-  label: "Tous les statuts"
-}, {
-  value: "En attente de réappro",
-  label: "En attente de réappro"
-}, {
-  value: "Prêt à préparer",
-  label: "Prêt à préparer"
-}, {
-  value: "En préparation",
-  label: "En préparation"
-}, {
-  value: "En attente d'expédition",
-  label: "En attente d'expédition"
-}, {
-  value: "En cours de livraison",
-  label: "En cours de livraison"
-}, {
-  value: "Livré",
-  label: "Livré"
-}];
-const SOURCES = [{
-  value: "all",
-  label: "Toutes les sources"
-}, {
-  value: "SendCloud",
-  label: "SendCloud"
-}, {
-  value: "maraiches",
-  label: "Maraiches"
-}, {
-  value: "SupplyCo's",
-  label: "SupplyCo's"
-}];
-const ALL_COLUMNS = [{
-  key: "numero_commande",
-  label: "N° Commande",
-  defaultVisible: true
-}, {
-  key: "nom_client",
-  label: "Client",
-  defaultVisible: true
-}, {
-  key: "date_creation",
-  label: "Date de création",
-  defaultVisible: true
-}, {
-  key: "statut_wms",
-  label: "Statut",
-  defaultVisible: true
-}, {
-  key: "source",
-  label: "Source",
-  defaultVisible: true
-}, {
-  key: "valeur_totale",
-  label: "Valeur",
-  defaultVisible: true
-}, {
-  key: "transporteur",
-  label: "Transporteur",
-  defaultVisible: true
-}, {
-  key: "methode_expedition",
-  label: "Méthode",
-  defaultVisible: true
-}, {
-  key: "tracking_number",
-  label: "N° de suivi",
-  defaultVisible: true
-}, {
-  key: "poids_total",
-  label: "Poids total",
-  defaultVisible: false
-}, {
-  key: "sendcloud_id",
-  label: "SendCloud ID",
-  defaultVisible: false
-}, {
-  key: "numero_facture_commerciale",
-  label: "N° Facture",
-  defaultVisible: true
-}, {
-  key: "devise",
-  label: "Devise",
-  defaultVisible: false
-}, {
-  key: "date_modification",
-  label: "Date de modification",
-  defaultVisible: false
-}, {
-  key: "ville",
-  label: "Ville",
-  defaultVisible: false
-}, {
-  key: "code_postal",
-  label: "Code postal",
-  defaultVisible: false
-}, {
-  key: "pays_code",
-  label: "Pays",
-  defaultVisible: false
-}, {
-  key: "adresse_ligne_1",
-  label: "Adresse ligne 1",
-  defaultVisible: false
-}, {
-  key: "adresse_ligne_2",
-  label: "Adresse ligne 2",
-  defaultVisible: false
-}, {
-  key: "adresse_nom",
-  label: "Adresse nom",
-  defaultVisible: false
-}, {
-  key: "email_client",
-  label: "Email client",
-  defaultVisible: false
-}, {
-  key: "telephone_client",
-  label: "Téléphone client",
-  defaultVisible: false
-}, {
-  key: "remarques",
-  label: "Remarques",
-  defaultVisible: false
-}];
-const DEFAULT_VISIBLE_COLUMNS = ALL_COLUMNS.filter(col => col.defaultVisible).map(col => col.key);
+
+const STATUTS = [
+  { value: "all", label: "Tous les statuts" },
+  { value: "En attente de réappro", label: "En attente de réappro" },
+  { value: "Prêt à préparer", label: "Prêt à préparer" },
+  { value: "En préparation", label: "En préparation" },
+  { value: "En attente d'expédition", label: "En attente d'expédition" },
+  { value: "En cours de livraison", label: "En cours de livraison" },
+  { value: "Livré", label: "Livré" },
+];
+
+const SOURCES = [
+  { value: "all", label: "Toutes les sources" },
+  { value: "SendCloud", label: "SendCloud" },
+  { value: "maraiches", label: "Maraiches" },
+  { value: "SupplyCo's", label: "SupplyCo's" },
+];
+
 interface CommandesListProps {
   filter?: string;
   onUpdate?: () => void;
@@ -190,6 +57,7 @@ interface CommandesListProps {
   clientFilter?: string | null;
   statusFilters?: string[];
 }
+
 export function CommandesList({
   filter,
   onUpdate,
@@ -197,7 +65,7 @@ export function CommandesList({
   userId,
   viewingClientId,
   clientFilter,
-  statusFilters
+  statusFilters,
 }: CommandesListProps = {}) {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [stats, setStats] = useState<StatsData>({
@@ -205,7 +73,7 @@ export function CommandesList({
     en_attente: 0,
     pret_a_preparer: 0,
     en_preparation: 0,
-    expedie: 0
+    expedie: 0,
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -215,22 +83,23 @@ export function CommandesList({
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
-    const saved = localStorage.getItem("commandes-visible-columns");
-    return saved ? JSON.parse(saved) : DEFAULT_VISIBLE_COLUMNS;
-  });
+
   useEffect(() => {
     if (filter) {
       setSelectedStatut(filter);
     }
   }, [filter]);
+
   useEffect(() => {
     fetchCommandes();
   }, [selectedStatut, selectedSource, clientFilter, viewingClientId, statusFilters]);
+
   const fetchCommandes = async () => {
     setLoading(true);
     try {
-      let query = supabase.from("commande").select(`
+      let query = supabase
+        .from("commande")
+        .select(`
           id,
           numero_commande,
           nom_client,
@@ -238,70 +107,50 @@ export function CommandesList({
           statut_wms,
           source,
           valeur_totale,
-          methode_expedition,
-          transporteur,
-          poids_total,
-          sendcloud_id,
-          numero_facture_commerciale,
-          devise,
-          date_modification,
           ville,
-          code_postal,
-          pays_code,
-          adresse_ligne_1,
-          adresse_ligne_2,
-          adresse_nom,
-          email_client,
-          telephone_client,
-          remarques
-        `).order("date_creation", {
-        ascending: false
-      });
-      
-      // Priorité 1: Filtre manuel admin
+          pays_code
+        `)
+        .neq("statut_wms", "Archivé")
+        .order("date_creation", { ascending: false });
+
       if (clientFilter) {
         query = query.eq("client_id", clientFilter);
-      }
-      // Priorité 2: Vue Client admin
-      else if (viewingClientId) {
+      } else if (viewingClientId) {
         query = query.eq("client_id", viewingClientId);
-      }
-      // Priorité 3: Client connecté
-      else if (userRole === 'client' && userId) {
+      } else if (userRole === "client" && userId) {
         const { data: profileData } = await supabase
           .from("profiles")
           .select("client_id")
           .eq("id", userId)
           .single();
-        
+
         if (profileData?.client_id) {
           query = query.eq("client_id", profileData.client_id);
         }
       }
-      
+
       if (statusFilters && statusFilters.length > 0) {
-        // Si statusFilters est fourni, on l'utilise au lieu de selectedStatut
         query = query.in("statut_wms", statusFilters);
       } else if (selectedStatut !== "all") {
         query = query.eq("statut_wms", selectedStatut);
       }
+
       if (selectedSource !== "all") {
         query = query.eq("source", selectedSource);
       }
-      const {
-        data,
-        error
-      } = await query;
+
+      const { data, error } = await query;
       if (error) throw error;
 
-      // Calculate stats
       const allCommandes = data || [];
       setStats({
         total: allCommandes.length,
-        en_attente: allCommandes.filter(c => c.statut_wms === "En attente de réappro").length,
-        pret_a_preparer: allCommandes.filter(c => c.statut_wms === "Prêt à préparer").length,
-        en_preparation: allCommandes.filter(c => c.statut_wms === "En préparation").length,
-        expedie: allCommandes.filter(c => ["En attente d'expédition", "En cours de livraison", "Livré"].includes(c.statut_wms)).length
+        en_attente: allCommandes.filter((c) => c.statut_wms === "En attente de réappro").length,
+        pret_a_preparer: allCommandes.filter((c) => c.statut_wms === "Prêt à préparer").length,
+        en_preparation: allCommandes.filter((c) => c.statut_wms === "En préparation").length,
+        expedie: allCommandes.filter((c) =>
+          ["En attente d'expédition", "En cours de livraison", "Livré"].includes(c.statut_wms)
+        ).length,
       });
       setCommandes(allCommandes);
       if (onUpdate) {
@@ -314,38 +163,20 @@ export function CommandesList({
       setLoading(false);
     }
   };
-  const filteredCommandes = commandes.filter(commande => {
-    const matchesSearch = commande.numero_commande.toLowerCase().includes(searchQuery.toLowerCase()) || commande.nom_client.toLowerCase().includes(searchQuery.toLowerCase());
+
+  const filteredCommandes = commandes.filter((commande) => {
+    const matchesSearch =
+      commande.numero_commande.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      commande.nom_client.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
+
   const toggleCommandeSelection = (id: string) => {
-    setSelectedCommandes(prev => prev.includes(id) ? prev.filter(cId => cId !== id) : [...prev, id]);
+    setSelectedCommandes((prev) =>
+      prev.includes(id) ? prev.filter((cId) => cId !== id) : [...prev, id]
+    );
   };
-  const toggleSelectAll = () => {
-    if (selectedCommandes.length === filteredCommandes.length) {
-      setSelectedCommandes([]);
-    } else {
-      setSelectedCommandes(filteredCommandes.map(c => c.id));
-    }
-  };
-  const getStatutBadge = (statut: string) => {
-    switch (statut) {
-      case "En attente de réappro":
-        return <Badge className="bg-orange-500 hover:bg-orange-600">{statut}</Badge>;
-      case "Prêt à préparer":
-        return <Badge className="bg-blue-500 hover:bg-blue-600">{statut}</Badge>;
-      case "En préparation":
-        return <Badge className="bg-yellow-500 hover:bg-yellow-600">{statut}</Badge>;
-      case "En attente d'expédition":
-        return <Badge className="bg-purple-500 hover:bg-purple-600">{statut}</Badge>;
-      case "En cours de livraison":
-        return <Badge className="bg-indigo-500 hover:bg-indigo-600">{statut}</Badge>;
-      case "Livré":
-        return <Badge className="bg-green-500 hover:bg-green-600">{statut}</Badge>;
-      default:
-        return <Badge variant="outline">{statut}</Badge>;
-    }
-  };
+
   const handleCreateSession = () => {
     if (selectedCommandes.length === 0) {
       toast.error("Veuillez sélectionner au moins une commande");
@@ -353,97 +184,81 @@ export function CommandesList({
     }
     setCreateDialogOpen(true);
   };
-  const handleSessionCreated = () => {
-    setSelectedCommandes([]);
-    fetchCommandes();
+
+  const handleDialogClose = (open: boolean) => {
+    setCreateDialogOpen(open);
+    if (!open) {
+      setSelectedCommandes([]);
+      fetchCommandes();
+    }
   };
-  const toggleColumnVisibility = (columnKey: string) => {
-    setVisibleColumns(prev => {
-      const newColumns = prev.includes(columnKey) ? prev.filter(k => k !== columnKey) : [...prev, columnKey];
-      localStorage.setItem("commandes-visible-columns", JSON.stringify(newColumns));
-      return newColumns;
-    });
-  };
-  const resetColumns = () => {
-    setVisibleColumns(DEFAULT_VISIBLE_COLUMNS);
-    localStorage.setItem("commandes-visible-columns", JSON.stringify(DEFAULT_VISIBLE_COLUMNS));
-  };
-  const isColumnVisible = (columnKey: string) => visibleColumns.includes(columnKey);
+
   const handleViewDetails = (commandeId: string) => {
     setSelectedCommandeId(commandeId);
     setDetailDialogOpen(true);
   };
-  const renderCellContent = (commande: Commande, columnKey: string) => {
-    switch (columnKey) {
-      case "numero_commande":
-        return <span className="font-medium">{commande.numero_commande}</span>;
-      case "nom_client":
-        return commande.nom_client;
-      case "date_creation":
-        return new Date(commande.date_creation).toLocaleDateString("fr-FR");
-      case "statut_wms":
-        return getStatutBadge(commande.statut_wms);
-      case "tracking_number":
-        return commande.tracking_number ? (
-          <a 
-            href={commande.tracking_url || "#"} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-primary hover:underline font-mono text-xs"
-          >
-            {commande.tracking_number}
-          </a>
-        ) : "-";
-      case "source":
-        return commande.source;
-      case "valeur_totale":
-        return <span className="text-right block">{commande.valeur_totale.toFixed(2)} €</span>;
-      case "date_modification":
-        return commande.date_modification ? new Date(commande.date_modification).toLocaleDateString("fr-FR") : "-";
-      case "poids_total":
-        return commande.poids_total ? `${commande.poids_total} kg` : "-";
+
+  const getStatutColor = (statut: string): string => {
+    switch (statut) {
+      case "En attente de réappro":
+        return "text-orange-600";
+      case "Prêt à préparer":
+        return "text-blue-600";
+      case "En préparation":
+        return "text-yellow-600";
+      case "En attente d'expédition":
+        return "text-purple-600";
+      case "En cours de livraison":
+        return "text-indigo-600";
+      case "Livré":
+        return "text-green-600";
+      case "Expédié":
+        return "text-green-600";
       default:
-        return (commande as any)[columnKey] || "-";
+        return "text-muted-foreground";
     }
   };
+
+  const needsStockAlert = (statut: string): boolean => {
+    return statut === "En attente de réappro";
+  };
+
   // Tri intelligent: non expédiées en haut, expédiées en bas
   const sortedCommandes = [...filteredCommandes].sort((a, b) => {
     const statusOrder: Record<string, number> = {
-      'En attente de réappro': 1,
-      'Prêt à préparer': 2,
-      'En préparation': 3,
-      'Expédié': 4,
-      'Livré': 5,
-      'Archivé': 6,
+      "En attente de réappro": 1,
+      "Prêt à préparer": 2,
+      "En préparation": 3,
+      "En attente d'expédition": 4,
+      "Expédié": 5,
+      "En cours de livraison": 5,
+      "Livré": 6,
+      "Archivé": 7,
     };
-    
+
     const aOrder = statusOrder[a.statut_wms] || 999;
     const bOrder = statusOrder[b.statut_wms] || 999;
-    
+
     if (aOrder !== bOrder) return aOrder - bOrder;
-    
-    // Même statut: tri chronologique inversé
+
     return new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime();
   });
 
   if (loading) {
-    return <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map(i => <Card key={i}>
-              <CardHeader className="pb-3">
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-1/2 mt-2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-4 w-full mb-2" />
-                <Skeleton className="h-4 w-full mb-2" />
-                <Skeleton className="h-4 w-2/3" />
-              </CardContent>
-            </Card>)}
-        </div>
-      </div>;
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="border rounded-lg p-4">
+            <Skeleton className="h-6 w-3/4 mb-2" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        ))}
+      </div>
+    );
   }
-  return <div className="space-y-6">
+
+  return (
+    <div className="space-y-6">
       {/* Filters and Actions */}
       <Card>
         <CardHeader>
@@ -451,7 +266,12 @@ export function CommandesList({
             <div className="flex-1 space-y-4 lg:space-y-0 lg:flex lg:items-center lg:gap-4">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Rechercher par N° ou client..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8" />
+                <Input
+                  placeholder="Rechercher par N° ou client..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8"
+                />
               </div>
 
               <Select value={selectedStatut} onValueChange={setSelectedStatut}>
@@ -459,9 +279,11 @@ export function CommandesList({
                   <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUTS.map(statut => <SelectItem key={statut.value} value={statut.value}>
+                  {STATUTS.map((statut) => (
+                    <SelectItem key={statut.value} value={statut.value}>
                       {statut.label}
-                    </SelectItem>)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -470,9 +292,11 @@ export function CommandesList({
                   <SelectValue placeholder="Source" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SOURCES.map(source => <SelectItem key={source.value} value={source.value}>
+                  {SOURCES.map((source) => (
+                    <SelectItem key={source.value} value={source.value}>
                       {source.label}
-                    </SelectItem>)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -492,68 +316,76 @@ export function CommandesList({
           {sortedCommandes.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Aucune commande trouvée</p>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {sortedCommandes.map(commande => (
-                <Card 
+            <div className="space-y-2">
+              {sortedCommandes.map((commande) => (
+                <div
                   key={commande.id}
-                  className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-primary/50"
+                  className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
                   onClick={() => handleViewDetails(commande.id)}
                 >
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-1 flex-1" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-2">
-                          <Checkbox 
-                            checked={selectedCommandes.includes(commande.id)} 
-                            onCheckedChange={() => toggleCommandeSelection(commande.id)} 
-                            onClick={e => e.stopPropagation()}
-                          />
-                          <CardTitle className="text-lg font-semibold">{commande.numero_commande}</CardTitle>
+                  <Checkbox
+                    checked={selectedCommandes.includes(commande.id)}
+                    onCheckedChange={() => toggleCommandeSelection(commande.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex-shrink-0"
+                  />
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-3 mb-1">
+                          <span className="font-semibold text-base">
+                            {commande.numero_commande}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {commande.nom_client}
+                          </span>
                         </div>
-                        <p className="text-sm text-muted-foreground">{commande.nom_client}</p>
-                      </div>
-                      {getStatutBadge(commande.statut_wms)}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Date</span>
-                        <span className="font-medium">{new Date(commande.date_creation).toLocaleDateString('fr-FR')}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Source</span>
-                        <Badge variant="outline" className="text-xs">{commande.source}</Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Destination</span>
-                        <span className="font-medium truncate max-w-[120px]" title={`${commande.ville}, ${commande.pays_code}`}>
-                          {commande.ville}, {commande.pays_code}
-                        </span>
-                      </div>
-                      {commande.valeur_totale > 0 && (
-                        <div className="flex justify-between pt-2 border-t font-semibold text-primary">
-                          <span>Valeur</span>
-                          <span>{commande.valeur_totale.toFixed(2)} {commande.devise || 'EUR'}</span>
+                        
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-sm font-medium ${getStatutColor(commande.statut_wms)}`}>
+                            {commande.statut_wms}
+                          </span>
+                          
+                          {needsStockAlert(commande.statut_wms) && (
+                            <span className="inline-flex items-center gap-1 text-xs text-orange-600">
+                              <AlertCircle className="h-3 w-3" />
+                              Alerte stock
+                            </span>
+                          )}
                         </div>
-                      )}
+                      </div>
+
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-sm text-muted-foreground mb-1">
+                          {new Date(commande.date_creation).toLocaleDateString("fr-FR")}
+                        </div>
+                        <div className="font-semibold">
+                          {commande.valeur_totale.toFixed(2)} €
+                        </div>
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))}
             </div>
           )}
-
-          {sortedCommandes.length > 0 && <div className="mt-4 text-sm text-muted-foreground text-center">
-              {sortedCommandes.length} commande(s) • 
-              {sortedCommandes.filter(c => !['Expédié', 'Livré', 'Archivé'].includes(c.statut_wms)).length} à traiter
-              {selectedCommandes.length > 0 && ` • ${selectedCommandes.length} sélectionnée(s)`}
-            </div>}
         </CardContent>
       </Card>
 
-      <CreateSessionDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} selectedCommandeIds={selectedCommandes} onSuccess={handleSessionCreated} />
-      
-      {selectedCommandeId && <CommandeDetailDialog commandeId={selectedCommandeId} open={detailDialogOpen} onOpenChange={setDetailDialogOpen} onSuccess={fetchCommandes} />}
-    </div>;
+      <CreateSessionDialog
+        open={createDialogOpen}
+        onOpenChange={handleDialogClose}
+        selectedCommandeIds={selectedCommandes}
+      />
+
+      {selectedCommandeId && (
+        <CommandeDetailDialog
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          commandeId={selectedCommandeId}
+        />
+      )}
+    </div>
+  );
 }

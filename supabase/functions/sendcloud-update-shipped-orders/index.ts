@@ -64,10 +64,17 @@ Deno.serve(async (req) => {
 
         const parcel = parcelData.parcels[0];
         const statusId = parcel.status?.id || 0;
+        const statusMessage = parcel.status?.message || '';
+
+        // Détecter si la commande est annulée
+        const isCancelled = statusMessage.toLowerCase().includes('cancelled') || 
+                           statusMessage.toLowerCase().includes('annulé');
 
         // Déterminer le nouveau statut WMS
         let nouveauStatut = commande.statut_wms;
-        if (statusId >= 3000) {
+        if (isCancelled) {
+          nouveauStatut = 'Archivé';
+        } else if (statusId >= 3000) {
           nouveauStatut = 'Livré';
         } else if (statusId >= 2000) {
           nouveauStatut = 'Expédié';
@@ -77,17 +84,23 @@ Deno.serve(async (req) => {
 
         // Mettre à jour si le statut a changé
         if (nouveauStatut !== commande.statut_wms) {
+          const updateData: any = {
+            statut_wms: nouveauStatut,
+            transporteur: parcel.carrier?.name || null,
+            tracking_number: parcel.tracking_number || null,
+            tracking_url: parcel.tracking_url || null,
+          };
+          
+          if (isCancelled) {
+            updateData.remarques = 'Commande annulée sur SendCloud';
+          }
+
           await supabase
             .from('commande')
-            .update({
-              statut_wms: nouveauStatut,
-              transporteur: parcel.carrier?.name || null,
-              tracking_number: parcel.tracking_number || null,
-              tracking_url: parcel.tracking_url || null,
-            })
+            .update(updateData)
             .eq('id', commande.id);
 
-          console.log(`[Update Shipped] ${commande.numero_commande}: ${commande.statut_wms} → ${nouveauStatut}`);
+          console.log(`[Update Shipped] ${commande.numero_commande}: ${commande.statut_wms} → ${nouveauStatut}${isCancelled ? ' (cancelled)' : ''}`);
           updatedCount++;
         }
       } catch (error) {
