@@ -86,6 +86,7 @@ const Utilisateurs = () => {
         client_nom: row.client_nom
       }));
 
+      console.info('[Utilisateurs] Users fetched:', usersData.length);
       setUsers(usersData);
     } catch (error: any) {
       console.error('Erreur lors du chargement des utilisateurs:', error);
