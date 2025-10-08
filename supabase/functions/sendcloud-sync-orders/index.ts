@@ -45,20 +45,25 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Récupérer le mode depuis le body (incremental ou initial)
+    // Récupérer le mode et la date de début depuis le body
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const mode = body.mode || 'initial';
+    const customStartDate = body.startDate; // Format YYYY-MM-DD
 
     console.log(`[SendCloud Sync] Mode: ${mode}`);
 
     // Calculer la fenêtre temporelle selon le mode
-    const dateMin = new Date();
-    if (mode === 'incremental') {
+    let dateMin: Date;
+    if (customStartDate) {
+      // Date personnalisée fournie (format YYYY-MM-DD)
+      dateMin = new Date(customStartDate);
+      console.log(`[SendCloud Sync] Using custom start date: ${customStartDate}`);
+    } else if (mode === 'incremental') {
       // Dernières 5 minutes pour sync incrémentale
-      dateMin.setMinutes(dateMin.getMinutes() - 5);
+      dateMin = new Date(Date.now() - 5 * 60 * 1000);
     } else {
       // Dernières 24h pour sync initiale
-      dateMin.setHours(dateMin.getHours() - 24);
+      dateMin = new Date(Date.now() - 24 * 60 * 60 * 1000);
     }
     const dateMinISO = dateMin.toISOString();
 

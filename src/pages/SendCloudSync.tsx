@@ -6,10 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { RefreshCw, Activity, CheckCircle2, XCircle, Clock, TrendingUp, Play } from "lucide-react";
+import { RefreshCw, Activity, CheckCircle2, XCircle, Clock, TrendingUp, Play, Trash2, CalendarIcon, Download } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Separator } from "@/components/ui/separator";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ApiLog {
   id: string;
@@ -53,6 +55,7 @@ export default function SendCloudSync() {
   const [refreshing, setRefreshing] = useState(false);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [syncing, setSyncing] = useState(false);
+  const [startDate, setStartDate] = useState<Date>(new Date("2025-10-07"));
 
   useEffect(() => {
     fetchLogs();
@@ -117,10 +120,15 @@ export default function SendCloudSync() {
     setStats({ total, success, errors, avgDuration });
   };
 
-  const handleManualSync = async () => {
+  const handleManualSync = async (customDate?: Date) => {
     setSyncing(true);
     try {
-      const { error } = await supabase.functions.invoke('sendcloud-sync-orders');
+      const body = customDate ? { 
+        mode: 'initial',
+        startDate: format(customDate, 'yyyy-MM-dd')
+      } : {};
+      
+      const { error } = await supabase.functions.invoke('sendcloud-sync-orders', { body });
       
       if (error) throw error;
       
@@ -130,6 +138,56 @@ export default function SendCloudSync() {
     } catch (error: any) {
       console.error('Manual sync error:', error);
       toast.error("Erreur lors de la synchronisation");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleBackfill = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sendcloud-backfill-products', {
+        body: { limit: 200 }
+      });
+
+      if (error) throw error;
+
+      toast.success(`Backfill réussi : ${data.linesCreated} lignes créées pour ${data.ordersProcessed} commandes`);
+    } catch (error: any) {
+      console.error('Erreur backfill:', error);
+      toast.error(`Erreur lors du backfill : ${error.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleResetToZero = async () => {
+    if (!confirm("⚠️ ATTENTION : Cela va supprimer TOUTES les commandes et réservations de stock existantes. Êtes-vous sûr ?")) {
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      // 1. Supprimer toutes les commandes
+      const { error: deleteError } = await supabase
+        .from('commande')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+
+      if (deleteError) throw deleteError;
+
+      toast.success("Reset effectué, lancement de la synchronisation...");
+
+      // 2. Re-sync depuis la date choisie
+      await handleManualSync(startDate);
+
+      // 3. Backfill des produits
+      await handleBackfill();
+
+      toast.success("Reset to zero terminé avec succès !");
+    } catch (error: any) {
+      console.error('Erreur reset:', error);
+      toast.error(`Erreur lors du reset : ${error.message}`);
     } finally {
       setSyncing(false);
     }
@@ -179,7 +237,7 @@ export default function SendCloudSync() {
                   Les commandes SendCloud sont récupérées automatiquement toutes les 5 minutes
                 </CardDescription>
               </div>
-              <Button onClick={handleManualSync} disabled={syncing} variant="outline">
+              <Button onClick={() => handleManualSync()} disabled={syncing} variant="outline">
                 <Play className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
                 Forcer une sync
               </Button>
@@ -264,6 +322,80 @@ export default function SendCloudSync() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Section Reset to Zero */}
+        <Card>
+          <CardHeader>
+            <CardTitle>🚨 Reset to Zero (DANGER)</CardTitle>
+            <CardDescription>
+              Supprimer toutes les commandes existantes et re-synchroniser depuis une date donnée
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium mb-2">Date de début de synchronisation</p>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP", { locale: fr }) : "Choisir une date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={(date) => date && setStartDate(date)}
+                      locale={fr}
+                      disabled={(date) => date > new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              
+              <div className="flex-1 space-y-2">
+                <Button 
+                  onClick={() => handleManualSync(startDate)} 
+                  disabled={syncing}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Sync depuis cette date
+                </Button>
+
+                <Button 
+                  onClick={handleBackfill} 
+                  disabled={syncing}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Backfill produits
+                </Button>
+
+                <Button 
+                  onClick={handleResetToZero} 
+                  disabled={syncing}
+                  variant="destructive"
+                  className="w-full"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Reset to Zero
+                </Button>
+              </div>
+            </div>
+
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+              <p className="text-sm text-destructive font-semibold">⚠️ Attention</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Le "Reset to Zero" supprime <strong>TOUTES</strong> les commandes et réservations de stock existantes, 
+                puis re-synchronise depuis la date choisie et effectue un backfill des produits.
+              </p>
+            </div>
           </CardContent>
         </Card>
 
