@@ -42,9 +42,19 @@ const ImportExport = () => {
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<SyncLog | null>(null);
   const [startDate, setStartDate] = useState<Date>(new Date("2025-01-01"));
+  const [lastWebhook, setLastWebhook] = useState<any>(null);
+  const [webhookUrl, setWebhookUrl] = useState<string>('');
+  const [webhookToken] = useState<string>('wms-speed-elog-2025');
+  const [testingWebhook, setTestingWebhook] = useState(false);
 
   useEffect(() => {
     fetchLastSync();
+    fetchLastWebhook();
+    
+    // Construire l'URL du webhook
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'tggdjeoxvpzbigbikpfy';
+    const url = `https://${projectId}.supabase.co/functions/v1/sendcloud-webhook?token=${webhookToken}`;
+    setWebhookUrl(url);
   }, []);
 
   const fetchLastSync = async () => {
@@ -60,6 +70,76 @@ const ImportExport = () => {
       setLastSync(data as SyncLog);
     } catch (error: any) {
       console.error('Error fetching last sync:', error);
+    }
+  };
+
+  const fetchLastWebhook = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('webhook_sendcloud_log')
+        .select('*')
+        .order('received_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      setLastWebhook(data);
+    } catch (error: any) {
+      console.error('Error fetching last webhook:', error);
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    sonnerToast.success(`${label} copié dans le presse-papier !`);
+  };
+
+  const testWebhook = async () => {
+    setTestingWebhook(true);
+    try {
+      const testPayload = {
+        id: "test-" + Date.now(),
+        order_number: "TEST-ORDER-" + Date.now(),
+        name: "Test Client",
+        email: "test@example.com",
+        address: "123 Test Street",
+        city: "Paris",
+        postal_code: "75001",
+        country: "FR",
+        order_products: [
+          {
+            sku: "TEST-SKU-001",
+            name: "Produit Test",
+            quantity: 1,
+            weight: 1.5,
+            price: 29.99
+          }
+        ],
+        total_order_value: 29.99,
+        currency: "EUR"
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Webhook-Token': webhookToken
+        },
+        body: JSON.stringify(testPayload)
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        sonnerToast.success("Test webhook réussi ! Vérifiez les logs.");
+        await fetchLastWebhook();
+      } else {
+        sonnerToast.error("Erreur test webhook: " + (result.error || 'Inconnu'));
+      }
+    } catch (error: any) {
+      sonnerToast.error("Erreur test webhook: " + error.message);
+    } finally {
+      setTestingWebhook(false);
     }
   };
 
@@ -700,12 +780,136 @@ const ImportExport = () => {
       </TabsContent>
 
       <TabsContent value="synchronisation" className="space-y-6">
-            {/* SendCloud Sync */}
+            {/* Configuration Webhook - PRIORITÉ #1 */}
+            <Card className="border-primary/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  🎯 Configuration Webhook SendCloud (Recommandé)
+                </CardTitle>
+                <CardDescription>
+                  Les commandes seront automatiquement importées dès leur création dans SendCloud. <strong>Aucune action manuelle nécessaire.</strong>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* URL + Token */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">URL du Webhook</Label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={webhookUrl} 
+                        readOnly 
+                        className="flex-1 px-3 py-2 text-sm border rounded-md bg-muted font-mono"
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => copyToClipboard(webhookUrl, 'URL du webhook')}
+                      >
+                        Copier
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Token de Sécurité</Label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={webhookToken} 
+                        readOnly 
+                        className="flex-1 px-3 py-2 text-sm border rounded-md bg-muted font-mono"
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => copyToClipboard(webhookToken, 'Token')}
+                      >
+                        Copier
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Le token est déjà inclus dans l'URL ci-dessus (paramètre ?token=...)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Instructions SendCloud */}
+                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <p className="text-sm font-medium mb-3">📋 Configuration dans SendCloud :</p>
+                  <ol className="text-sm space-y-2 list-decimal list-inside text-muted-foreground">
+                    <li>Connectez-vous à votre compte SendCloud</li>
+                    <li>Allez dans <strong>Settings → Integrations → Webhooks</strong></li>
+                    <li>Cliquez sur <strong>"Add Webhook"</strong></li>
+                    <li>Collez l'URL complète ci-dessus dans le champ "Webhook URL"</li>
+                    <li>Sélectionnez l'événement <strong>"Order Created"</strong> (ou "parcel_created")</li>
+                    <li>Activez le webhook et testez-le</li>
+                  </ol>
+                </div>
+
+                {/* Monitoring Webhook */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Dernier Webhook Reçu</Label>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={testWebhook}
+                      disabled={testingWebhook}
+                    >
+                      {testingWebhook ? 'Test en cours...' : '🧪 Tester le webhook'}
+                    </Button>
+                  </div>
+                  
+                  {lastWebhook ? (
+                    <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Date</p>
+                          <p className="font-medium">
+                            {format(new Date(lastWebhook.received_at), "dd MMM yyyy 'à' HH:mm:ss", { locale: fr })}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Statut</p>
+                          <Badge variant={lastWebhook.statut === 'traite' ? 'default' : lastWebhook.statut === 'deja_existe' ? 'secondary' : 'destructive'}>
+                            {lastWebhook.statut === 'traite' ? '✅ Traité' : lastWebhook.statut === 'deja_existe' ? '⚠️ Déjà existante' : '❌ Erreur'}
+                          </Badge>
+                        </div>
+                        {lastWebhook.commande_id && (
+                          <div>
+                            <p className="text-muted-foreground">N° Commande</p>
+                            <p className="font-medium font-mono text-xs">{lastWebhook.payload?.order_number || 'N/A'}</p>
+                          </div>
+                        )}
+                        {lastWebhook.erreur && (
+                          <div className="col-span-2">
+                            <p className="text-muted-foreground">Erreur</p>
+                            <p className="text-xs text-red-600">{lastWebhook.erreur}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-muted/50 border rounded-lg text-center">
+                      <p className="text-sm text-muted-foreground">
+                        Aucun webhook reçu pour le moment. Configurez le webhook dans SendCloud ou testez-le avec le bouton ci-dessus.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Backfills manuels - SECONDAIRE */}
             <Card>
               <CardHeader>
-                <CardTitle>Synchronisation SendCloud</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  🔄 Backfill Manuel (Optionnel)
+                </CardTitle>
                 <CardDescription>
-                  Récupère automatiquement les commandes SendCloud <strong>SAUF</strong> celles déjà expédiées, livrées, archivées ou prêtes à expédier.
+                  Utilisez ces options uniquement pour récupérer des commandes anciennes ou en cas de problème avec le webhook.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -713,7 +917,7 @@ const ImportExport = () => {
                 {lastSync && (
                   <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
                     <div className="flex-1">
-                      <p className="text-sm font-medium">Dernière synchronisation</p>
+                      <p className="text-sm font-medium">Dernier backfill</p>
                       <p className="text-xs text-muted-foreground">
                         {format(new Date(lastSync.date_sync), "dd MMM yyyy 'à' HH:mm", { locale: fr })}
                       </p>
@@ -741,54 +945,55 @@ const ImportExport = () => {
                   </div>
                 )}
 
-                {/* Boutons de sync */}
+                {/* Boutons de backfill */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Sync Rapide</CardTitle>
+                      <CardTitle className="text-base">Backfill Rapide</CardTitle>
                       <CardDescription className="text-sm">
-                        Synchronise les commandes des dernières 24h
+                        Récupère les commandes des 5 dernières minutes (utile pour test)
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <Button 
                         onClick={() => handleSendCloudSync()} 
                         disabled={syncing}
+                        variant="secondary"
                         className="w-full"
                       >
                         <Play className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                        Lancer sync rapide
+                        Backfill rapide
                       </Button>
                     </CardContent>
                   </Card>
 
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Full Scan (90j)</CardTitle>
+                      <CardTitle className="text-base">Backfill Large (90j)</CardTitle>
                       <CardDescription className="text-sm">
-                        Synchronise toutes les commandes des 90 derniers jours
+                        Récupère toutes les commandes des 90 derniers jours
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <Button 
                         onClick={() => handleSendCloudSync('full')} 
                         disabled={syncing}
-                        variant="secondary"
+                        variant="outline"
                         className="w-full"
                       >
                         <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                        Lancer full scan
+                        Backfill large
                       </Button>
                     </CardContent>
                   </Card>
                 </div>
 
-                {/* Sync depuis date */}
+                {/* Backfill depuis date */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Sync depuis une date</CardTitle>
+                    <CardTitle className="text-base">Backfill depuis une date</CardTitle>
                     <CardDescription className="text-sm">
-                      Synchronise toutes les commandes depuis une date spécifique
+                      Récupère toutes les commandes depuis une date spécifique
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -814,22 +1019,14 @@ const ImportExport = () => {
                       <Button 
                         onClick={() => handleSendCloudSync(undefined, startDate)} 
                         disabled={syncing}
-                        variant="secondary"
+                        variant="outline"
                       >
                         <RefreshCw className="mr-2 h-4 w-4" />
-                        Synchroniser
+                        Backfill
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
-
-                <div className="bg-muted/50 border rounded-lg p-4">
-                  <p className="text-sm font-medium mb-2">ℹ️ Commandes exclues de la synchronisation</p>
-                  <p className="text-sm text-muted-foreground">
-                    Les commandes avec les statuts suivants ne sont <strong>PAS</strong> synchronisées : 
-                    Expédiée, Livré, Archivé, Préparée, Prête à expédier
-                  </p>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>

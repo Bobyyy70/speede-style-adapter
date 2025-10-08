@@ -15,7 +15,7 @@ import Papa from "papaparse";
 import { useAutoRules } from "@/hooks/useAutoRules";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshCw } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
 export default function Commandes() {
   const navigate = useNavigate();
   const {
@@ -40,6 +40,36 @@ export default function Commandes() {
   const {
     applyAutoRules
   } = useAutoRules();
+
+  // Real-time subscription for new orders
+  useEffect(() => {
+    console.log('[Commandes] Setting up real-time subscription for new orders');
+    
+    const channel = supabase
+      .channel('commandes-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'commande'
+        },
+        (payload) => {
+          console.log('[Commandes] New order received via webhook!', payload);
+          toast.success('✅ Nouvelle commande reçue !', {
+            description: `N° ${payload.new.numero_commande}`,
+          });
+          // Refresh stats
+          fetchStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[Commandes] Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Charger les filtres statuts depuis localStorage
   useEffect(() => {
@@ -104,27 +134,6 @@ export default function Commandes() {
       });
     } catch (error: any) {
       console.error("Erreur stats:", error);
-    }
-  };
-  const handleSyncSendCloud = async (mode: 'incremental' | 'full' = 'incremental') => {
-    setIsSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('sendcloud-sync-orders', {
-        body: { mode }
-      });
-      
-      if (error) throw error;
-      
-      toast.success(data?.message || 'Synchronisation terminée');
-      
-      // Refresh stats after sync
-      setTimeout(() => {
-        fetchStats();
-      }, 2000);
-    } catch (error: any) {
-      toast.error("Erreur de synchronisation: " + error.message);
-    } finally {
-      setIsSyncing(false);
     }
   };
   const handleRefreshTracking = async () => {
@@ -192,29 +201,13 @@ export default function Commandes() {
                 </Popover>
               </>}
             {userRole !== 'client' && !isViewingAsClient() && <>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" disabled={isSyncing}>
-                      <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                      Synchroniser SendCloud
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleSyncSendCloud('incremental')}>
-                      Sync rapide (5 min)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleSyncSendCloud('full')}>
-                      Full scan (90 jours)
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
                 <Button variant="outline" onClick={handleRefreshTracking} disabled={isSyncing}>
                   <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
                   Rafraîchir tracking
                 </Button>
-                <Button variant="outline" onClick={() => navigate("/gestion-donnees/import-export")}>
+                <Button variant="default" onClick={() => navigate("/gestion-donnees/import-export")}>
                   <Activity className="mr-2 h-4 w-4" />
-                  Voir Synchronisation
+                  Configuration Webhook
                 </Button>
               </>}
           </div>

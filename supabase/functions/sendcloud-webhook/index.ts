@@ -50,6 +50,28 @@ Deno.serve(async (req) => {
     console.log('Method:', req.method);
     console.log('Content-Type:', req.headers.get('content-type'));
 
+    // 🔒 Vérifier le token de sécurité
+    const authHeader = req.headers.get('x-webhook-token');
+    const url = new URL(req.url);
+    const queryToken = url.searchParams.get('token');
+    const receivedToken = authHeader || queryToken;
+    
+    const expectedToken = Deno.env.get('SENDCLOUD_WEBHOOK_SECRET') || 'default-webhook-secret-change-me';
+    
+    if (receivedToken !== expectedToken) {
+      console.error('❌ Token invalide ou manquant');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Token de sécurité invalide ou manquant',
+          hint: 'Ajoutez le header X-Webhook-Token ou le query param ?token=...'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+
+    console.log('✅ Token validé');
+
     // Lire le body brut d'abord
     const rawBody = await req.text();
     console.log('Raw body:', rawBody);
