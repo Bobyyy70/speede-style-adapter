@@ -15,6 +15,7 @@ import Papa from "papaparse";
 import { useAutoRules } from "@/hooks/useAutoRules";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshCw } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 export default function Commandes() {
   const navigate = useNavigate();
   const {
@@ -105,19 +106,23 @@ export default function Commandes() {
       console.error("Erreur stats:", error);
     }
   };
-  const handleSyncSendCloud = async () => {
+  const handleSyncSendCloud = async (mode: 'incremental' | 'full' = 'incremental') => {
     setIsSyncing(true);
     try {
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('sendcloud-sync-all');
+      const { data, error } = await supabase.functions.invoke('sendcloud-sync-orders', {
+        body: { mode }
+      });
+      
       if (error) throw error;
-      toast.success("Synchronisation SendCloud terminée avec succès");
-      fetchStats();
+      
+      toast.success(data?.message || 'Synchronisation terminée');
+      
+      // Refresh stats after sync
+      setTimeout(() => {
+        fetchStats();
+      }, 2000);
     } catch (error: any) {
-      toast.error("Erreur lors de la synchronisation: " + error.message);
-      console.error(error);
+      toast.error("Erreur de synchronisation: " + error.message);
     } finally {
       setIsSyncing(false);
     }
@@ -187,17 +192,29 @@ export default function Commandes() {
                 </Popover>
               </>}
             {userRole !== 'client' && !isViewingAsClient() && <>
-                <Button variant="outline" onClick={handleSyncSendCloud} disabled={isSyncing}>
-                  <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                  Synchroniser SendCloud
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" disabled={isSyncing}>
+                      <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                      Synchroniser SendCloud
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleSyncSendCloud('incremental')}>
+                      Sync rapide (5 min)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleSyncSendCloud('full')}>
+                      Full scan (90 jours)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="outline" onClick={handleRefreshTracking} disabled={isSyncing}>
                   <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
                   Rafraîchir tracking
                 </Button>
-                <Button variant="outline" onClick={() => navigate("/integrations/sendcloud-sync")}>
+                <Button variant="outline" onClick={() => navigate("/gestion-donnees/import-export")}>
                   <Activity className="mr-2 h-4 w-4" />
-                  Monitoring SendCloud
+                  Voir Synchronisation
                 </Button>
               </>}
           </div>
