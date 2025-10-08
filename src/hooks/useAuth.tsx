@@ -18,6 +18,7 @@ interface AuthContextType {
   hasRole: (role: AppRole) => boolean;
   isViewingAsClient: () => boolean;
   getViewingClientId: () => string | null;
+  refreshUserRole: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,23 +48,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Fetch user role using RPC to avoid RLS issues
   const fetchUserRole = async (userId: string) => {
     try {
+      console.log('[useAuth] Fetching role for user:', userId.substring(0, 8) + '...');
       const { data, error } = await supabase.rpc('get_user_role', { user_id: userId });
       
       if (error) throw error;
+      console.log('[useAuth] Role fetched:', data);
       setUserRole(data as AppRole || null);
     } catch (error) {
-      console.error('Error fetching user role:', error);
+      console.error('[useAuth] Error fetching user role:', error);
       setUserRole(null);
     }
   };
 
+  // Clean obsolete localStorage entries
+  const cleanObsoleteStorage = () => {
+    const obsoleteKeys = ['userRole', 'cachedRole', 'roleCache'];
+    obsoleteKeys.forEach(key => {
+      if (localStorage.getItem(key)) {
+        console.log('[useAuth] Removing obsolete localStorage key:', key);
+        localStorage.removeItem(key);
+      }
+    });
+  };
+
+  // Force refresh user role from backend
+  const refreshUserRole = async () => {
+    if (!user) {
+      console.warn('[useAuth] Cannot refresh role: no user logged in');
+      return;
+    }
+    
+    console.log('[useAuth] Forcing role refresh for user:', user.id.substring(0, 8) + '...');
+    cleanObsoleteStorage();
+    await fetchUserRole(user.id);
+    
+    toast({
+      title: "Permissions rafraîchies",
+      description: "Vos autorisations ont été mises à jour",
+    });
+  };
+
   useEffect(() => {
+    console.log('[useAuth] Initializing auth context');
+    
+    // Clean obsolete localStorage on startup
+    cleanObsoleteStorage();
+    
     // Update viewingClientId whenever URL changes
     setViewingClientId(getViewingClientId());
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('[useAuth] Auth state changed:', event);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -208,6 +245,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         hasRole,
         isViewingAsClient,
         getViewingClientId,
+        refreshUserRole,
       }}
     >
       {children}

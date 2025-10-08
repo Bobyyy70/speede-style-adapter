@@ -311,14 +311,32 @@ export function DashboardLayout({
     user,
     userRole,
     signOut,
-    isViewingAsClient
+    isViewingAsClient,
+    getViewingClientId,
+    refreshUserRole
   } = useAuth();
   const breadcrumbs = useBreadcrumbs();
   const {
     results: searchResults,
     isLoading: searchLoading
   } = useGlobalSearch(searchQuery);
-  const navigation = getNavigationForRole(userRole, isViewingAsClient());
+
+  // Corrected logic: viewingAsClient should only be true if explicitly in URL AND user is admin/gestionnaire
+  const viewingClientId = getViewingClientId();
+  const isActuallyViewingAsClient = Boolean(
+    viewingClientId && 
+    (userRole === 'admin' || userRole === 'gestionnaire')
+  );
+
+  // Generate navigation based on actual viewing mode
+  const navigation = getNavigationForRole(userRole, isActuallyViewingAsClient);
+
+  // Debug logs
+  console.log('[DashboardLayout] userRole:', userRole);
+  console.log('[DashboardLayout] viewingClientId:', viewingClientId);
+  console.log('[DashboardLayout] isActuallyViewingAsClient:', isActuallyViewingAsClient);
+  console.log('[DashboardLayout] navigation items count:', navigation.length);
+  console.log('[DashboardLayout] navigation items:', navigation.map(n => n.name));
 
   // Charger la liste des clients pour les rôles admin/gestionnaire
   if (userRole === 'admin' || userRole === 'gestionnaire') {
@@ -349,7 +367,7 @@ export function DashboardLayout({
   };
   const getRoleBadgeVariant = (role: string | null) => {
     // Si admin en mode Vue Client, afficher comme client
-    if (isViewingAsClient()) {
+    if (isActuallyViewingAsClient) {
       return "outline" as const;
     }
     switch (role) {
@@ -367,7 +385,7 @@ export function DashboardLayout({
   };
   const getRoleLabel = (role: string | null) => {
     // Si admin en mode Vue Client, afficher "Client"
-    if (isViewingAsClient()) {
+    if (isActuallyViewingAsClient) {
       return "Client";
     }
     switch (role) {
@@ -383,9 +401,29 @@ export function DashboardLayout({
         return "Utilisateur";
     }
   };
+
+  const switchToClient = (clientId: string) => {
+    localStorage.setItem("viewingAsClient", clientId);
+    console.log('[DashboardLayout] Switching to client view:', clientId);
+    const newUrl = `${location.pathname}?asClient=${clientId}`;
+    navigate(newUrl);
+    window.location.reload();
+  };
+
+  const exitClientView = () => {
+    localStorage.removeItem("viewingAsClient");
+    console.log('[DashboardLayout] Exiting client view');
+    navigate(location.pathname);
+    window.location.reload();
+  };
+
+  const handleRefreshPermissions = async () => {
+    console.log('[DashboardLayout] Refresh permissions clicked');
+    await refreshUserRole();
+  };
   return <div className="min-h-screen bg-background">
       {/* Admin Banner if viewing as client */}
-      {isViewingAsClient() && <AdminBanner />}
+      {isActuallyViewingAsClient && <AdminBanner />}
 
       {/* Sidebar */}
       <aside className={cn("fixed inset-y-0 left-0 z-50 bg-card border-r border-border transition-all duration-300", sidebarOpen ? "w-64" : "w-24")}>
@@ -448,7 +486,7 @@ export function DashboardLayout({
       {/* Main Content */}
       <div className={cn("transition-all duration-300", sidebarOpen ? "ml-64" : "ml-24")}>
         {/* Header */}
-        <header className={`sticky z-40 bg-card border-b border-border ${isViewingAsClient() ? 'top-[48px]' : 'top-0'}`}>
+        <header className={`sticky z-40 bg-card border-b border-border ${isActuallyViewingAsClient ? 'top-[48px]' : 'top-0'}`}>
           <div className="flex h-16 items-center justify-between px-6">
             <div className="flex items-center flex-1 gap-4 max-w-md">
               <Popover open={searchOpen} onOpenChange={setSearchOpen}>
@@ -484,6 +522,34 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Diagnostic Badge */}
+              <div className="flex items-center gap-2 px-3 py-1 bg-muted rounded-md text-xs">
+                <span className="font-medium">Rôle actif:</span>
+                <Badge variant={getRoleBadgeVariant(userRole)} className="capitalize text-xs">
+                  {getRoleLabel(userRole)}
+                </Badge>
+                <span className="text-muted-foreground">•</span>
+                <span className="font-medium">Mode vue:</span>
+                <span className={isActuallyViewingAsClient ? "text-blue-600 font-semibold" : "text-green-600"}>
+                  {isActuallyViewingAsClient ? "Vue Client" : "Normal"}
+                </span>
+                <span className="text-muted-foreground">•</span>
+                <span className="font-medium">{navigation.length} onglets</span>
+              </div>
+
+              {/* Refresh Permissions Button (admin only) */}
+              {userRole === 'admin' && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleRefreshPermissions}
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Rafraîchir permissions
+                </Button>
+              )}
+
               {/* Affichage du rôle utilisateur */}
               <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-lg">
                 <span className="text-sm text-muted-foreground">{user?.email}</span>
@@ -497,18 +563,26 @@ export function DashboardLayout({
                   {clientList.length > 0 && <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="icon" aria-label="Changer de client">
-                          <ChevronDown className="w-4 h-4" />
+                          <Eye className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56 z-50 bg-card border shadow-lg">
-                        {clientList.map(client => <DropdownMenuItem key={client.id} onClick={() => {
-                    localStorage.setItem('selectedClientId', client.id);
-                    localStorage.setItem('viewingAsClient', client.id);
-                    navigate(`/?asClient=${client.id}`);
-                  }}>
+                        <DropdownMenuLabel>Voir en tant que client</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {clientList.map(client => <DropdownMenuItem key={client.id} onClick={() => switchToClient(client.id)}>
                             <Building2 className="w-4 h-4 mr-2" />
                             {client.nom_entreprise}
                           </DropdownMenuItem>)}
+                        
+                        {isActuallyViewingAsClient && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={exitClientView}>
+                              <X className="mr-2 h-4 w-4" />
+                              Sortir de la vue client
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>}
                 </div>}
