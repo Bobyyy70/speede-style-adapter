@@ -44,12 +44,12 @@ Réponds de manière concise et professionnelle en français.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-5-mini',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           ...messages,
         ],
-        stream: true,
+        stream: false,
       }),
     });
 
@@ -74,8 +74,25 @@ Réponds de manière concise et professionnelle en français.`;
       });
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+    const data = await response.json();
+    const generatedText = data.choices?.[0]?.message?.content || '';
+
+    // Parse potential JSON actions from response
+    let suggestedActions = [];
+    try {
+      const jsonMatch = generatedText.match(/```json\n([\s\S]*?)\n```/);
+      if (jsonMatch) {
+        const parsedJson = JSON.parse(jsonMatch[1]);
+        if (parsedJson.suggestedActions) {
+          suggestedActions = parsedJson.suggestedActions;
+        }
+      }
+    } catch (e) {
+      console.log('No structured actions found in response');
+    }
+
+    return new Response(JSON.stringify({ generatedText, suggestedActions }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Error in ai-assistant:', error);
