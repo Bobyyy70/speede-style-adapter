@@ -498,6 +498,8 @@ export type Database = {
       }
       emplacement: {
         Row: {
+          capacite_max_kg: number | null
+          capacite_max_unites: number | null
           capacite_maximale: number | null
           code_emplacement: string
           date_creation: string | null
@@ -509,6 +511,8 @@ export type Database = {
           zone: string
         }
         Insert: {
+          capacite_max_kg?: number | null
+          capacite_max_unites?: number | null
           capacite_maximale?: number | null
           code_emplacement: string
           date_creation?: string | null
@@ -520,6 +524,8 @@ export type Database = {
           zone: string
         }
         Update: {
+          capacite_max_kg?: number | null
+          capacite_max_unites?: number | null
           capacite_maximale?: number | null
           code_emplacement?: string
           date_creation?: string | null
