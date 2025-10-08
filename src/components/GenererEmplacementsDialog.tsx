@@ -18,8 +18,7 @@ export function GenererEmplacementsDialog({ open, onOpenChange, onSuccess }: Gen
   const [allees, setAllees] = useState("A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z");
   const [nbRacks, setNbRacks] = useState("50");
   const [positions, setPositions] = useState("a,b,c,d");
-  const [capaciteKg, setCapaciteKg] = useState("500");
-  const [capaciteUnites, setCapaciteUnites] = useState("100");
+  const [capaciteKg, setCapaciteKg] = useState("1500");
 
   const handleGenerer = async () => {
     setLoading(true);
@@ -28,8 +27,7 @@ export function GenererEmplacementsDialog({ open, onOpenChange, onSuccess }: Gen
         p_allees: allees,
         p_nb_racks: parseInt(nbRacks),
         p_positions: positions,
-        p_capacite_kg: parseFloat(capaciteKg),
-        p_capacite_unites: parseInt(capaciteUnites)
+        p_capacite_kg: parseFloat(capaciteKg)
       });
 
       if (error) throw error;
@@ -97,29 +95,19 @@ export function GenererEmplacementsDialog({ open, onOpenChange, onSuccess }: Gen
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="capaciteKg">Capacité max (kg)</Label>
-              <Input
-                id="capaciteKg"
-                type="number"
-                value={capaciteKg}
-                onChange={(e) => setCapaciteKg(e.target.value)}
-                min="0"
-                step="0.1"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="capaciteUnites">Capacité max (unités)</Label>
-              <Input
-                id="capaciteUnites"
-                type="number"
-                value={capaciteUnites}
-                onChange={(e) => setCapaciteUnites(e.target.value)}
-                min="0"
-              />
-            </div>
+          <div className="grid gap-2">
+            <Label htmlFor="capaciteKg">Capacité max par emplacement (kg)</Label>
+            <Input
+              id="capaciteKg"
+              type="number"
+              value={capaciteKg}
+              onChange={(e) => setCapaciteKg(e.target.value)}
+              min="0"
+              step="0.1"
+            />
+            <p className="text-xs text-muted-foreground">
+              1500 kg = norme palette Europe standard
+            </p>
           </div>
 
           <div className="rounded-md bg-muted p-3 text-sm">
@@ -129,6 +117,9 @@ export function GenererEmplacementsDialog({ open, onOpenChange, onSuccess }: Gen
             </p>
             <p className="text-muted-foreground mt-1">
               Total estimé: {allees.split(',').length} × {nbRacks} × {positions.split(',').length} = {allees.split(',').length * parseInt(nbRacks || "0") * positions.split(',').length} emplacements
+            </p>
+            <p className="text-muted-foreground mt-1">
+              Capacité: {capaciteKg} kg par emplacement
             </p>
           </div>
         </div>

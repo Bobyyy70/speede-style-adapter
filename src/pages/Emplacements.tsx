@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { GenererEmplacementsDialog } from "@/components/GenererEmplacementsDialog";
 import { AjouterStockDialog } from "@/components/AjouterStockDialog";
 import { RetirerStockDialog } from "@/components/RetirerStockDialog";
+import { SupprimerEmplacementsDialog } from "@/components/SupprimerEmplacementsDialog";
 import { useAuth } from "@/hooks/useAuth";
 
 const Emplacements = () => {
@@ -18,6 +19,7 @@ const Emplacements = () => {
   const isAdmin = userRole === 'admin';
   
   const [genererOpen, setGenererOpen] = useState(false);
+  const [supprimerOpen, setSupprimerOpen] = useState(false);
   const [ajouterOpen, setAjouterOpen] = useState(false);
   const [retirerOpen, setRetirerOpen] = useState(false);
   const [selectedEmplacement, setSelectedEmplacement] = useState<any>(null);
@@ -98,10 +100,18 @@ const Emplacements = () => {
             </p>
           </div>
           {isAdmin && (
-            <Button onClick={() => setGenererOpen(true)}>
-              <Warehouse className="mr-2 h-4 w-4" />
-              Générer emplacements
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setGenererOpen(true)}>
+                <Warehouse className="mr-2 h-4 w-4" />
+                Générer emplacements
+              </Button>
+              {stats.total > 0 && (
+                <Button variant="destructive" onClick={() => setSupprimerOpen(true)}>
+                  <Minus className="mr-2 h-4 w-4" />
+                  Supprimer emplacements
+                </Button>
+              )}
+            </div>
           )}
         </div>
 
@@ -213,12 +223,9 @@ const Emplacements = () => {
                           </div>
                         )}
                         <div className="mt-1 text-sm">
-                          <span className="font-medium">{emplacement.quantite_actuelle || 0}</span>
-                          {(emplacement as any).capacite_max_unites && (
-                            <span className="text-muted-foreground"> / {(emplacement as any).capacite_max_unites} unités</span>
-                          )}
+                          <span className="font-medium">{emplacement.quantite_actuelle || 0} unités</span>
                           {(emplacement as any).capacite_max_kg && (
-                            <span className="text-muted-foreground ml-2">({(emplacement as any).capacite_max_kg} kg max)</span>
+                            <span className="text-muted-foreground ml-2">• Max: {(emplacement as any).capacite_max_kg} kg</span>
                           )}
                         </div>
                       </div>
@@ -267,6 +274,13 @@ const Emplacements = () => {
       <GenererEmplacementsDialog
         open={genererOpen}
         onOpenChange={setGenererOpen}
+        onSuccess={refetch}
+      />
+
+      <SupprimerEmplacementsDialog
+        open={supprimerOpen}
+        onOpenChange={setSupprimerOpen}
+        zones={zones}
         onSuccess={refetch}
       />
 
