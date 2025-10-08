@@ -49,7 +49,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/commandes",
         icon: ClipboardList
       }, {
-        name: "Création de commande",
+        name: "Éditer une commande",
         href: "/client/commandes/creer",
         icon: PlusCircle
       }]
@@ -104,7 +104,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/commandes",
         icon: ClipboardList
       }, {
-        name: "Création de commande",
+        name: "Éditer une commande",
         href: "/client/commandes/creer",
         icon: PlusCircle
       }]
@@ -195,7 +195,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/commandes",
         icon: ClipboardList
       }, {
-        name: "Création de commande",
+        name: "Éditer une commande",
         href: "/client/commandes/creer",
         icon: PlusCircle
       }]
@@ -245,7 +245,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
           href: "/commandes",
           icon: ClipboardList
         }, {
-          name: "Création de commande",
+          name: "Éditer une commande",
           href: "/client/commandes/creer",
           icon: PlusCircle
         }]
