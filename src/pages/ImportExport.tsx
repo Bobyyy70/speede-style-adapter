@@ -3,13 +3,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Download, FileText, FileSpreadsheet } from "lucide-react";
-import { useState } from "react";
+import { Upload, Download, FileText, FileSpreadsheet, RefreshCw, Play, CalendarIcon } from "lucide-react";
+import { useState, useEffect } from "react";
 import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useAutoRules } from "@/hooks/useAutoRules";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { toast as sonnerToast } from "sonner";
+
+interface SyncLog {
+  id: string;
+  date_sync: string;
+  statut: 'success' | 'partial' | 'error';
+  nb_commandes_trouvees: number;
+  nb_commandes_creees: number;
+  nb_commandes_existantes: number;
+  nb_erreurs: number;
+  duree_ms: number;
+  erreur_message?: string;
+}
 
 const ImportExport = () => {
   const { toast } = useToast();
@@ -18,6 +37,54 @@ const ImportExport = () => {
   const [importType, setImportType] = useState<"produits" | "commandes" | "emplacements">("produits");
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  
+  // Sync states
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<SyncLog | null>(null);
+  const [startDate, setStartDate] = useState<Date>(new Date("2025-01-01"));
+
+  useEffect(() => {
+    fetchLastSync();
+  }, []);
+
+  const fetchLastSync = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sendcloud_sync_log')
+        .select('*')
+        .order('date_sync', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      setLastSync(data as SyncLog);
+    } catch (error: any) {
+      console.error('Error fetching last sync:', error);
+    }
+  };
+
+  const handleSendCloudSync = async (mode?: 'full', customDate?: Date) => {
+    setSyncing(true);
+    try {
+      const body = mode === 'full' 
+        ? { mode: 'full' }
+        : customDate 
+          ? { mode: 'initial', startDate: format(customDate, 'yyyy-MM-dd') }
+          : {};
+      
+      const { error } = await supabase.functions.invoke('sendcloud-sync-orders', { body });
+      
+      if (error) throw error;
+      
+      sonnerToast.success(mode === 'full' ? "Full scan (90j) lancé avec succès" : "Synchronisation lancée avec succès");
+      await fetchLastSync();
+    } catch (error: any) {
+      console.error('Sync error:', error);
+      sonnerToast.error("Erreur lors de la synchronisation");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleExport = async () => {
     setExporting(true);
@@ -489,15 +556,22 @@ const ImportExport = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="container mx-auto py-8 space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Import / Export</h1>
-          <p className="text-muted-foreground">
-            Importez et exportez vos données en masse
+          <h1 className="text-3xl font-bold tracking-tight">Gestion des Données</h1>
+          <p className="text-muted-foreground mt-2">
+            Importez, exportez et synchronisez vos données
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <Tabs defaultValue="import-export" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="import-export">Import / Export</TabsTrigger>
+            <TabsTrigger value="synchronisation">Synchronisation</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="import-export" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -623,6 +697,143 @@ const ImportExport = () => {
             </CardContent>
           </Card>
         </div>
+      </TabsContent>
+
+      <TabsContent value="synchronisation" className="space-y-6">
+            {/* SendCloud Sync */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Synchronisation SendCloud</CardTitle>
+                <CardDescription>
+                  Récupère automatiquement les commandes SendCloud <strong>SAUF</strong> celles déjà expédiées, livrées, archivées ou prêtes à expédier.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Dernière sync */}
+                {lastSync && (
+                  <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Dernière synchronisation</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(lastSync.date_sync), "dd MMM yyyy 'à' HH:mm", { locale: fr })}
+                      </p>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Statut</p>
+                      <Badge variant={
+                        lastSync.statut === 'success' ? 'default' : 
+                        lastSync.statut === 'partial' ? 'secondary' : 
+                        'destructive'
+                      }>
+                        {lastSync.statut === 'success' ? 'Succès' : 
+                         lastSync.statut === 'partial' ? 'Partiel' : 
+                         'Erreur'}
+                      </Badge>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Trouvées</p>
+                      <p className="text-2xl font-bold">{lastSync.nb_commandes_trouvees}</p>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Créées</p>
+                      <p className="text-2xl font-bold text-green-600">{lastSync.nb_commandes_creees}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Boutons de sync */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Sync Rapide</CardTitle>
+                      <CardDescription className="text-sm">
+                        Synchronise les commandes des dernières 24h
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button 
+                        onClick={() => handleSendCloudSync()} 
+                        disabled={syncing}
+                        className="w-full"
+                      >
+                        <Play className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                        Lancer sync rapide
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Full Scan (90j)</CardTitle>
+                      <CardDescription className="text-sm">
+                        Synchronise toutes les commandes des 90 derniers jours
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button 
+                        onClick={() => handleSendCloudSync('full')} 
+                        disabled={syncing}
+                        variant="secondary"
+                        className="w-full"
+                      >
+                        <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                        Lancer full scan
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Sync depuis date */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Sync depuis une date</CardTitle>
+                    <CardDescription className="text-sm">
+                      Synchronise toutes les commandes depuis une date spécifique
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex gap-4">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="flex-1 justify-start text-left font-normal">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {startDate ? format(startDate, "PPP", { locale: fr }) : "Choisir une date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={startDate}
+                            onSelect={(date) => date && setStartDate(date)}
+                            locale={fr}
+                            disabled={(date) => date > new Date()}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      
+                      <Button 
+                        onClick={() => handleSendCloudSync(undefined, startDate)} 
+                        disabled={syncing}
+                        variant="secondary"
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Synchroniser
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="bg-muted/50 border rounded-lg p-4">
+                  <p className="text-sm font-medium mb-2">ℹ️ Commandes exclues de la synchronisation</p>
+                  <p className="text-sm text-muted-foreground">
+                    Les commandes avec les statuts suivants ne sont <strong>PAS</strong> synchronisées : 
+                    Expédiée, Livré, Archivé, Préparée, Prête à expédier
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );
