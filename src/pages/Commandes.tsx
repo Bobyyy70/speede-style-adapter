@@ -15,18 +15,21 @@ import Papa from "papaparse";
 import { useAutoRules } from "@/hooks/useAutoRules";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshCw } from "lucide-react";
-
 export default function Commandes() {
   const navigate = useNavigate();
-  const { user, userRole, getViewingClientId, isViewingAsClient } = useAuth();
+  const {
+    user,
+    userRole,
+    getViewingClientId,
+    isViewingAsClient
+  } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedClientFilter, setSelectedClientFilter] = useState<string | null>(null);
-  const [clientList, setClientList] = useState<{ id: string; nom_entreprise: string }[]>([]);
-  const [statusFilters, setStatusFilters] = useState<string[]>([
-    "En attente de réappro",
-    "Prêt à préparer",
-    "En préparation"
-  ]);
+  const [clientList, setClientList] = useState<{
+    id: string;
+    nom_entreprise: string;
+  }[]>([]);
+  const [statusFilters, setStatusFilters] = useState<string[]>(["En attente de réappro", "Prêt à préparer", "En préparation"]);
   const [stats, setStats] = useState({
     total: 0,
     enAttente: 0,
@@ -53,20 +56,19 @@ export default function Commandes() {
   useEffect(() => {
     localStorage.setItem('commandes_status_filters', JSON.stringify(statusFilters));
   }, [statusFilters]);
-
   useEffect(() => {
     fetchStats();
     if (userRole === 'admin' || userRole === 'gestionnaire') {
       fetchClients();
     }
   }, []);
-
   const fetchClients = async () => {
     try {
-      const { data } = await supabase
-        .from('client' as any)
-        .select('id, nom_entreprise')
-        .order('nom_entreprise', { ascending: true });
+      const {
+        data
+      } = await supabase.from('client' as any).select('id, nom_entreprise').order('nom_entreprise', {
+        ascending: true
+      });
       if (data) setClientList(data as any);
     } catch (e) {
       console.error('Erreur chargement clients:', e);
@@ -75,26 +77,24 @@ export default function Commandes() {
   const fetchStats = async () => {
     try {
       let query = supabase.from("commande").select("statut_wms");
-      
+
       // Filter by client_id if viewing as client or if user is a client
       const viewingClientId = getViewingClientId();
       if (viewingClientId) {
         query = query.eq("client_id", viewingClientId);
       } else if (userRole === 'client' && user) {
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("client_id")
-          .eq("id", user.id)
-          .single();
-        
+        const {
+          data: profileData
+        } = await supabase.from("profiles").select("client_id").eq("id", user.id).single();
         if (profileData?.client_id) {
           query = query.eq("client_id", profileData.client_id);
         }
       }
-      
-      const { data, error } = await query;
+      const {
+        data,
+        error
+      } = await query;
       if (error) throw error;
-      
       setStats({
         total: data?.length || 0,
         enAttente: data?.filter(c => c.statut_wms === "En attente de réappro").length || 0,
@@ -105,11 +105,13 @@ export default function Commandes() {
       console.error("Erreur stats:", error);
     }
   };
-
   const handleSyncSendCloud = async () => {
     setIsSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sendcloud-sync-all');
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('sendcloud-sync-all');
       if (error) throw error;
       toast.success("Synchronisation SendCloud terminée avec succès");
       fetchStats();
@@ -120,11 +122,13 @@ export default function Commandes() {
       setIsSyncing(false);
     }
   };
-
   const handleRefreshTracking = async () => {
     setIsSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sendcloud-refresh-tracking');
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('sendcloud-refresh-tracking');
       if (error) throw error;
       toast.success(`Tracking mis à jour: ${data.updated} commande(s)`);
       fetchStats();
@@ -145,19 +149,12 @@ export default function Commandes() {
             </p>
           </div>
           <div className="flex gap-2">
-            {(userRole === 'admin' || userRole === 'gestionnaire') && clientList.length > 0 && (
-              <>
-                <select
-                  className="px-3 py-2 border rounded-md"
-                  value={selectedClientFilter || 'all'}
-                  onChange={(e) => setSelectedClientFilter(e.target.value === 'all' ? null : e.target.value)}
-                >
+            {(userRole === 'admin' || userRole === 'gestionnaire') && clientList.length > 0 && <>
+                <select className="px-3 py-2 border rounded-md" value={selectedClientFilter || 'all'} onChange={e => setSelectedClientFilter(e.target.value === 'all' ? null : e.target.value)}>
                   <option value="all">Tous les clients</option>
-                  {clientList.map((client) => (
-                    <option key={client.id} value={client.id}>
+                  {clientList.map(client => <option key={client.id} value={client.id}>
                       {client.nom_entreprise}
-                    </option>
-                  ))}
+                    </option>)}
                 </select>
 
                 <Popover>
@@ -170,64 +167,31 @@ export default function Commandes() {
                   <PopoverContent className="w-[280px] p-0" align="start">
                     <div className="p-4 space-y-2">
                       <h4 className="font-medium text-sm mb-3">Filtrer par statut</h4>
-                      {[
-                        "En attente de réappro",
-                        "Prêt à préparer",
-                        "En préparation",
-                        "Expédié",
-                        "Livré",
-                        "Produits introuvables"
-                      ].map((status) => (
-                        <div key={status} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`status-${status}`}
-                            checked={statusFilters.includes(status)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setStatusFilters([...statusFilters, status]);
-                              } else {
-                                setStatusFilters(statusFilters.filter(s => s !== status));
-                              }
-                            }}
-                          />
-                          <label
-                            htmlFor={`status-${status}`}
-                            className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                          >
+                      {["En attente de réappro", "Prêt à préparer", "En préparation", "Expédié", "Livré", "Produits introuvables"].map(status => <div key={status} className="flex items-center space-x-2">
+                          <Checkbox id={`status-${status}`} checked={statusFilters.includes(status)} onCheckedChange={checked => {
+                      if (checked) {
+                        setStatusFilters([...statusFilters, status]);
+                      } else {
+                        setStatusFilters(statusFilters.filter(s => s !== status));
+                      }
+                    }} />
+                          <label htmlFor={`status-${status}`} className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
                             {status}
                           </label>
-                        </div>
-                      ))}
-                      {statusFilters.length > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full mt-2"
-                          onClick={() => setStatusFilters([])}
-                        >
+                        </div>)}
+                      {statusFilters.length > 0 && <Button variant="ghost" size="sm" className="w-full mt-2" onClick={() => setStatusFilters([])}>
                           Réinitialiser
-                        </Button>
-                      )}
+                        </Button>}
                     </div>
                   </PopoverContent>
                 </Popover>
-              </>
-            )}
-            {userRole !== 'client' && !isViewingAsClient() && (
-              <>
-                <Button 
-                  variant="outline" 
-                  onClick={handleSyncSendCloud}
-                  disabled={isSyncing}
-                >
+              </>}
+            {userRole !== 'client' && !isViewingAsClient() && <>
+                <Button variant="outline" onClick={handleSyncSendCloud} disabled={isSyncing}>
                   <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
                   Synchroniser SendCloud
                 </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={handleRefreshTracking}
-                  disabled={isSyncing}
-                >
+                <Button variant="outline" onClick={handleRefreshTracking} disabled={isSyncing}>
                   <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
                   Rafraîchir tracking
                 </Button>
@@ -235,8 +199,7 @@ export default function Commandes() {
                   <Activity className="mr-2 h-4 w-4" />
                   Monitoring SendCloud
                 </Button>
-              </>
-            )}
+              </>}
           </div>
         </div>
 
@@ -287,58 +250,22 @@ export default function Commandes() {
         </div>
 
         <Tabs defaultValue="toutes" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="toutes">Toutes les commandes</TabsTrigger>
-            <TabsTrigger value="en-attente">En attente</TabsTrigger>
-            <TabsTrigger value="prete">Prêtes</TabsTrigger>
-            <TabsTrigger value="en-preparation">En préparation</TabsTrigger>
-          </TabsList>
+          
 
           <TabsContent value="toutes">
-            <CommandesList 
-              onUpdate={fetchStats} 
-              userRole={userRole} 
-              userId={user?.id} 
-              viewingClientId={getViewingClientId()} 
-              clientFilter={selectedClientFilter}
-              statusFilters={statusFilters}
-            />
+            <CommandesList onUpdate={fetchStats} userRole={userRole} userId={user?.id} viewingClientId={getViewingClientId()} clientFilter={selectedClientFilter} statusFilters={statusFilters} />
           </TabsContent>
 
           <TabsContent value="en-attente">
-            <CommandesList 
-              filter="En attente de réappro" 
-              onUpdate={fetchStats} 
-              userRole={userRole} 
-              userId={user?.id} 
-              viewingClientId={getViewingClientId()} 
-              clientFilter={selectedClientFilter}
-              statusFilters={statusFilters}
-            />
+            <CommandesList filter="En attente de réappro" onUpdate={fetchStats} userRole={userRole} userId={user?.id} viewingClientId={getViewingClientId()} clientFilter={selectedClientFilter} statusFilters={statusFilters} />
           </TabsContent>
 
           <TabsContent value="prete">
-            <CommandesList 
-              filter="prete" 
-              onUpdate={fetchStats} 
-              userRole={userRole} 
-              userId={user?.id} 
-              viewingClientId={getViewingClientId()} 
-              clientFilter={selectedClientFilter}
-              statusFilters={statusFilters}
-            />
+            <CommandesList filter="prete" onUpdate={fetchStats} userRole={userRole} userId={user?.id} viewingClientId={getViewingClientId()} clientFilter={selectedClientFilter} statusFilters={statusFilters} />
           </TabsContent>
 
           <TabsContent value="en-preparation">
-            <CommandesList 
-              filter="En préparation" 
-              onUpdate={fetchStats} 
-              userRole={userRole} 
-              userId={user?.id} 
-              viewingClientId={getViewingClientId()} 
-              clientFilter={selectedClientFilter}
-              statusFilters={statusFilters}
-            />
+            <CommandesList filter="En préparation" onUpdate={fetchStats} userRole={userRole} userId={user?.id} viewingClientId={getViewingClientId()} clientFilter={selectedClientFilter} statusFilters={statusFilters} />
           </TabsContent>
         </Tabs>
       </div>
