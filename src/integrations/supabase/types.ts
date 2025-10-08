@@ -1661,10 +1661,13 @@ export type Database = {
           duree_ms: number | null
           erreur_message: string | null
           id: string
+          mode_sync: string | null
           nb_commandes_creees: number | null
           nb_commandes_existantes: number | null
           nb_commandes_trouvees: number | null
           nb_erreurs: number | null
+          nb_produits_crees: number | null
+          nb_statuts_mis_a_jour: number | null
           statut: string
         }
         Insert: {
@@ -1673,10 +1676,13 @@ export type Database = {
           duree_ms?: number | null
           erreur_message?: string | null
           id?: string
+          mode_sync?: string | null
           nb_commandes_creees?: number | null
           nb_commandes_existantes?: number | null
           nb_commandes_trouvees?: number | null
           nb_erreurs?: number | null
+          nb_produits_crees?: number | null
+          nb_statuts_mis_a_jour?: number | null
           statut: string
         }
         Update: {
@@ -1685,10 +1691,13 @@ export type Database = {
           duree_ms?: number | null
           erreur_message?: string | null
           id?: string
+          mode_sync?: string | null
           nb_commandes_creees?: number | null
           nb_commandes_existantes?: number | null
           nb_commandes_trouvees?: number | null
           nb_erreurs?: number | null
+          nb_produits_crees?: number | null
+          nb_statuts_mis_a_jour?: number | null
           statut?: string
         }
         Relationships: []

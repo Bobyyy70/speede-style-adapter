@@ -406,30 +406,44 @@ export function CommandesList({
         return (commande as any)[columnKey] || "-";
     }
   };
+  // Tri intelligent: non expédiées en haut, expédiées en bas
+  const sortedCommandes = [...filteredCommandes].sort((a, b) => {
+    const statusOrder: Record<string, number> = {
+      'En attente de réappro': 1,
+      'Prêt à préparer': 2,
+      'En préparation': 3,
+      'Expédié': 4,
+      'Livré': 5,
+      'Archivé': 6,
+    };
+    
+    const aOrder = statusOrder[a.statut_wms] || 999;
+    const bOrder = statusOrder[b.statut_wms] || 999;
+    
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    
+    // Même statut: tri chronologique inversé
+    return new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime();
+  });
+
   if (loading) {
     return <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map(i => <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-4" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map(i => <Card key={i}>
+              <CardHeader className="pb-3">
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-1/2 mt-2" />
               </CardHeader>
               <CardContent>
-                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-2/3" />
               </CardContent>
             </Card>)}
         </div>
-        <Card>
-          <CardContent className="pt-6">
-            <Skeleton className="h-64 w-full" />
-          </CardContent>
-        </Card>
       </div>;
   }
   return <div className="space-y-6">
-      {/* Stats Cards */}
-      
-
       {/* Filters and Actions */}
       <Card>
         <CardHeader>
@@ -464,89 +478,75 @@ export function CommandesList({
             </div>
 
             <div className="flex gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <Columns className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80" align="end">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-sm">Colonnes visibles</h4>
-                      <Badge variant="secondary">{visibleColumns.length}</Badge>
-                    </div>
-                    <ScrollArea className="h-[300px] pr-4">
-                      <div className="space-y-2">
-                        {ALL_COLUMNS.map(column => <div key={column.key} className="flex items-center space-x-2">
-                            <Checkbox id={column.key} checked={isColumnVisible(column.key)} onCheckedChange={() => toggleColumnVisibility(column.key)} />
-                            <label htmlFor={column.key} className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                              {column.label}
-                            </label>
-                          </div>)}
-                      </div>
-                    </ScrollArea>
-                    <Button variant="outline" size="sm" onClick={resetColumns} className="w-full">
-                      Réinitialiser par défaut
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              <Button onClick={handleCreateSession} disabled={selectedCommandes.length === 0} className="w-full lg:w-auto">
-                <Plus className="mr-2 h-4 w-4" />
-                Créer une session ({selectedCommandes.length})
-              </Button>
+              {selectedCommandes.length > 0 && (
+                <Button onClick={handleCreateSession} className="w-full lg:w-auto">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Créer session ({selectedCommandes.length})
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
 
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">
-                    <Checkbox checked={filteredCommandes.length > 0 && selectedCommandes.length === filteredCommandes.length} onCheckedChange={toggleSelectAll} />
-                  </TableHead>
-                  {ALL_COLUMNS.filter(col => isColumnVisible(col.key)).map(column => <TableHead key={column.key} className={column.key === "valeur_totale" ? "text-right" : ""}>
-                      {column.label}
-                    </TableHead>)}
-                  <TableHead className="w-[300px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCommandes.length === 0 ? <TableRow>
-                    <TableCell colSpan={visibleColumns.length + 2} className="text-center text-muted-foreground">
-                      Aucune commande trouvée
-                    </TableCell>
-                  </TableRow> : filteredCommandes.map(commande => <TableRow key={commande.id}>
-                      <TableCell>
-                        <Checkbox checked={selectedCommandes.includes(commande.id)} onCheckedChange={() => toggleCommandeSelection(commande.id)} />
-                      </TableCell>
-                      {ALL_COLUMNS.filter(col => isColumnVisible(col.key)).map(column => <TableCell key={column.key}>
-                          {renderCellContent(commande, column.key)}
-                        </TableCell>)}
-                      <TableCell>
-                        <div className="flex gap-2 items-center">
-                          <Button variant="ghost" size="sm" onClick={() => handleViewDetails(commande.id)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <SendCloudActions
-                            commandeId={commande.id}
-                            hasLabel={!!commande.label_url}
-                            hasSendcloudId={!!commande.sendcloud_shipment_id}
-                            onSuccess={fetchCommandes}
+          {sortedCommandes.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Aucune commande trouvée</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {sortedCommandes.map(commande => (
+                <Card 
+                  key={commande.id}
+                  className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-primary/50"
+                  onClick={() => handleViewDetails(commande.id)}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1 flex-1" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-2">
+                          <Checkbox 
+                            checked={selectedCommandes.includes(commande.id)} 
+                            onCheckedChange={() => toggleCommandeSelection(commande.id)} 
+                            onClick={e => e.stopPropagation()}
                           />
+                          <CardTitle className="text-lg font-semibold">{commande.numero_commande}</CardTitle>
                         </div>
-                      </TableCell>
-                    </TableRow>)}
-              </TableBody>
-            </Table>
-          </div>
+                        <p className="text-sm text-muted-foreground">{commande.nom_client}</p>
+                      </div>
+                      {getStatutBadge(commande.statut_wms)}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Date</span>
+                        <span className="font-medium">{new Date(commande.date_creation).toLocaleDateString('fr-FR')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Source</span>
+                        <Badge variant="outline" className="text-xs">{commande.source}</Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Destination</span>
+                        <span className="font-medium truncate max-w-[120px]" title={`${commande.ville}, ${commande.pays_code}`}>
+                          {commande.ville}, {commande.pays_code}
+                        </span>
+                      </div>
+                      {commande.valeur_totale > 0 && (
+                        <div className="flex justify-between pt-2 border-t font-semibold text-primary">
+                          <span>Valeur</span>
+                          <span>{commande.valeur_totale.toFixed(2)} {commande.devise || 'EUR'}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
-          {filteredCommandes.length > 0 && <div className="mt-4 text-sm text-muted-foreground">
-              {filteredCommandes.length} commande(s) affichée(s)
+          {sortedCommandes.length > 0 && <div className="mt-4 text-sm text-muted-foreground text-center">
+              {sortedCommandes.length} commande(s) • 
+              {sortedCommandes.filter(c => !['Expédié', 'Livré', 'Archivé'].includes(c.statut_wms)).length} à traiter
               {selectedCommandes.length > 0 && ` • ${selectedCommandes.length} sélectionnée(s)`}
             </div>}
         </CardContent>

@@ -45,26 +45,36 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('[SendCloud Sync] Starting automatic synchronization...');
+    // Récupérer le mode depuis le body (incremental ou initial)
+    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+    const mode = body.mode || 'initial';
 
-    // Calculer la date de début (dernières 24h ou 7 jours pour le premier backfill)
+    console.log(`[SendCloud Sync] Mode: ${mode}`);
+
+    // Calculer la fenêtre temporelle selon le mode
     const dateMin = new Date();
-    // Utiliser 7 jours pour récupérer toutes les commandes manquées lors du premier sync
-    dateMin.setDate(dateMin.getDate() - 7);
+    if (mode === 'incremental') {
+      // Dernières 5 minutes pour sync incrémentale
+      dateMin.setMinutes(dateMin.getMinutes() - 5);
+    } else {
+      // Dernières 24h pour sync initiale
+      dateMin.setHours(dateMin.getHours() - 24);
+    }
     const dateMinISO = dateMin.toISOString();
 
-    // Utiliser l'API v3 de SendCloud (Orders API)
+    // Utiliser l'API v3 de SendCloud (Orders API) avec filtres de statut
     const authHeader = 'Basic ' + btoa(`${sendcloudPublicKey}:${sendcloudSecretKey}`);
     
-    console.log(`[SendCloud Sync] Fetching orders from SendCloud API v3 since ${dateMinISO}...`);
+    console.log(`[SendCloud Sync] Fetching pending/unshipped orders since ${dateMinISO}...`);
 
     const allOrders: SendCloudOrder[] = [];
     let page = 1;
     let hasMorePages = true;
 
-    // Pagination de l'API v3
+    // Pagination de l'API v3 avec filtres de statut
     while (hasMorePages) {
-      const sendcloudUrl = `https://panel.sendcloud.sc/api/v3/orders?created_at__gte=${dateMinISO}&page=${page}&page_size=100`;
+      // Filtrer par statut: pending, unshipped ou error
+      const sendcloudUrl = `https://panel.sendcloud.sc/api/v3/orders?created_at__gte=${dateMinISO}&shipment_status=unshipped&page=${page}&page_size=100`;
       
       console.log(`[SendCloud Sync] Fetching page ${page}...`);
 
@@ -180,7 +190,7 @@ Deno.serve(async (req) => {
     const duration = Date.now() - startTime;
     const statut = nbErrors > 0 ? (nbCreated > 0 ? 'partial' : 'error') : 'success';
 
-    // Logger le résultat
+    // Logger le résultat avec les nouveaux champs
     await supabase.from('sendcloud_sync_log').insert({
       statut,
       nb_commandes_trouvees: orders.length,
@@ -188,8 +198,10 @@ Deno.serve(async (req) => {
       nb_commandes_existantes: orders.length - newOrders.length,
       nb_erreurs: nbErrors,
       duree_ms: duration,
+      mode_sync: mode,
       erreur_message: errors.length > 0 ? errors.join('; ') : null,
       details: {
+        mode: mode,
         orders_found: orders.length,
         orders_new: newOrders.length,
         orders_existing: orders.length - newOrders.length,
@@ -198,7 +210,8 @@ Deno.serve(async (req) => {
       },
     });
 
-    console.log(`[SendCloud Sync] Completed in ${duration}ms - ${nbCreated} created, ${nbErrors} errors`);
+    console.log(`[SendCloud Sync] Mode: ${mode} - Completed in ${duration}ms`);
+    console.log(`[SendCloud Sync] Found: ${orders.length}, New: ${newOrders.length}, Created: ${nbCreated}, Errors: ${nbErrors}`);
 
     return new Response(
       JSON.stringify({
