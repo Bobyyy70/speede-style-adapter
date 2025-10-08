@@ -2190,20 +2190,12 @@ export type Database = {
         Returns: undefined
       }
       generer_emplacements_auto: {
-        Args:
-          | {
-              p_allees?: string
-              p_capacite_kg?: number
-              p_capacite_unites?: number
-              p_nb_racks?: number
-              p_positions?: string
-            }
-          | {
-              p_allees?: string
-              p_capacite_kg?: number
-              p_nb_racks?: number
-              p_positions?: string
-            }
+        Args: {
+          p_allees?: string
+          p_capacite_kg?: number
+          p_nb_racks?: number
+          p_positions?: string
+        }
         Returns: number
       }
       get_user_role: {
