@@ -977,6 +977,7 @@ export type Database = {
           numero_mouvement: string
           produit_id: string
           quantite: number
+          raison: string | null
           reference_origine: string | null
           remarques: string | null
           statut_mouvement: string | null
@@ -994,6 +995,7 @@ export type Database = {
           numero_mouvement: string
           produit_id: string
           quantite: number
+          raison?: string | null
           reference_origine?: string | null
           remarques?: string | null
           statut_mouvement?: string | null
@@ -1011,6 +1013,7 @@ export type Database = {
           numero_mouvement?: string
           produit_id?: string
           quantite?: number
+          raison?: string | null
           reference_origine?: string | null
           remarques?: string | null
           statut_mouvement?: string | null
@@ -2185,6 +2188,16 @@ export type Database = {
       }
     }
     Functions: {
+      ajouter_stock_manuel: {
+        Args: {
+          p_emplacement_id: string
+          p_produit_id: string
+          p_quantite: number
+          p_raison?: string
+          p_remarques?: string
+        }
+        Returns: Json
+      }
       backfill_missing_profiles: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -2219,6 +2232,15 @@ export type Database = {
           p_produit_id: string
           p_quantite: number
           p_reference_origine: string
+        }
+        Returns: Json
+      }
+      retirer_stock_manuel: {
+        Args: {
+          p_emplacement_id: string
+          p_quantite: number
+          p_raison?: string
+          p_remarques?: string
         }
         Returns: Json
       }
