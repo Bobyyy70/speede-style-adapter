@@ -2,12 +2,10 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
 interface AssignerProduitDialogProps {
   open: boolean;
@@ -29,7 +27,6 @@ export function AssignerProduitDialog({
   const [loadingProduits, setLoadingProduits] = useState(false);
   const [produits, setProduits] = useState<any[]>([]);
   const [produitSelectionne, setProduitSelectionne] = useState<string>("");
-  const [openCombobox, setOpenCombobox] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -120,56 +117,25 @@ export function AssignerProduitDialog({
 
           <div className="space-y-2">
             <Label>Produit *</Label>
-            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openCombobox}
-                  className="w-full justify-between"
-                  disabled={loadingProduits || loading}
-                >
-                  {produitSelectionneData ? (
-                    <span className="flex items-center gap-2">
-                      <span className="font-medium">{produitSelectionneData.reference}</span>
-                      <span className="text-muted-foreground">- {produitSelectionneData.nom}</span>
-                    </span>
-                  ) : (
-                    "Sélectionner un produit..."
-                  )}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0">
-                <Command>
-                  <CommandInput placeholder="Rechercher un produit..." />
-                  <CommandEmpty>Aucun produit trouvé.</CommandEmpty>
-                  <CommandGroup className="max-h-64 overflow-auto">
-                    {produits.map((produit) => (
-                      <CommandItem
-                        key={produit.id}
-                        value={`${produit.reference} ${produit.nom}`}
-                        onSelect={() => {
-                          setProduitSelectionne(produit.id);
-                          setOpenCombobox(false);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            produitSelectionne === produit.id ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        <div className="flex flex-col">
-                          <span className="font-medium">{produit.reference}</span>
-                          <span className="text-sm text-muted-foreground">{produit.nom}</span>
-                        </div>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <Select
+              value={produitSelectionne}
+              onValueChange={setProduitSelectionne}
+              disabled={loadingProduits || loading}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Sélectionner un produit..." />
+              </SelectTrigger>
+              <SelectContent>
+                {produits.map((produit) => (
+                  <SelectItem key={produit.id} value={produit.id}>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{produit.reference}</span>
+                      <span className="text-sm text-muted-foreground">{produit.nom}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {produitSelectionneData && (
