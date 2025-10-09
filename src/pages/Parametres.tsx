@@ -803,20 +803,14 @@ const Parametres = () => {
                   <CardDescription>Générer des rapports CSV</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Button onClick={() => handleExport("stock")} disabled={exporting} variant="outline" className="w-full justify-start">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Stock complet (référence, quantité, valeur)
-                  </Button>
+                  
 
                   <Button onClick={() => handleExport("commandes")} disabled={exporting} variant="outline" className="w-full justify-start">
                     <FileText className="h-4 w-4 mr-2" />
                     Commandes (1000 dernières)
                   </Button>
 
-                  <Button onClick={() => handleExport("mouvements")} disabled={exporting} variant="outline" className="w-full justify-start">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Mouvements de stock (1000 derniers)
-                  </Button>
+                  
 
                   {exporting && <p className="text-sm text-muted-foreground text-center">
                       Export en cours...
