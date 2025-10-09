@@ -682,19 +682,10 @@ const Parametres = () => {
                   </div>
                   <Switch defaultChecked />
                 </div>
+                
                 <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Anomalies réception</Label>
-                    <p className="text-sm text-muted-foreground">Alerte en cas de problème</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Picking urgent</Label>
-                    <p className="text-sm text-muted-foreground">Notification picking prioritaire</p>
-                  </div>
-                  <Switch defaultChecked />
+                  
+                  
                 </div>
                 <Button>Enregistrer</Button>
               </CardContent>
