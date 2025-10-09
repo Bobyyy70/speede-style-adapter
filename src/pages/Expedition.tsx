@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAutoRules } from "@/hooks/useAutoRules";
+import { useAuth } from "@/hooks/useAuth";
 interface Commande {
   id: string;
   numero_commande: string;
@@ -23,6 +24,7 @@ interface Commande {
   transporteur_choisi?: string;
 }
 export default function Expedition() {
+  const { user, userRole, getViewingClientId } = useAuth();
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
   const {
@@ -30,15 +32,32 @@ export default function Expedition() {
   } = useAutoRules();
   useEffect(() => {
     fetchCommandes();
-  }, []);
+  }, [user, userRole]);
   const fetchCommandes = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('commande').select('*').in('statut_wms', ['prete', 'expediee']).order('date_creation', {
+      // Get client_id for filtering
+      let clientId: string | null = null;
+      const viewingClientId = getViewingClientId();
+      if (viewingClientId) {
+        clientId = viewingClientId;
+      } else if (userRole === 'client' && user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        clientId = profileData?.client_id || null;
+      }
+
+      let query = supabase.from('commande').select('*').in('statut_wms', ['prete', 'expediee']).order('date_creation', {
         ascending: false
       });
+      
+      if (clientId) {
+        query = query.eq("client_id", clientId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setCommandes(data || []);
     } catch (error: any) {

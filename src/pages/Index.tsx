@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { format, subDays } from "date-fns";
 import { DashboardAIAssistant } from "@/components/DashboardAIAssistant";
+import { useAuth } from "@/hooks/useAuth";
 const Index = () => {
+  const { user, userRole, getViewingClientId } = useAuth();
   const [stats, setStats] = useState({
     commandesEnPreparation: 0,
     commandesExpediees: 0,
@@ -23,9 +25,27 @@ const Index = () => {
   const [chartData, setChartData] = useState<any[]>([]);
   useEffect(() => {
     const fetchStats = async () => {
-      const {
-        data: commandes
-      } = await supabase.from("commande").select("statut_wms, date_creation, tracking_number");
+      // Get client_id for filtering
+      let clientId: string | null = null;
+      const viewingClientId = getViewingClientId();
+      if (viewingClientId) {
+        clientId = viewingClientId;
+      } else if (userRole === 'client' && user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        clientId = profileData?.client_id || null;
+      }
+
+      // Fetch commandes filtered by client
+      let commandesQuery = supabase.from("commande").select("statut_wms, date_creation, tracking_number, client_id");
+      if (clientId) {
+        commandesQuery = commandesQuery.eq("client_id", clientId);
+      }
+      const { data: commandes } = await commandesQuery;
+
       const enPreparation = commandes?.filter(c => c.statut_wms === "En préparation").length || 0;
       const expediees = commandes?.filter(c => c.statut_wms === "Expédiée").length || 0;
       const {
@@ -35,23 +55,36 @@ const Index = () => {
         head: true
       }).in("statut_retour", ["recu", "en_traitement"]);
 
+      // Retours filtered by client
+      let retoursQuery = supabase.from("retour_produit").select("*", { count: "exact", head: true }).in("statut_retour", ["recu", "en_traitement"]);
+      if (clientId) {
+        retoursQuery = retoursQuery.eq("client_id", clientId);
+      }
+      const { count: retoursCountValue } = await retoursQuery;
+
       // Taux de livraison à l'heure - basé sur SendCloud tracking
       const commandesAvecTracking = commandes?.filter(c => c.tracking_number) || [];
       const tauxLivraison = commandesAvecTracking.length > 0 ? Math.round(expediees / commandesAvecTracking.length * 100) : 0;
 
       // Erreurs de préparation - basé sur retours avec raison erreur
-      const {
-        data: retoursErreur
-      } = await supabase.from("retour_produit").select("raison_retour").ilike("raison_retour", "%erreur%");
+      let retoursErreurQuery = supabase.from("retour_produit").select("raison_retour").ilike("raison_retour", "%erreur%");
+      if (clientId) {
+        retoursErreurQuery = retoursErreurQuery.eq("client_id", clientId);
+      }
+      const { data: retoursErreur } = await retoursErreurQuery;
       const tauxErreurs = commandes && commandes.length > 0 ? Math.round((retoursErreur?.length || 0) / commandes.length * 100) : 0;
-      const {
-        data: produits
-      } = await supabase.from("produit").select("stock_actuel, stock_minimum");
+
+      // Produits filtered by client
+      let produitsQuery = supabase.from("produit").select("stock_actuel, stock_minimum, client_id");
+      if (clientId) {
+        produitsQuery = produitsQuery.eq("client_id", clientId);
+      }
+      const { data: produits } = await produitsQuery;
       const produitsAvecAlerte = produits?.filter(p => (p.stock_actuel || 0) < (p.stock_minimum || 0)).length || 0;
       setStats({
         commandesEnPreparation: enPreparation,
         commandesExpediees: expediees,
-        retoursEnCours: retoursCount || 0,
+        retoursEnCours: retoursCountValue || 0,
         receptionsAttendues: 0,
         tauxLivraisonHeure: tauxLivraison,
         tauxErreurs: tauxErreurs,
@@ -60,14 +93,31 @@ const Index = () => {
       });
     };
     fetchStats();
-  }, []);
+  }, [user, userRole]);
   useEffect(() => {
     const fetchChartData = async () => {
       const days = parseInt(period);
       const startDate = subDays(new Date(), days);
-      const {
-        data: commandes
-      } = await supabase.from("commande").select("date_creation, statut_wms").gte("date_creation", startDate.toISOString());
+
+      // Get client_id for filtering
+      let clientId: string | null = null;
+      const viewingClientId = getViewingClientId();
+      if (viewingClientId) {
+        clientId = viewingClientId;
+      } else if (userRole === 'client' && user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        clientId = profileData?.client_id || null;
+      }
+
+      let commandesQuery = supabase.from("commande").select("date_creation, statut_wms, client_id").gte("date_creation", startDate.toISOString());
+      if (clientId) {
+        commandesQuery = commandesQuery.eq("client_id", clientId);
+      }
+      const { data: commandes } = await commandesQuery;
       const groupedData: Record<string, {
         date: string;
         commandes: number;
@@ -94,7 +144,7 @@ const Index = () => {
       setChartData(Object.values(groupedData));
     };
     fetchChartData();
-  }, [period]);
+  }, [period, user, userRole]);
   return <DashboardLayout>
       <div className="space-y-4">
         <div>

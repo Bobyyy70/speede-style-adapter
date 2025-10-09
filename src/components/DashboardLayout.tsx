@@ -46,7 +46,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       icon: ClipboardList,
       children: [{
         name: "Gestion des commandes",
-        href: "/commandes",
+        href: "/client/commandes",
         icon: ClipboardList
       }, {
         name: "Éditer une commande",
@@ -55,23 +55,19 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       }]
     }, {
       name: "Retours",
-      href: "/commandes/retours",
+      href: "/client/retours",
       icon: Undo2
     }, {
       name: "Produits",
-      href: "/stock/produits",
+      href: "/client/produits",
       icon: Boxes
-    }, {
-      name: "Stock",
-      href: "/stock/produits",
-      icon: Warehouse
     }, {
       name: "Réception",
       href: "/client/reception",
       icon: PackageOpen
     }, {
       name: "Mouvements",
-      href: "/stock/mouvements",
+      href: "/client/mouvements",
       icon: ArrowRightLeft
     }, {
       name: "Intégrations",
@@ -230,7 +226,6 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
     }];
   }
   if (role === "client") {
-    // Mapping des tabs vers les items de navigation
     const clientTabsMapping: Record<string, NavigationItem[]> = {
       dashboard: [{
         name: "Tableau de Bord",
@@ -242,7 +237,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         icon: ClipboardList,
         children: [{
           name: "Gestion des commandes",
-          href: "/commandes",
+          href: "/client/commandes",
           icon: ClipboardList
         }, {
           name: "Éditer une commande",
@@ -252,7 +247,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       }],
       stock: [{
         name: "Stock",
-        href: "/stock/produits",
+        href: "/client/produits",
         icon: Warehouse
       }],
       invoices: [{
@@ -292,12 +287,12 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
     const fixedItems: NavigationItem[] = [
       {
         name: "Retours",
-        href: "/commandes/retours",
+        href: "/client/retours",
         icon: Undo2
       },
       {
         name: "Produits",
-        href: "/stock/produits",
+        href: "/client/produits",
         icon: Boxes
       },
       {
@@ -307,7 +302,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       },
       {
         name: "Mouvements",
-        href: "/stock/mouvements",
+        href: "/client/mouvements",
         icon: ArrowRightLeft
       },
       {

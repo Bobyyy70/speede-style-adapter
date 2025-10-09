@@ -34,6 +34,8 @@ import SendCloudSync from "./pages/SendCloudSync";
 import NotFound from "./pages/NotFound";
 import ClientProduits from "./pages/client/MesProduits";
 import ClientRetours from "./pages/client/MesRetours";
+import ClientCommandes from "./pages/client/MesCommandes";
+import ClientMouvements from "./pages/client/MesMouvements";
 import ClientFacturation from "./pages/client/MaFacturation";
 import ClientAttenduReception from "./pages/client/AttenduReception";
 import ClientCreerCommande from "./pages/client/CreerCommande";
@@ -285,10 +287,10 @@ const App = () => (
             <Route path="/produits" element={<Navigate to="/stock/produits" replace />} />
             <Route path="/retours" element={<Navigate to="/commandes/retours" replace />} />
             <Route path="/client/attendu-reception" element={<Navigate to="/client/reception" replace />} />
-            <Route path="/client/commandes" element={<Navigate to="/commandes" replace />} />
-            <Route path="/client/retours" element={<Navigate to="/commandes/retours" replace />} />
-            <Route path="/client/produits" element={<Navigate to="/stock/produits" replace />} />
-            <Route path="/client/mouvements" element={<Navigate to="/stock/mouvements" replace />} />
+            <Route path="/client/commandes" element={<ClientCommandes />} />
+            <Route path="/client/retours" element={<ClientRetours />} />
+            <Route path="/client/produits" element={<ClientProduits />} />
+            <Route path="/client/mouvements" element={<ClientMouvements />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
