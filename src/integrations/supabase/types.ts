@@ -83,6 +83,13 @@ export type Database = {
             referencedRelation: "client"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "attendu_reception_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       audit_log: {
@@ -286,6 +293,45 @@ export type Database = {
         }
         Relationships: []
       }
+      client_user_limits: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          max_users: number
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          max_users?: number
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          max_users?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_user_limits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_user_limits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
       commande: {
         Row: {
           adresse_ligne_1: string
@@ -432,6 +478,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "client"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commande_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "commande_type_carton_id_fkey"
@@ -1293,6 +1346,13 @@ export type Database = {
             referencedRelation: "client"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "produit_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       produit_alertes_stock: {
@@ -1501,6 +1561,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "client"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retour_produit_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "retour_produit_commande_origine_id_fkey"
@@ -2057,6 +2124,16 @@ export type Database = {
       }
     }
     Views: {
+      client_user_stats: {
+        Row: {
+          client_id: string | null
+          current_users: number | null
+          max_users: number | null
+          nom_entreprise: string | null
+          remaining_slots: number | null
+        }
+        Relationships: []
+      }
       commande_gestionnaire_secure: {
         Row: {
           adresse_ligne_1: string | null
@@ -2162,6 +2239,13 @@ export type Database = {
             referencedRelation: "client"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "commande_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       stock_disponible: {
@@ -2201,6 +2285,10 @@ export type Database = {
       backfill_missing_profiles: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      can_client_create_user: {
+        Args: { _client_id: string }
+        Returns: boolean
       }
       generer_emplacements_auto: {
         Args: {

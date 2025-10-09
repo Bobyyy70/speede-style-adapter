@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import { ClientUserManagement } from "@/components/ClientUserManagement";
 interface ValidationResult {
   valid: any[];
   duplicates: any[];
@@ -62,11 +63,11 @@ const Parametres = () => {
     id: "general" as const,
     label: "Général",
     icon: Settings
-  }, ...(userRole === 'admin' ? [{
+  }, {
     id: "users" as const,
     label: "Utilisateurs",
     icon: Users
-  }, {
+  }, ...(userRole === 'admin' ? [{
     id: "notifications" as const,
     label: "Notifications",
     icon: BellDot
@@ -671,34 +672,25 @@ const Parametres = () => {
             </Card>
               </div>}
 
-            {activeTab === "users" && <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestion des utilisateurs</CardTitle>
-                <CardDescription>Administrer les comptes et rôles</CardDescription>
-              </CardHeader>
-              <CardContent>
+            {activeTab === "users" && (
+              userRole === 'admin' ? (
                 <div className="space-y-4">
-                  {[{
-                    nom: "Admin Principal",
-                    email: "admin@speedelog.net",
-                    role: "Admin"
-                  }, {
-                    nom: "Opérateur 1",
-                    email: "operateur@speedelog.net",
-                    role: "Opérateur"
-                  }].map(user => <div key={user.email} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <div className="font-medium">{user.nom}</div>
-                        <div className="text-sm text-muted-foreground">{user.email}</div>
-                      </div>
-                      <div className="text-sm">{user.role}</div>
-                    </div>)}
-                  <Button className="w-full">Ajouter utilisateur</Button>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Gestion des utilisateurs (Admin)</CardTitle>
+                      <CardDescription>Administrer tous les comptes et rôles</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button onClick={() => window.location.href = '/utilisateurs'} className="w-full">
+                        Ouvrir la gestion complète des utilisateurs
+                      </Button>
+                    </CardContent>
+                  </Card>
                 </div>
-              </CardContent>
-            </Card>
-              </div>}
+              ) : (
+                <ClientUserManagement />
+              )
+            )}
 
             {activeTab === "notifications" && <div className="space-y-4">
             <Card>
