@@ -1,24 +1,20 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, Search, AlertTriangle, TrendingUp, LayoutList, LayoutGrid, PackagePlus } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Package, Search, AlertTriangle, TrendingUp } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { NouveauProduitDialog } from "@/components/NouveauProduitDialog";
 import { FicheProduitDialog } from "@/components/FicheProduitDialog";
-import { ProduitsKanban } from "@/components/ProduitsKanban";
-import { GestionConsommables } from "@/components/GestionConsommables";
 import { ImportCSVDialog } from "@/components/ImportCSVDialog";
 import { useAuth } from "@/hooks/useAuth";
 
 const Produits = () => {
   const { user, userRole, getViewingClientId, isViewingAsClient } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [selectedProduitId, setSelectedProduitId] = useState<string | null>(null);
 
   const { data: produits = [], isLoading, refetch } = useQuery({
@@ -70,7 +66,7 @@ const Produits = () => {
         totalProduits,
         valeurTotale,
         alertes,
-        rotation: 8.5 // À calculer plus tard avec historique mouvements
+        rotation: 8.5
       };
     },
   });
@@ -140,134 +136,81 @@ const Produits = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="produits" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="produits">
-              <Package className="h-4 w-4 mr-2" />
-              Produits
-            </TabsTrigger>
-            <TabsTrigger value="consommables">
-              <PackagePlus className="h-4 w-4 mr-2" />
-              Consommables
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="produits">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Catalogue produits</CardTitle>
-                    <CardDescription>Liste des références en stock</CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {userRole !== 'client' && !isViewingAsClient() && <ImportCSVDialog onSuccess={() => refetch()} />}
-                    <Button
-                      variant={viewMode === "list" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setViewMode("list")}
-                    >
-                      <LayoutList className="h-4 w-4 mr-1" />
-                      Liste
-                    </Button>
-                    <Button
-                      variant={viewMode === "kanban" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setViewMode("kanban")}
-                    >
-                      <LayoutGrid className="h-4 w-4 mr-1" />
-                      Kanban
-                    </Button>
-                    <NouveauProduitDialog onSuccess={() => refetch()} />
-                  </div>
-                </div>
-              </CardHeader>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Catalogue produits</CardTitle>
+                <CardDescription>Liste des références en stock</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                {userRole !== 'client' && !isViewingAsClient() && <ImportCSVDialog onSuccess={() => refetch()} />}
+                <NouveauProduitDialog onSuccess={() => refetch()} />
+              </div>
+            </div>
+          </CardHeader>
           <CardContent>
-            {viewMode === "list" && (
-              <>
-                <div className="mb-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="Rechercher par référence, nom ou code-barres..." 
-                      className="pl-10"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                </div>
-                
-                {isLoading ? (
-                  <div className="text-center py-8 text-muted-foreground">Chargement...</div>
-                ) : filteredProduits.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    {searchTerm ? "Aucun produit trouvé" : "Aucun produit en stock"}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredProduits.map((produit) => {
-                      const isAlerte = produit.stock_actuel < produit.stock_minimum;
-                      return (
-                        <div 
-                          key={produit.id} 
-                          onClick={() => setSelectedProduitId(produit.id)}
-                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Rechercher par référence, nom ou code-barres..." 
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+            ) : filteredProduits.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchTerm ? "Aucun produit trouvé" : "Aucun produit en stock"}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Référence</TableHead>
+                    <TableHead>Nom</TableHead>
+                    <TableHead className="text-center">Stock Actuel</TableHead>
+                    <TableHead>Stock Min.</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredProduits.map((produit) => (
+                    <TableRow
+                      key={produit.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setSelectedProduitId(produit.id)}
+                    >
+                      <TableCell className="font-medium">{produit.reference}</TableCell>
+                      <TableCell>{produit.nom}</TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-2xl font-bold">{produit.stock_actuel}</span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{produit.stock_minimum}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedProduitId(produit.id);
+                          }}
                         >
-                          <div className="flex-1">
-                            <div className="font-medium">{produit.reference} - {produit.nom}</div>
-                            <div className="text-sm text-muted-foreground">
-                              Stock: {produit.stock_actuel} / Seuil: {produit.stock_minimum}
-                              {produit.code_barre_ean && ` • EAN: ${produit.code_barre_ean}`}
-                              {produit.categorie_emballage === 2 && ` • Protection individuelle`}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {produit.categorie_emballage === 2 && (
-                              <Badge variant="outline">
-                                Prot.
-                              </Badge>
-                            )}
-                            <Badge variant={isAlerte ? "destructive" : "default"}>
-                              {isAlerte ? "Alerte" : "OK"}
-                            </Badge>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
+                          Détails
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
-
-            {viewMode === "kanban" && (
-              <>
-                <div className="mb-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="Rechercher par référence, nom ou code-barres..." 
-                      className="pl-10"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                </div>
-                
-                {isLoading ? (
-                  <div className="text-center py-8 text-muted-foreground">Chargement...</div>
-                ) : (
-                  <ProduitsKanban produits={filteredProduits} onRefetch={refetch} />
-                )}
-              </>
-            )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="consommables">
-            <GestionConsommables />
-          </TabsContent>
-        </Tabs>
+          </CardContent>
+        </Card>
       </div>
 
       {selectedProduitId && (

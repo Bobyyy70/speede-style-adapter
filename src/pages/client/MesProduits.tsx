@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -67,16 +66,6 @@ export default function MesProduits() {
     }
   };
 
-  const getStockBadge = (produit: Produit) => {
-    if (produit.stock_actuel === 0) {
-      return <Badge variant="destructive">Rupture</Badge>;
-    }
-    if (produit.stock_actuel <= produit.stock_minimum) {
-      return <Badge variant="secondary">Stock faible</Badge>;
-    }
-    return <Badge variant="default">Disponible</Badge>;
-  };
-
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -104,10 +93,9 @@ export default function MesProduits() {
                   <TableRow>
                     <TableHead>Référence</TableHead>
                     <TableHead>Nom</TableHead>
-                    <TableHead>Stock Actuel</TableHead>
+                    <TableHead className="text-center">Stock Actuel</TableHead>
                     <TableHead>Stock Min.</TableHead>
                     <TableHead>Stock Max.</TableHead>
-                    <TableHead>Statut</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -115,10 +103,11 @@ export default function MesProduits() {
                     <TableRow key={produit.id}>
                       <TableCell className="font-medium">{produit.reference}</TableCell>
                       <TableCell>{produit.nom}</TableCell>
-                      <TableCell className="font-semibold">{produit.stock_actuel}</TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-2xl font-bold">{produit.stock_actuel}</span>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{produit.stock_minimum}</TableCell>
                       <TableCell className="text-muted-foreground">{produit.stock_maximum || "-"}</TableCell>
-                      <TableCell>{getStockBadge(produit)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
