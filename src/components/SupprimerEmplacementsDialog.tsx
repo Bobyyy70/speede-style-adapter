@@ -35,13 +35,21 @@ export function SupprimerEmplacementsDialog({ open, onOpenChange, zones, onSucce
       if (error) throw error;
 
       if (data && !(data as any).success) {
-        toast.error((data as any).error || "Impossible de supprimer les emplacements");
+        const errorMsg = (data as any).message || (data as any).error || "Impossible de supprimer les emplacements";
+        toast.error(errorMsg, {
+          description: `${(data as any).emplacements_occupes || 0} emplacement(s) contiennent encore du stock`,
+          duration: 5000,
+        });
         setConfirmStep(false);
         return;
       }
 
       const count = (data as any).emplacements_supprimes || 0;
-      toast.success(`${count} emplacement${count > 1 ? 's supprimés' : ' supprimé'}`);
+      const successMsg = (data as any).message || `${count} emplacement${count > 1 ? 's supprimés' : ' supprimé'}`;
+      toast.success(successMsg, {
+        description: 'Les suppressions ont été loggées dans les mouvements de stock',
+        duration: 3000,
+      });
       onSuccess();
       onOpenChange(false);
       setConfirmStep(false);
