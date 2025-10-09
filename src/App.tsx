@@ -43,6 +43,7 @@ import AdminBootstrap from "./pages/AdminBootstrap";
 
 const queryClient = new QueryClient();
 
+// Client routes implementation
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
