@@ -335,7 +335,13 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
     console.log('Affichage des onglets :', Array.from(seenNames).join(', '));
     console.log('Auth corrigée, 8 onglets affichés pour tous les clients');
     
-    return clientNavigation.length > 0 ? clientNavigation : baseNavigation;
+    // Fallback: si aucun onglet n'a été ajouté, afficher au moins les onglets fixes de base
+    if (clientNavigation.length === 0) {
+      console.warn('Aucun onglet trouvé dans tabs_access, utilisation des onglets par défaut');
+      return baseNavigation;
+    }
+    
+    return clientNavigation;
   }
   return baseNavigation;
 };
