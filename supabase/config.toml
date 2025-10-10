@@ -1,5 +1,8 @@
 project_id = "tggdjeoxvpzbigbikpfy"
 
+[functions.n8n-import-sendcloud-orders]
+verify_jwt = false
+
 [functions.recherche-entreprise]
 verify_jwt = true
 
