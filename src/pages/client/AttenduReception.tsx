@@ -28,7 +28,7 @@ interface AttenduReception {
 }
 
 const AttenduReception = () => {
-  const { user } = useAuth();
+  const { user, getViewingClientId } = useAuth();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const [attendus, setAttendus] = useState<AttenduReception[]>([]);
@@ -104,12 +104,18 @@ const AttenduReception = () => {
       const asClient = searchParams.get("asClient");
       let clientId = asClient;
 
-      if (!asClient) {
+      // Fallback to viewing client ID from localStorage
+      if (!clientId) {
+        clientId = getViewingClientId();
+      }
+
+      // Final fallback to profile client_id
+      if (!clientId) {
         const { data: profile } = await supabase
           .from("profiles")
           .select("client_id")
           .eq("id", user?.id)
-          .single();
+          .maybeSingle();
         clientId = profile?.client_id;
       }
 
@@ -169,12 +175,18 @@ const AttenduReception = () => {
       const asClient = searchParams.get("asClient");
       let clientId = asClient;
 
-      if (!asClient) {
+      // Fallback to viewing client ID from localStorage
+      if (!clientId) {
+        clientId = getViewingClientId();
+      }
+
+      // Final fallback to profile client_id
+      if (!clientId) {
         const { data: profile } = await supabase
           .from("profiles")
           .select("client_id")
           .eq("id", user?.id)
-          .single();
+          .maybeSingle();
         clientId = profile?.client_id;
       }
 

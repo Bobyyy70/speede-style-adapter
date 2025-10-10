@@ -31,7 +31,7 @@ interface Produit {
 }
 
 const CreerCommande = () => {
-  const { user, userRole } = useAuth();
+  const { user, userRole, getViewingClientId } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -102,6 +102,12 @@ const CreerCommande = () => {
       const asClient = searchParams.get("asClient");
       let clientId = asClient || selectedClientId;
 
+      // Fallback to viewing client ID from localStorage
+      if (!clientId) {
+        clientId = getViewingClientId();
+      }
+
+      // Final fallback to profile client_id
       if (!clientId) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -228,6 +234,12 @@ const CreerCommande = () => {
       const asClient = searchParams.get("asClient");
       let clientId = asClient || selectedClientId;
 
+      // Fallback to viewing client ID from localStorage
+      if (!clientId) {
+        clientId = getViewingClientId();
+      }
+
+      // Final fallback to profile client_id
       if (!clientId) {
         const { data: profile } = await supabase
           .from("profiles")

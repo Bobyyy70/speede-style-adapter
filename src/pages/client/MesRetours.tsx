@@ -20,7 +20,7 @@ interface Retour {
 }
 
 export default function MesRetours() {
-  const { user } = useAuth();
+  const { user, getViewingClientId } = useAuth();
   const [searchParams] = useSearchParams();
   const [retours, setRetours] = useState<Retour[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,12 +36,18 @@ export default function MesRetours() {
       const asClient = searchParams.get("asClient");
       let clientId = asClient;
 
-      if (!asClient) {
+      // Fallback to viewing client ID from localStorage
+      if (!clientId) {
+        clientId = getViewingClientId();
+      }
+
+      // Final fallback to profile client_id
+      if (!clientId) {
         const { data: profile } = await supabase
           .from("profiles")
           .select("client_id")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
         clientId = profile?.client_id;
       }
 
