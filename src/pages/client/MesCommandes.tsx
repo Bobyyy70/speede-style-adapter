@@ -8,6 +8,9 @@ import { toast } from "sonner";
 import { Package, Clock, CheckCircle2, TrendingUp, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
+import { CommandesKanban } from "@/components/CommandesKanban";
+import { ViewSelector } from "@/components/ViewSelector";
+import { CommandeDetailDialog } from "@/components/CommandeDetailDialog";
 
 interface Commande {
   id: string;
@@ -18,18 +21,31 @@ interface Commande {
   tracking_number?: string;
   tracking_url?: string;
   valeur_totale: number;
+  source: string;
+  ville?: string;
+  pays_code?: string;
+  nom_client: string;
 }
 
 export default function MesCommandes() {
   const { user, getViewingClientId } = useAuth();
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<'list' | 'kanban'>(() => {
+    return (localStorage.getItem('client_commandes_view') as 'list' | 'kanban') || 'list';
+  });
+  const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     enAttente: 0,
     prete: 0,
     enPreparation: 0
   });
+
+  useEffect(() => {
+    localStorage.setItem('client_commandes_view', view);
+  }, [view]);
 
   useEffect(() => {
     fetchCommandes();
@@ -46,7 +62,7 @@ export default function MesCommandes() {
           .from("profiles")
           .select("client_id")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
         clientId = profileData?.client_id || null;
       }
 
@@ -95,11 +111,14 @@ export default function MesCommandes() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Mes Commandes</h1>
-          <p className="text-muted-foreground">
-            Consultez toutes vos commandes et leur statut
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Mes Commandes</h1>
+            <p className="text-muted-foreground">
+              Consultez toutes vos commandes et leur statut
+            </p>
+          </div>
+          <ViewSelector view={view} onViewChange={setView} />
         </div>
 
         <div className="grid gap-4 md:grid-cols-4">
@@ -148,65 +167,85 @@ export default function MesCommandes() {
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Liste de vos commandes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground mt-2">Chargement...</p>
-              </div>
-            ) : commandes.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Aucune commande trouvée
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>N° Commande</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Destinataire</TableHead>
-                    <TableHead>Montant</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Tracking</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {commandes.map((commande) => (
-                    <TableRow key={commande.id}>
-                      <TableCell className="font-medium">
-                        {commande.numero_commande}
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(commande.date_creation), "dd/MM/yyyy")}
-                      </TableCell>
-                      <TableCell>{commande.adresse_nom}</TableCell>
-                      <TableCell>{commande.valeur_totale.toFixed(2)} €</TableCell>
-                      <TableCell>{getStatutBadge(commande.statut_wms)}</TableCell>
-                      <TableCell>
-                        {commande.tracking_url ? (
-                          <a
-                            href={commande.tracking_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline"
-                          >
-                            Suivre
-                          </a>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+        {view === 'kanban' ? (
+          <>
+            <CommandesKanban
+              commandes={commandes}
+              onCommandeClick={(id) => {
+                setSelectedCommandeId(id);
+                setDetailDialogOpen(true);
+              }}
+              loading={loading}
+            />
+            {selectedCommandeId && (
+              <CommandeDetailDialog
+                open={detailDialogOpen}
+                onOpenChange={setDetailDialogOpen}
+                commandeId={selectedCommandeId}
+              />
             )}
-          </CardContent>
-        </Card>
+          </>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Liste de vos commandes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                  <p className="text-muted-foreground mt-2">Chargement...</p>
+                </div>
+              ) : commandes.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Aucune commande trouvée
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>N° Commande</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Destinataire</TableHead>
+                      <TableHead>Montant</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Tracking</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {commandes.map((commande) => (
+                      <TableRow key={commande.id}>
+                        <TableCell className="font-medium">
+                          {commande.numero_commande}
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(commande.date_creation), "dd/MM/yyyy")}
+                        </TableCell>
+                        <TableCell>{commande.adresse_nom}</TableCell>
+                        <TableCell>{commande.valeur_totale.toFixed(2)} €</TableCell>
+                        <TableCell>{getStatutBadge(commande.statut_wms)}</TableCell>
+                        <TableCell>
+                          {commande.tracking_url ? (
+                            <a
+                              href={commande.tracking_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                            >
+                              Suivre
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );

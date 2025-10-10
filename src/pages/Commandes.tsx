@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { CommandesList } from "@/components/CommandesList";
 import { CommandesKanban } from "@/components/CommandesKanban";
@@ -16,7 +17,6 @@ import { useNavigate } from "react-router-dom";
 import { useAutoRules } from "@/hooks/useAutoRules";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshCw } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 
 export default function Commandes() {
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ export default function Commandes() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedClientFilter, setSelectedClientFilter] = useState<string | null>(null);
   const [clientList, setClientList] = useState<{ id: string; nom_entreprise: string; }[]>([]);
-  const [statusFilters, setStatusFilters] = useState<string[]>([ "En attente de réappro", "Prêt à préparer", "En préparation"]);
+  const [statusFilters, setStatusFilters] = useState<string[]>(["En attente de réappro", "Prêt à préparer", "En préparation"]);
   const [view, setView] = useState<'list' | 'kanban'>(() => {
     return (localStorage.getItem('commandes_view') as 'list' | 'kanban') || 'list';
   });
@@ -37,31 +37,41 @@ export default function Commandes() {
     enPreparation: 0
   });
 
-  useEffect(() => {
-    localStorage.setItem('commandes_view', view);
-  }, [view]);
-
   const { applyAutoRules } = useAutoRules();
 
-  // Real-time subscription
-  useEffect(() => {
-    const channel = supabase
-      .channel('commande-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'commande' },
-        (payload) => {
-          console.log('Change received!', payload)
-          refetch();
+  // Fetch commandes data - DÉCLARÉ EN PREMIER
+  const { data: commandesData, isLoading, refetch } = useQuery({
+    queryKey: ["commandes", selectedClientFilter, getViewingClientId()],
+    queryFn: async () => {
+      let query = supabase
+        .from("commande")
+        .select("*")
+        .neq("statut_wms", "Archivé")
+        .order("date_creation", { ascending: false });
+
+      const viewingClientId = getViewingClientId();
+      if (selectedClientFilter) {
+        query = query.eq("client_id", selectedClientFilter);
+      } else if (viewingClientId) {
+        query = query.eq("client_id", viewingClientId);
+      } else if (userRole === 'client' && user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (profileData?.client_id) {
+          query = query.eq("client_id", profileData.client_id);
         }
-      )
-      .subscribe()
+      }
 
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [refetch]);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
+  // Real-time subscription - maintenant refetch est disponible
   useEffect(() => {
     console.log('[Commandes] Setting up real-time subscription for new orders');
     
@@ -79,6 +89,8 @@ export default function Commandes() {
           toast.success('✅ Nouvelle commande reçue !', {
             description: `N° ${payload.new.numero_commande}`,
           });
+          refetch();
+          fetchStats();
         }
       )
       .subscribe();
@@ -87,7 +99,11 @@ export default function Commandes() {
       console.log('[Commandes] Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [refetch]);
+
+  useEffect(() => {
+    localStorage.setItem('commandes_view', view);
+  }, [view]);
 
   useEffect(() => {
     const saved = localStorage.getItem('commandes_status_filters');
@@ -111,32 +127,12 @@ export default function Commandes() {
     }
   }, []);
 
-  const { data: commandesData, isLoading, refetch } = useQuery({
-    queryKey: ["commandes", selectedClientFilter, getViewingClientId()],
-    queryFn: async () => {
-      let query = supabase.from("commande").select("*").neq("statut_wms", "Archivé").order("date_creation", { ascending: false });
-
-      const viewingClientId = getViewingClientId();
-      if (selectedClientFilter) {
-        query = query.eq("client_id", selectedClientFilter);
-      } else if (viewingClientId) {
-        query = query.eq("client_id", viewingClientId);
-      } else if (userRole === 'client' && user) {
-        const { data: profileData } = await supabase.from("profiles").select("client_id").eq("id", user.id).single();
-        if (profileData?.client_id) {
-          query = query.eq("client_id", profileData.client_id);
-        }
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
   const fetchClients = async () => {
     try {
-      const { data } = await supabase.from('client' as any).select('id, nom_entreprise').order('nom_entreprise', { ascending: true });
+      const { data } = await supabase
+        .from('client' as any)
+        .select('id, nom_entreprise')
+        .order('nom_entreprise', { ascending: true });
       if (data) setClientList(data as any);
     } catch (e) {
       console.error('Erreur chargement clients:', e);
@@ -151,7 +147,11 @@ export default function Commandes() {
       if (viewingClientId) {
         query = query.eq("client_id", viewingClientId);
       } else if (userRole === 'client' && user) {
-        const { data: profileData } = await supabase.from("profiles").select("client_id").eq("id", user.id).single();
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .maybeSingle();
         if (profileData?.client_id) {
           query = query.eq("client_id", profileData.client_id);
         }
@@ -177,6 +177,7 @@ export default function Commandes() {
       if (error) throw error;
       toast.success(`Tracking mis à jour: ${data.updated} commande(s)`);
       fetchStats();
+      refetch();
     } catch (error: any) {
       toast.error("Erreur lors du rafraîchissement: " + error.message);
       console.error(error);
@@ -335,7 +336,10 @@ export default function Commandes() {
           <Tabs defaultValue="toutes" className="space-y-4">
             <TabsContent value="toutes">
               <CommandesList 
-                onUpdate={fetchStats} 
+                onUpdate={() => {
+                  fetchStats();
+                  refetch();
+                }} 
                 userRole={userRole} 
                 userId={user?.id} 
                 viewingClientId={getViewingClientId()} 

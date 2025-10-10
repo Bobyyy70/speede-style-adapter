@@ -6,6 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { ProduitsKanban } from "@/components/ProduitsKanban";
+import { ViewSelector } from "@/components/ViewSelector";
 
 interface Produit {
   id: string;
@@ -15,6 +17,9 @@ interface Produit {
   stock_minimum: number;
   stock_maximum: number;
   categorie_emballage: number;
+  prix_unitaire: number;
+  image_url: string;
+  code_barre_ean: string;
 }
 
 export default function MesProduits() {
@@ -22,6 +27,13 @@ export default function MesProduits() {
   const [searchParams] = useSearchParams();
   const [produits, setProduits] = useState<Produit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<'list' | 'kanban'>(() => {
+    return (localStorage.getItem('client_produits_view') as 'list' | 'kanban') || 'list';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('client_produits_view', view);
+  }, [view]);
 
   useEffect(() => {
     fetchProduits();
@@ -34,12 +46,10 @@ export default function MesProduits() {
       const asClient = searchParams.get("asClient");
       let clientId = asClient;
 
-      // Fallback to viewing client ID from localStorage
       if (!clientId) {
         clientId = getViewingClientId();
       }
 
-      // Final fallback to profile client_id
       if (!clientId) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -75,52 +85,63 @@ export default function MesProduits() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Mes Produits & Stock</h1>
-          <p className="text-muted-foreground">
-            Catalogue et niveaux de stock de vos produits
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Mes Produits & Stock</h1>
+            <p className="text-muted-foreground">
+              Catalogue et niveaux de stock de vos produits
+            </p>
+          </div>
+          <ViewSelector view={view} onViewChange={setView} />
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Mes références produits</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-8">Chargement...</div>
-            ) : produits.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Aucun produit enregistré
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Référence</TableHead>
-                    <TableHead>Nom</TableHead>
-                    <TableHead className="text-center">Stock Actuel</TableHead>
-                    <TableHead>Stock Min.</TableHead>
-                    <TableHead>Stock Max.</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {produits.map((produit) => (
-                    <TableRow key={produit.id}>
-                      <TableCell className="font-medium">{produit.reference}</TableCell>
-                      <TableCell>{produit.nom}</TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-2xl font-bold">{produit.stock_actuel}</span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{produit.stock_minimum}</TableCell>
-                      <TableCell className="text-muted-foreground">{produit.stock_maximum || "-"}</TableCell>
+        {view === 'kanban' ? (
+          <ProduitsKanban 
+            produits={produits} 
+            onRefetch={fetchProduits}
+            loading={loading}
+          />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Mes références produits</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="text-center py-8">Chargement...</div>
+              ) : produits.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Aucun produit enregistré
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Référence</TableHead>
+                      <TableHead>Nom</TableHead>
+                      <TableHead className="text-center">Stock Actuel</TableHead>
+                      <TableHead>Stock Min.</TableHead>
+                      <TableHead>Stock Max.</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {produits.map((produit) => (
+                      <TableRow key={produit.id}>
+                        <TableCell className="font-medium">{produit.reference}</TableCell>
+                        <TableCell>{produit.nom}</TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-2xl font-bold">{produit.stock_actuel}</span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{produit.stock_minimum}</TableCell>
+                        <TableCell className="text-muted-foreground">{produit.stock_maximum || "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );
