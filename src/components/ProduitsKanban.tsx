@@ -19,9 +19,10 @@ interface Produit {
 interface ProduitsKanbanProps {
   produits: Produit[];
   onRefetch?: () => void;
+  loading?: boolean;
 }
 
-export const ProduitsKanban = ({ produits, onRefetch }: ProduitsKanbanProps) => {
+export function ProduitsKanban({ produits, onRefetch, loading }: ProduitsKanbanProps) {
   const [selectedProduitId, setSelectedProduitId] = useState<string | null>(null);
 
   // Catégoriser les produits par statut

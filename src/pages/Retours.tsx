@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { PackageX, Clock, CheckCircle, AlertTriangle, RotateCcw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ViewSelector } from "@/components/ViewSelector";
+import { RetoursKanban } from "@/components/RetoursKanban";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -17,6 +19,13 @@ export default function Retours() {
   const { user, userRole, getViewingClientId } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [statutFilter, setStatutFilter] = useState<string>("all");
+  const [view, setView] = useState<'list' | 'kanban'>(() => {
+    return (localStorage.getItem('retours_view') as 'list' | 'kanban') || 'list';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('retours_view', view);
+  }, [view]);
 
   const { data: retours, isLoading, refetch } = useQuery({
     queryKey: ["retours-produit", userRole, user?.id, getViewingClientId()],
@@ -25,10 +34,10 @@ export default function Retours() {
         .from("retour_produit")
         .select(`
           *,
-          lignes:ligne_retour_produit(*)
+          lignes:ligne_retour_produit(*),
+          client:client_id(nom_entreprise)
         `);
       
-      // Filter by client_id if viewing as client or if user is a client
       const viewingClientId = getViewingClientId();
       if (viewingClientId) {
         query = query.eq("client_id", viewingClientId);
@@ -103,9 +112,12 @@ export default function Retours() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Retours & SAV</h1>
-          <p className="text-muted-foreground">Gestion des retours produits et service après-vente</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Retours & SAV</h1>
+            <p className="text-muted-foreground">Gestion des retours produits et service après-vente</p>
+          </div>
+          <ViewSelector view={view} onViewChange={setView} />
         </div>
 
         <div className="grid gap-4 md:grid-cols-4">
@@ -150,96 +162,101 @@ export default function Retours() {
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Dossiers de retours</CardTitle>
-              <CardDescription>Liste complète des retours produits avec facturation automatique</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <Input
-                  placeholder="Rechercher un retour..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+        {/* Affichage conditionnel Liste ou Kanban */}
+        {view === 'kanban' ? (
+          <RetoursKanban retours={filteredRetours || []} loading={isLoading} />
+        ) : (
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Dossiers de retours</CardTitle>
+                <CardDescription>Liste complète des retours produits avec facturation automatique</CardDescription>
               </div>
-              <Select value={statutFilter} onValueChange={setStatutFilter}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous statuts</SelectItem>
-                  <SelectItem value="recu">Reçu</SelectItem>
-                  <SelectItem value="en_traitement">En traitement</SelectItem>
-                  <SelectItem value="en_inspection">En inspection</SelectItem>
-                  <SelectItem value="traite">Traité</SelectItem>
-                  <SelectItem value="etiquette_generee">Étiquette générée</SelectItem>
-                  <SelectItem value="non_conforme">Non conforme</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Rechercher un retour..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Select value={statutFilter} onValueChange={setStatutFilter}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous statuts</SelectItem>
+                    <SelectItem value="recu">Reçu</SelectItem>
+                    <SelectItem value="en_traitement">En traitement</SelectItem>
+                    <SelectItem value="en_inspection">En inspection</SelectItem>
+                    <SelectItem value="traite">Traité</SelectItem>
+                    <SelectItem value="etiquette_generee">Étiquette générée</SelectItem>
+                    <SelectItem value="non_conforme">Non conforme</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              {isLoading ? (
-                <div className="text-center py-8 text-muted-foreground">Chargement...</div>
-              ) : filteredRetours?.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">Aucun retour trouvé</div>
-              ) : (
-                filteredRetours?.map((retour) => {
-                  const statutBadge = getStatutBadge(retour.statut_retour);
-                  return (
-                    <div
-                      key={retour.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
-                    >
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-medium font-mono">{retour.numero_retour}</h3>
-                          <Badge variant={statutBadge.variant}>{statutBadge.label}</Badge>
+              <div className="space-y-2">
+                {isLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+                ) : filteredRetours?.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">Aucun retour trouvé</div>
+                ) : (
+                  filteredRetours?.map((retour) => {
+                    const statutBadge = getStatutBadge(retour.statut_retour);
+                    return (
+                      <div
+                        key={retour.id}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
+                      >
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium font-mono">{retour.numero_retour}</h3>
+                            <Badge variant={statutBadge.variant}>{statutBadge.label}</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{retour.client_nom}</p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>{format(new Date(retour.date_creation), "d MMMM yyyy", { locale: fr })}</span>
+                            {retour.lignes && (
+                              <>
+                                <span>•</span>
+                                <span>{retour.lignes.length} produit(s)</span>
+                              </>
+                            )}
+                            {retour.raison_retour && (
+                              <>
+                                <span>•</span>
+                                <span>{retour.raison_retour}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">{retour.client_nom}</p>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>{format(new Date(retour.date_creation), "d MMMM yyyy", { locale: fr })}</span>
-                          {retour.lignes && (
-                            <>
-                              <span>•</span>
-                              <span>{retour.lignes.length} produit(s)</span>
-                            </>
-                          )}
-                          {retour.raison_retour && (
-                            <>
-                              <span>•</span>
-                              <span>{retour.raison_retour}</span>
-                            </>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <div className="font-medium">{Number(retour.valeur_totale).toFixed(2)}€</div>
+                            <div className="text-xs text-muted-foreground">Coût traitement</div>
+                          </div>
+                          {retour.commande_origine_id && retour.statut_retour === 'recu' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleCreateReturn(retour.commande_origine_id!)}
+                            >
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Générer étiquette
+                            </Button>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div className="font-medium">{Number(retour.valeur_totale).toFixed(2)}€</div>
-                          <div className="text-xs text-muted-foreground">Coût traitement</div>
-                        </div>
-                        {retour.commande_origine_id && retour.statut_retour === 'recu' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleCreateReturn(retour.commande_origine_id!)}
-                          >
-                            <RotateCcw className="h-4 w-4 mr-2" />
-                            Générer étiquette
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                    );
+                  })
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );

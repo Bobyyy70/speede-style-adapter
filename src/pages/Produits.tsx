@@ -3,19 +3,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Package, Search, AlertTriangle, TrendingUp } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NouveauProduitDialog } from "@/components/NouveauProduitDialog";
 import { FicheProduitDialog } from "@/components/FicheProduitDialog";
 import { ImportCSVDialog } from "@/components/ImportCSVDialog";
+import { ProduitsKanban } from "@/components/ProduitsKanban";
+import { ViewSelector } from "@/components/ViewSelector";
 import { useAuth } from "@/hooks/useAuth";
 
 const Produits = () => {
   const { user, userRole, getViewingClientId, isViewingAsClient } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProduitId, setSelectedProduitId] = useState<string | null>(null);
+  const [view, setView] = useState<'list' | 'kanban'>(() => {
+    return (localStorage.getItem('produits_view') as 'list' | 'kanban') || 'list';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('produits_view', view);
+  }, [view]);
 
   const { data: produits = [], isLoading, refetch } = useQuery({
     queryKey: ["produits", userRole, user?.id, getViewingClientId()],
@@ -25,7 +35,6 @@ const Produits = () => {
         .select("*")
         .eq("statut_actif", true);
       
-      // Filter by client_id if viewing as client or if user is a client
       const viewingClientId = getViewingClientId();
       if (viewingClientId) {
         query = query.eq("client_id", viewingClientId);
@@ -81,11 +90,14 @@ const Produits = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Produits</h1>
-          <p className="text-muted-foreground mt-1">
-            Catalogue et gestion des stocks
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Produits</h1>
+            <p className="text-muted-foreground mt-1">
+              Catalogue et gestion des stocks
+            </p>
+          </div>
+          <ViewSelector view={view} onViewChange={setView} />
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -136,81 +148,85 @@ const Produits = () => {
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Catalogue produits</CardTitle>
-                <CardDescription>Liste des références en stock</CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                {userRole !== 'client' && !isViewingAsClient() && <ImportCSVDialog onSuccess={() => refetch()} />}
-                <NouveauProduitDialog onSuccess={() => refetch()} />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Rechercher par référence, nom ou code-barres..." 
-                  className="pl-10"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-            
-            {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Chargement...</div>
-            ) : filteredProduits.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                {searchTerm ? "Aucun produit trouvé" : "Aucun produit en stock"}
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Référence</TableHead>
-                    <TableHead>Nom</TableHead>
-                    <TableHead className="text-center">Stock Actuel</TableHead>
-                    <TableHead>Stock Min.</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProduits.map((produit) => (
-                    <TableRow
-                      key={produit.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => setSelectedProduitId(produit.id)}
-                    >
-                      <TableCell className="font-medium">{produit.reference}</TableCell>
-                      <TableCell>{produit.nom}</TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-2xl font-bold">{produit.stock_actuel}</span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{produit.stock_minimum}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedProduitId(produit.id);
-                          }}
-                        >
-                          Détails
-                        </Button>
-                      </TableCell>
+        <div className="flex items-center justify-between gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher par référence, nom ou EAN..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            {userRole !== 'client' && !isViewingAsClient() && <ImportCSVDialog onSuccess={() => refetch()} />}
+            <NouveauProduitDialog onSuccess={() => refetch()} />
+          </div>
+        </div>
+
+        {view === 'kanban' ? (
+          <ProduitsKanban 
+            produits={filteredProduits} 
+            onRefetch={refetch}
+            loading={isLoading}
+          />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Catalogue produits</CardTitle>
+              <CardDescription>Liste des références en stock</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+              ) : filteredProduits.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {searchTerm ? "Aucun produit trouvé" : "Aucun produit en stock"}
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Référence</TableHead>
+                      <TableHead>Nom</TableHead>
+                      <TableHead className="text-center">Stock Actuel</TableHead>
+                      <TableHead>Stock Min.</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProduits.map((produit) => (
+                      <TableRow
+                        key={produit.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setSelectedProduitId(produit.id)}
+                      >
+                        <TableCell className="font-medium">{produit.reference}</TableCell>
+                        <TableCell>{produit.nom}</TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-2xl font-bold">{produit.stock_actuel}</span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{produit.stock_minimum}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedProduitId(produit.id);
+                            }}
+                          >
+                            Détails
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {selectedProduitId && (
