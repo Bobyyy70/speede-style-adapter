@@ -58,28 +58,6 @@ const Produits = () => {
     },
   });
 
-  const { data: stats } = useQuery({
-    queryKey: ["produits-stats"],
-    queryFn: async () => {
-      const { data: stockDispo, error } = await supabase
-        .from("stock_disponible")
-        .select("*");
-      
-      if (error) throw error;
-
-      const totalProduits = stockDispo?.length || 0;
-      const valeurTotale = produits.reduce((sum, p) => sum + (p.stock_actuel * (p.prix_unitaire || 0)), 0);
-      const alertes = stockDispo?.filter(p => p.stock_disponible < (produits.find(pr => pr.id === p.produit_id)?.stock_minimum || 0)).length || 0;
-
-      return {
-        totalProduits,
-        valeurTotale,
-        alertes,
-        rotation: 8.5
-      };
-    },
-  });
-
   const filteredProduits = produits.filter(p => 
     searchTerm === "" || 
     p.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -100,69 +78,25 @@ const Produits = () => {
           <ViewSelector view={view} onViewChange={setView} />
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Références</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalProduits || 0}</div>
-              <p className="text-xs text-muted-foreground">Actives</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Valeur totale</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                €{((stats?.valeurTotale || 0) / 1000000).toFixed(1)}M
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher par référence, nom ou EAN..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-              <p className="text-xs text-muted-foreground">Stock en valeur</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Alertes stock</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.alertes || 0}</div>
-              <p className="text-xs text-muted-foreground">Sous seuil</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Rotation</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.rotation || 0}x</div>
-              <p className="text-xs text-muted-foreground">Moyenne annuelle</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="flex items-center justify-between gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher par référence, nom ou EAN..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            {userRole !== 'client' && !isViewingAsClient() && <ImportCSVDialog onSuccess={() => refetch()} />}
-            <NouveauProduitDialog onSuccess={() => refetch()} />
-          </div>
-        </div>
+              <div className="flex items-center gap-2">
+                {userRole !== 'client' && !isViewingAsClient() && <ImportCSVDialog onSuccess={() => refetch()} />}
+                <NouveauProduitDialog onSuccess={() => refetch()} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {view === 'kanban' ? (
           <ProduitsKanban 

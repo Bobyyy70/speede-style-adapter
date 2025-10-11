@@ -809,6 +809,77 @@ export const FicheProduitDialog = ({ produitId, open, onOpenChange, onSuccess }:
           </TabsContent>
 
           <TabsContent value="alertes" className="space-y-4 mt-4">
+            {/* Section Analyse de Stock */}
+            <div className="p-4 bg-muted/50 rounded-lg space-y-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                <h3 className="text-lg font-semibold">Analyse de Stock</h3>
+              </div>
+              
+              {/* Badge de statut global */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Statut actuel:</span>
+                <Badge 
+                  variant={
+                    produit.stock_actuel === 0 ? "destructive" : 
+                    produit.stock_actuel < produit.stock_minimum ? "outline" : 
+                    "secondary"
+                  }
+                  className={
+                    produit.stock_actuel === 0 ? "text-red-500" : 
+                    produit.stock_actuel < produit.stock_minimum ? "text-orange-500" : 
+                    "text-green-500"
+                  }
+                >
+                  {produit.stock_actuel === 0 ? "Rupture de stock" : 
+                   produit.stock_actuel < produit.stock_minimum ? "Alerte stock bas" : 
+                   "Stock OK"}
+                </Badge>
+              </div>
+
+              {/* Seuils de stock */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Stock minimum</div>
+                  <div className="text-lg font-semibold text-orange-500">{produit.stock_minimum}</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Stock actuel</div>
+                  <div className={`text-lg font-semibold ${
+                    produit.stock_actuel === 0 ? "text-red-500" : 
+                    produit.stock_actuel < produit.stock_minimum ? "text-orange-500" : 
+                    "text-green-500"
+                  }`}>
+                    {produit.stock_actuel}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Stock maximum</div>
+                  <div className="text-lg font-semibold">{produit.stock_maximum || "N/A"}</div>
+                </div>
+              </div>
+
+              {/* Historique des 7 derniers jours */}
+              {mouvements && mouvements.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Derniers mouvements (7 jours)</h4>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {mouvements.slice(0, 7).map((mvt) => (
+                      <div key={mvt.id} className="flex items-center justify-between text-xs p-2 bg-background rounded">
+                        <span className="text-muted-foreground">
+                          {new Date(mvt.date_mouvement).toLocaleDateString()}
+                        </span>
+                        <Badge variant={mvt.quantite > 0 ? "secondary" : "destructive"} className="text-xs">
+                          {mvt.quantite > 0 ? "+" : ""}{mvt.quantite}
+                        </Badge>
+                        <span className="text-muted-foreground">{mvt.type_mouvement}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
