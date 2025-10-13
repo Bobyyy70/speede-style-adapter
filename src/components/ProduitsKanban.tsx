@@ -16,6 +16,9 @@ interface Produit {
   code_barre_ean: string;
   categorie_emballage: number;
   image_url?: string;
+  stock_physique?: number;
+  stock_reserve?: number;
+  stock_disponible?: number;
 }
 
 interface ProduitsKanbanProps {
@@ -52,10 +55,11 @@ export function ProduitsKanban({ produits, onRefetch, loading }: ProduitsKanbanP
   };
 
   const getStockStatus = (produit: Produit) => {
-    if (produit.stock_actuel === 0) {
+    const stockDispo = produit.stock_disponible ?? produit.stock_actuel;
+    if (stockDispo === 0) {
       return { label: "Rupture", variant: "destructive" as const, color: "text-red-500" };
     }
-    if (produit.stock_actuel < produit.stock_minimum) {
+    if (stockDispo < produit.stock_minimum) {
       return { label: "Alerte", variant: "outline" as const, color: "text-orange-500" };
     }
     return { label: "Stock OK", variant: "secondary" as const, color: "text-green-500" };
@@ -116,9 +120,16 @@ export function ProduitsKanban({ produits, onRefetch, loading }: ProduitsKanbanP
               </div>
             </div>
             <div className="flex items-center justify-between text-xs pt-1 border-t">
-              <span className="text-muted-foreground">
-                Stock: <span className={`font-semibold ${status.color}`}>{produit.stock_actuel}</span>
-              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-muted-foreground">
+                  Dispo: <span className={`font-bold ${status.color}`}>{produit.stock_disponible ?? produit.stock_actuel}</span>
+                </span>
+                {(produit.stock_reserve || 0) > 0 && (
+                  <span className="text-orange-600 text-[10px]">
+                    Réservé: {produit.stock_reserve}
+                  </span>
+                )}
+              </div>
               {produit.prix_unitaire && (
                 <span className="font-medium text-primary">€{produit.prix_unitaire.toFixed(2)}</span>
               )}

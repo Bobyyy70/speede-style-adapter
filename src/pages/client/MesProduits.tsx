@@ -20,6 +20,19 @@ interface Produit {
   prix_unitaire: number;
   image_url: string;
   code_barre_ean: string;
+  stock_physique?: number;
+  stock_reserve?: number;
+  stock_disponible?: number;
+}
+
+interface StockDisponible {
+  produit_id: string;
+  reference: string;
+  nom: string;
+  client_id: string;
+  stock_physique: number;
+  stock_reserve: number;
+  stock_disponible: number;
 }
 
 export default function MesProduits() {
@@ -61,15 +74,37 @@ export default function MesProduits() {
 
       if (!clientId) return;
 
-      const { data, error } = await supabase
+      const { data: produitsData, error: produitsError } = await supabase
         .from("produit")
         .select("*")
         .eq("client_id", clientId)
         .eq("statut_actif", true)
         .order("nom");
 
-      if (error) throw error;
-      setProduits(data || []);
+      if (produitsError) throw produitsError;
+
+      // Récupérer le stock disponible pour chaque produit
+      const { data: stockData, error: stockError } = await (supabase as any)
+        .from("stock_disponible")
+        .select("*")
+        .eq("client_id", clientId);
+
+      if (stockError) {
+        console.error("Error fetching stock_disponible:", stockError);
+      }
+
+      // Fusionner les données
+      const produitsAvecStock = (produitsData || []).map(produit => {
+        const stock = (stockData as any)?.find((s: any) => s.produit_id === produit.id);
+        return {
+          ...produit,
+          stock_physique: stock?.stock_physique || 0,
+          stock_reserve: stock?.stock_reserve || 0,
+          stock_disponible: stock?.stock_disponible || 0
+        };
+      });
+
+      setProduits(produitsAvecStock);
     } catch (error: any) {
       console.error("Error fetching produits:", error);
       toast({
@@ -114,30 +149,38 @@ export default function MesProduits() {
                   Aucun produit enregistré
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Référence</TableHead>
-                      <TableHead>Nom</TableHead>
-                      <TableHead className="text-center">Stock Actuel</TableHead>
-                      <TableHead>Stock Min.</TableHead>
-                      <TableHead>Stock Max.</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {produits.map((produit) => (
-                      <TableRow key={produit.id}>
-                        <TableCell className="font-medium">{produit.reference}</TableCell>
-                        <TableCell>{produit.nom}</TableCell>
-                        <TableCell className="text-center">
-                          <span className="text-2xl font-bold">{produit.stock_actuel}</span>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{produit.stock_minimum}</TableCell>
-                        <TableCell className="text-muted-foreground">{produit.stock_maximum || "-"}</TableCell>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Référence</TableHead>
+                        <TableHead>Nom</TableHead>
+                        <TableHead className="text-center">Stock Physique</TableHead>
+                        <TableHead className="text-center">Réservé</TableHead>
+                        <TableHead className="text-center">Disponible</TableHead>
+                        <TableHead>Stock Min.</TableHead>
+                        <TableHead>Stock Max.</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {produits.map((produit) => (
+                        <TableRow key={produit.id}>
+                          <TableCell className="font-medium">{produit.reference}</TableCell>
+                          <TableCell>{produit.nom}</TableCell>
+                          <TableCell className="text-center">
+                            <span className="text-lg font-semibold">{produit.stock_physique || produit.stock_actuel}</span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className="text-lg font-semibold text-orange-600">{produit.stock_reserve || 0}</span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className="text-2xl font-bold text-green-600">{produit.stock_disponible ?? produit.stock_actuel}</span>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{produit.stock_minimum}</TableCell>
+                          <TableCell className="text-muted-foreground">{produit.stock_maximum || "-"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
               )}
             </CardContent>
           </Card>

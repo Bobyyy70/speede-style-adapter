@@ -36,9 +36,9 @@ const Produits = () => {
         .eq("statut_actif", true);
       
       const viewingClientId = getViewingClientId();
-      if (viewingClientId) {
-        query = query.eq("client_id", viewingClientId);
-      } else if (userRole === 'client' && user) {
+      let clientIdFilter = viewingClientId;
+      
+      if (!clientIdFilter && userRole === 'client' && user) {
         const { data: profileData } = await supabase
           .from("profiles")
           .select("client_id")
@@ -46,15 +46,39 @@ const Produits = () => {
           .single();
         
         if (profileData?.client_id) {
-          query = query.eq("client_id", profileData.client_id);
+          clientIdFilter = profileData.client_id;
         }
+      }
+      
+      if (clientIdFilter) {
+        query = query.eq("client_id", clientIdFilter);
       }
       
       query = query.order("reference");
       
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+      const { data: produitsData, error: produitsError } = await query;
+      if (produitsError) throw produitsError;
+
+      // Récupérer le stock disponible
+      let stockQuery = (supabase as any).from("stock_disponible").select("*");
+      if (clientIdFilter) {
+        stockQuery = stockQuery.eq("client_id", clientIdFilter);
+      }
+      
+      const { data: stockData } = await stockQuery;
+
+      // Fusionner les données
+      const produitsAvecStock = (produitsData || []).map((produit: any) => {
+        const stock = (stockData as any)?.find((s: any) => s.produit_id === produit.id);
+        return {
+          ...produit,
+          stock_physique: stock?.stock_physique || 0,
+          stock_reserve: stock?.stock_reserve || 0,
+          stock_disponible: stock?.stock_disponible || 0
+        };
+      });
+
+      return produitsAvecStock;
     },
   });
 
@@ -123,7 +147,9 @@ const Produits = () => {
                     <TableRow>
                       <TableHead>Référence</TableHead>
                       <TableHead>Nom</TableHead>
-                      <TableHead className="text-center">Stock Actuel</TableHead>
+                      <TableHead className="text-center">Stock Physique</TableHead>
+                      <TableHead className="text-center">Réservé</TableHead>
+                      <TableHead className="text-center">Disponible</TableHead>
                       <TableHead>Stock Min.</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -138,7 +164,13 @@ const Produits = () => {
                         <TableCell className="font-medium">{produit.reference}</TableCell>
                         <TableCell>{produit.nom}</TableCell>
                         <TableCell className="text-center">
-                          <span className="text-2xl font-bold">{produit.stock_actuel}</span>
+                          <span className="text-lg font-semibold">{produit.stock_physique || produit.stock_actuel}</span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-lg font-semibold text-orange-600">{produit.stock_reserve || 0}</span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-2xl font-bold text-green-600">{produit.stock_disponible ?? produit.stock_actuel}</span>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{produit.stock_minimum}</TableCell>
                         <TableCell>
