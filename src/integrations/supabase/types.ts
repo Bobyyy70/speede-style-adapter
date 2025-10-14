@@ -343,6 +343,15 @@ export type Database = {
           date_modification: string
           devise: string | null
           email_client: string | null
+          expediteur_adresse_ligne_1: string | null
+          expediteur_adresse_ligne_2: string | null
+          expediteur_code_postal: string | null
+          expediteur_email: string | null
+          expediteur_entreprise: string | null
+          expediteur_nom: string | null
+          expediteur_pays_code: string | null
+          expediteur_telephone: string | null
+          expediteur_ville: string | null
           facturation_code_postal: string | null
           facturation_ligne_1: string | null
           facturation_ligne_2: string | null
@@ -389,6 +398,15 @@ export type Database = {
           date_modification?: string
           devise?: string | null
           email_client?: string | null
+          expediteur_adresse_ligne_1?: string | null
+          expediteur_adresse_ligne_2?: string | null
+          expediteur_code_postal?: string | null
+          expediteur_email?: string | null
+          expediteur_entreprise?: string | null
+          expediteur_nom?: string | null
+          expediteur_pays_code?: string | null
+          expediteur_telephone?: string | null
+          expediteur_ville?: string | null
           facturation_code_postal?: string | null
           facturation_ligne_1?: string | null
           facturation_ligne_2?: string | null
@@ -435,6 +453,15 @@ export type Database = {
           date_modification?: string
           devise?: string | null
           email_client?: string | null
+          expediteur_adresse_ligne_1?: string | null
+          expediteur_adresse_ligne_2?: string | null
+          expediteur_code_postal?: string | null
+          expediteur_email?: string | null
+          expediteur_entreprise?: string | null
+          expediteur_nom?: string | null
+          expediteur_pays_code?: string | null
+          expediteur_telephone?: string | null
+          expediteur_ville?: string | null
           facturation_code_postal?: string | null
           facturation_ligne_1?: string | null
           facturation_ligne_2?: string | null
@@ -492,6 +519,105 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "type_carton"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_destinataire: {
+        Row: {
+          adresse_ligne_1: string
+          adresse_ligne_2: string | null
+          adresse_ligne_3: string | null
+          client_id: string
+          code_postal: string
+          date_creation: string
+          date_modification: string
+          derniere_utilisation: string | null
+          digicode: string | null
+          email: string | null
+          entreprise: string | null
+          est_archive: boolean | null
+          est_favori: boolean | null
+          id: string
+          instructions_acces: string | null
+          instructions_livraison: string | null
+          interphone: string | null
+          label_contact: string | null
+          nom: string
+          pays_code: string
+          prenom: string | null
+          telephone: string | null
+          telephone_mobile: string | null
+          utilisation_count: number | null
+          ville: string
+        }
+        Insert: {
+          adresse_ligne_1: string
+          adresse_ligne_2?: string | null
+          adresse_ligne_3?: string | null
+          client_id: string
+          code_postal: string
+          date_creation?: string
+          date_modification?: string
+          derniere_utilisation?: string | null
+          digicode?: string | null
+          email?: string | null
+          entreprise?: string | null
+          est_archive?: boolean | null
+          est_favori?: boolean | null
+          id?: string
+          instructions_acces?: string | null
+          instructions_livraison?: string | null
+          interphone?: string | null
+          label_contact?: string | null
+          nom: string
+          pays_code: string
+          prenom?: string | null
+          telephone?: string | null
+          telephone_mobile?: string | null
+          utilisation_count?: number | null
+          ville: string
+        }
+        Update: {
+          adresse_ligne_1?: string
+          adresse_ligne_2?: string | null
+          adresse_ligne_3?: string | null
+          client_id?: string
+          code_postal?: string
+          date_creation?: string
+          date_modification?: string
+          derniere_utilisation?: string | null
+          digicode?: string | null
+          email?: string | null
+          entreprise?: string | null
+          est_archive?: boolean | null
+          est_favori?: boolean | null
+          id?: string
+          instructions_acces?: string | null
+          instructions_livraison?: string | null
+          interphone?: string | null
+          label_contact?: string | null
+          nom?: string
+          pays_code?: string
+          prenom?: string | null
+          telephone?: string | null
+          telephone_mobile?: string | null
+          utilisation_count?: number | null
+          ville?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_destinataire_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_destinataire_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
           },
         ]
       }

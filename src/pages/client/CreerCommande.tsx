@@ -8,10 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Trash2, Upload } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 interface LigneCommande {
   produit_id: string;
@@ -40,28 +42,89 @@ const CreerCommande = () => {
   const [labelFile, setLabelFile] = useState<File | null>(null);
   const [labelUrl, setLabelUrl] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
+  const [useExistingContact, setUseExistingContact] = useState(false);
+  const [selectedContactId, setSelectedContactId] = useState<string>("");
+  const [saveAsContact, setSaveAsContact] = useState(false);
+  const [labelContact, setLabelContact] = useState("");
   
   // Pour admin/gestionnaire: liste des clients et client sélectionné
   const [clients, setClients] = useState<Array<{ id: string; nom_entreprise: string }>>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   
   const [formData, setFormData] = useState({
+    // Expéditeur
+    expediteur_nom: "",
+    expediteur_entreprise: "",
+    expediteur_email: "",
+    expediteur_telephone: "",
+    expediteur_adresse_ligne_1: "",
+    expediteur_adresse_ligne_2: "",
+    expediteur_code_postal: "",
+    expediteur_ville: "",
+    expediteur_pays_code: "FR",
+    // Destinataire
     nom_client: "",
+    prenom_client: "",
+    entreprise_client: "",
     email_client: "",
     telephone_client: "",
+    telephone_mobile_client: "",
     adresse_nom: "",
     adresse_ligne_1: "",
     adresse_ligne_2: "",
+    adresse_ligne_3: "",
     code_postal: "",
     ville: "",
     pays_code: "FR",
+    // Instructions de livraison
+    digicode: "",
+    interphone: "",
+    instructions_acces: "",
+    instructions_livraison: "",
     transporteur: "",
     remarques: "",
   });
 
+  // Récupérer les contacts du client
+  const { data: contacts } = useQuery({
+    queryKey: ["contacts", user?.id, selectedClientId],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const asClient = searchParams.get("asClient");
+      let clientId = asClient || selectedClientId;
+
+      if (!clientId) {
+        clientId = getViewingClientId();
+      }
+
+      if (!clientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .maybeSingle();
+        clientId = profile?.client_id || null;
+      }
+
+      if (!clientId) return [];
+
+      const { data, error } = await supabase
+        .from("contact_destinataire")
+        .select("*")
+        .eq("client_id", clientId)
+        .eq("est_archive", false)
+        .order("est_favori", { ascending: false })
+        .order("utilisation_count", { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   useEffect(() => {
     if (user) {
-      // Si admin/gestionnaire et pas de asClient, charger liste clients
       const asClient = searchParams.get("asClient");
       if (!asClient && (userRole === 'admin' || userRole === 'gestionnaire')) {
         fetchClientsList();
@@ -72,11 +135,39 @@ const CreerCommande = () => {
   }, [user, userRole, searchParams]);
 
   useEffect(() => {
-    // Recharger produits quand client sélectionné change
     if (selectedClientId) {
       fetchProduits();
     }
   }, [selectedClientId]);
+
+  // Charger les données du contact sélectionné
+  useEffect(() => {
+    if (useExistingContact && selectedContactId && contacts) {
+      const contact = contacts.find((c) => c.id === selectedContactId);
+      if (contact) {
+        setFormData((prev) => ({
+          ...prev,
+          nom_client: contact.nom,
+          prenom_client: contact.prenom || "",
+          entreprise_client: contact.entreprise || "",
+          email_client: contact.email || "",
+          telephone_client: contact.telephone || "",
+          telephone_mobile_client: contact.telephone_mobile || "",
+          adresse_nom: contact.nom,
+          adresse_ligne_1: contact.adresse_ligne_1,
+          adresse_ligne_2: contact.adresse_ligne_2 || "",
+          adresse_ligne_3: contact.adresse_ligne_3 || "",
+          code_postal: contact.code_postal,
+          ville: contact.ville,
+          pays_code: contact.pays_code,
+          digicode: contact.digicode || "",
+          interphone: contact.interphone || "",
+          instructions_acces: contact.instructions_acces || "",
+          instructions_livraison: contact.instructions_livraison || "",
+        }));
+      }
+    }
+  }, [useExistingContact, selectedContactId, contacts]);
 
   const fetchClientsList = async () => {
     try {
@@ -102,12 +193,10 @@ const CreerCommande = () => {
       const asClient = searchParams.get("asClient");
       let clientId = asClient || selectedClientId;
 
-      // Fallback to viewing client ID from localStorage
       if (!clientId) {
         clientId = getViewingClientId();
       }
 
-      // Final fallback to profile client_id
       if (!clientId) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -234,12 +323,10 @@ const CreerCommande = () => {
       const asClient = searchParams.get("asClient");
       let clientId = asClient || selectedClientId;
 
-      // Fallback to viewing client ID from localStorage
       if (!clientId) {
         clientId = getViewingClientId();
       }
 
-      // Final fallback to profile client_id
       if (!clientId) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -278,7 +365,28 @@ const CreerCommande = () => {
           label_source: labelUrl && trackingNumber ? "manuel" : null,
           label_url: labelUrl || null,
           tracking_number: trackingNumber || null,
-          ...formData,
+          // Expéditeur
+          expediteur_nom: formData.expediteur_nom || null,
+          expediteur_entreprise: formData.expediteur_entreprise || null,
+          expediteur_email: formData.expediteur_email || null,
+          expediteur_telephone: formData.expediteur_telephone || null,
+          expediteur_adresse_ligne_1: formData.expediteur_adresse_ligne_1 || null,
+          expediteur_adresse_ligne_2: formData.expediteur_adresse_ligne_2 || null,
+          expediteur_code_postal: formData.expediteur_code_postal || null,
+          expediteur_ville: formData.expediteur_ville || null,
+          expediteur_pays_code: formData.expediteur_pays_code || null,
+          // Destinataire
+          nom_client: formData.nom_client,
+          email_client: formData.email_client || null,
+          telephone_client: formData.telephone_client || null,
+          adresse_nom: formData.adresse_nom,
+          adresse_ligne_1: formData.adresse_ligne_1,
+          adresse_ligne_2: formData.adresse_ligne_2 || null,
+          code_postal: formData.code_postal,
+          ville: formData.ville,
+          pays_code: formData.pays_code,
+          transporteur: formData.transporteur || null,
+          remarques: formData.remarques || null,
         })
         .select()
         .single();
@@ -312,6 +420,46 @@ const CreerCommande = () => {
         });
       }
 
+      // Sauvegarder le contact si demandé
+      if (saveAsContact && !useExistingContact && formData.nom_client && formData.adresse_ligne_1) {
+        await supabase.from("contact_destinataire").insert({
+          client_id: clientId,
+          nom: formData.nom_client,
+          prenom: formData.prenom_client || null,
+          entreprise: formData.entreprise_client || null,
+          email: formData.email_client || null,
+          telephone: formData.telephone_client || null,
+          telephone_mobile: formData.telephone_mobile_client || null,
+          adresse_ligne_1: formData.adresse_ligne_1,
+          adresse_ligne_2: formData.adresse_ligne_2 || null,
+          adresse_ligne_3: formData.adresse_ligne_3 || null,
+          code_postal: formData.code_postal,
+          ville: formData.ville,
+          pays_code: formData.pays_code,
+          digicode: formData.digicode || null,
+          interphone: formData.interphone || null,
+          instructions_acces: formData.instructions_acces || null,
+          instructions_livraison: formData.instructions_livraison || null,
+          label_contact: labelContact || null,
+          utilisation_count: 1,
+          derniere_utilisation: new Date().toISOString(),
+        });
+      }
+
+      // Mettre à jour le compteur d'utilisation du contact si utilisé
+      if (useExistingContact && selectedContactId) {
+        const contact = contacts?.find(c => c.id === selectedContactId);
+        if (contact) {
+          await supabase
+            .from("contact_destinataire")
+            .update({
+              utilisation_count: (contact.utilisation_count || 0) + 1,
+              derniere_utilisation: new Date().toISOString(),
+            })
+            .eq("id", selectedContactId);
+        }
+      }
+
       toast({
         title: "Succès",
         description: "Commande créée avec succès",
@@ -336,7 +484,7 @@ const CreerCommande = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Créer une Commande</h1>
           <p className="text-muted-foreground mt-1">
-            Créez une commande manuellement pour vos besoins spécifiques
+            Créez une commande manuellement avec informations expéditeur et destinataire
           </p>
         </div>
 
@@ -366,111 +514,358 @@ const CreerCommande = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Informations Expéditeur */}
           <Card>
             <CardHeader>
-              <CardTitle>Informations Client</CardTitle>
-              <CardDescription>Coordonnées du destinataire</CardDescription>
+              <CardTitle>📤 Informations Expéditeur</CardTitle>
+              <CardDescription>Coordonnées de l'expéditeur (entrepôt ou autre)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="nom_client">Nom *</Label>
+                  <Label htmlFor="expediteur_nom">Nom *</Label>
                   <Input
-                    id="nom_client"
-                    value={formData.nom_client}
-                    onChange={(e) => setFormData({ ...formData, nom_client: e.target.value })}
+                    id="expediteur_nom"
+                    value={formData.expediteur_nom}
+                    onChange={(e) => setFormData({ ...formData, expediteur_nom: e.target.value })}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email_client">Email</Label>
+                  <Label htmlFor="expediteur_entreprise">Entreprise</Label>
                   <Input
-                    id="email_client"
+                    id="expediteur_entreprise"
+                    value={formData.expediteur_entreprise}
+                    onChange={(e) => setFormData({ ...formData, expediteur_entreprise: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="expediteur_email">Email</Label>
+                  <Input
+                    id="expediteur_email"
                     type="email"
-                    value={formData.email_client}
-                    onChange={(e) => setFormData({ ...formData, email_client: e.target.value })}
+                    value={formData.expediteur_email}
+                    onChange={(e) => setFormData({ ...formData, expediteur_email: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="telephone_client">Téléphone</Label>
+                  <Label htmlFor="expediteur_telephone">Téléphone</Label>
                   <Input
-                    id="telephone_client"
-                    value={formData.telephone_client}
-                    onChange={(e) => setFormData({ ...formData, telephone_client: e.target.value })}
+                    id="expediteur_telephone"
+                    value={formData.expediteur_telephone}
+                    onChange={(e) => setFormData({ ...formData, expediteur_telephone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="expediteur_adresse_ligne_1">Adresse ligne 1 *</Label>
+                <Input
+                  id="expediteur_adresse_ligne_1"
+                  value={formData.expediteur_adresse_ligne_1}
+                  onChange={(e) => setFormData({ ...formData, expediteur_adresse_ligne_1: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="expediteur_adresse_ligne_2">Adresse ligne 2</Label>
+                <Input
+                  id="expediteur_adresse_ligne_2"
+                  value={formData.expediteur_adresse_ligne_2}
+                  onChange={(e) => setFormData({ ...formData, expediteur_adresse_ligne_2: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="expediteur_code_postal">Code postal *</Label>
+                  <Input
+                    id="expediteur_code_postal"
+                    value={formData.expediteur_code_postal}
+                    onChange={(e) => setFormData({ ...formData, expediteur_code_postal: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="expediteur_ville">Ville *</Label>
+                  <Input
+                    id="expediteur_ville"
+                    value={formData.expediteur_ville}
+                    onChange={(e) => setFormData({ ...formData, expediteur_ville: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="expediteur_pays_code">Pays *</Label>
+                  <Input
+                    id="expediteur_pays_code"
+                    value={formData.expediteur_pays_code}
+                    onChange={(e) => setFormData({ ...formData, expediteur_pays_code: e.target.value.toUpperCase() })}
+                    placeholder="FR"
+                    maxLength={2}
+                    required
                   />
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          {/* Informations Destinataire */}
           <Card>
             <CardHeader>
-              <CardTitle>Adresse de Livraison</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="adresse_nom">Nom Adresse *</Label>
-                  <Input
-                    id="adresse_nom"
-                    value={formData.adresse_nom}
-                    onChange={(e) => setFormData({ ...formData, adresse_nom: e.target.value })}
-                    required
-                  />
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>📦 Informations Destinataire</CardTitle>
+                  <CardDescription>Coordonnées du destinataire final</CardDescription>
                 </div>
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="adresse_ligne_1">Adresse Ligne 1 *</Label>
-                  <Input
-                    id="adresse_ligne_1"
-                    value={formData.adresse_ligne_1}
-                    onChange={(e) => setFormData({ ...formData, adresse_ligne_1: e.target.value })}
-                    required
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="use-existing-contact"
+                    checked={useExistingContact}
+                    onCheckedChange={setUseExistingContact}
                   />
-                </div>
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="adresse_ligne_2">Adresse Ligne 2</Label>
-                  <Input
-                    id="adresse_ligne_2"
-                    value={formData.adresse_ligne_2}
-                    onChange={(e) => setFormData({ ...formData, adresse_ligne_2: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="code_postal">Code Postal *</Label>
-                  <Input
-                    id="code_postal"
-                    value={formData.code_postal}
-                    onChange={(e) => setFormData({ ...formData, code_postal: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ville">Ville *</Label>
-                  <Input
-                    id="ville"
-                    value={formData.ville}
-                    onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pays_code">Pays *</Label>
-                  <Input
-                    id="pays_code"
-                    value={formData.pays_code}
-                    onChange={(e) => setFormData({ ...formData, pays_code: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="transporteur">Transporteur</Label>
-                  <Input
-                    id="transporteur"
-                    value={formData.transporteur}
-                    onChange={(e) => setFormData({ ...formData, transporteur: e.target.value })}
-                  />
+                  <Label htmlFor="use-existing-contact" className="text-sm font-normal cursor-pointer">
+                    📇 Utiliser un contact
+                  </Label>
                 </div>
               </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {useExistingContact && contacts && contacts.length > 0 ? (
+                <div className="space-y-2">
+                  <Label htmlFor="contact-select">Sélectionner un contact</Label>
+                  <Select value={selectedContactId} onValueChange={setSelectedContactId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="-- Choisir un contact --" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contacts.map((contact) => (
+                        <SelectItem key={contact.id} value={contact.id}>
+                          {contact.est_favori ? "⭐ " : ""}
+                          {contact.nom} {contact.prenom || ""} 
+                          {contact.entreprise ? ` - ${contact.entreprise}` : ""} 
+                          {contact.label_contact ? ` (${contact.label_contact})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : useExistingContact ? (
+                <p className="text-sm text-muted-foreground">Aucun contact enregistré. Basculez en saisie manuelle.</p>
+              ) : null}
+
+              {!useExistingContact || !selectedContactId ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nom_client">Nom *</Label>
+                      <Input
+                        id="nom_client"
+                        value={formData.nom_client}
+                        onChange={(e) => setFormData({ ...formData, nom_client: e.target.value })}
+                        required
+                        disabled={useExistingContact && !!selectedContactId}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="prenom_client">Prénom</Label>
+                      <Input
+                        id="prenom_client"
+                        value={formData.prenom_client}
+                        onChange={(e) => setFormData({ ...formData, prenom_client: e.target.value })}
+                        disabled={useExistingContact && !!selectedContactId}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="entreprise_client">Entreprise</Label>
+                      <Input
+                        id="entreprise_client"
+                        value={formData.entreprise_client}
+                        onChange={(e) => setFormData({ ...formData, entreprise_client: e.target.value })}
+                        disabled={useExistingContact && !!selectedContactId}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email_client">Email</Label>
+                      <Input
+                        id="email_client"
+                        type="email"
+                        value={formData.email_client}
+                        onChange={(e) => setFormData({ ...formData, email_client: e.target.value })}
+                        disabled={useExistingContact && !!selectedContactId}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="telephone_client">Téléphone</Label>
+                      <Input
+                        id="telephone_client"
+                        value={formData.telephone_client}
+                        onChange={(e) => setFormData({ ...formData, telephone_client: e.target.value })}
+                        disabled={useExistingContact && !!selectedContactId}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="telephone_mobile_client">Téléphone mobile</Label>
+                      <Input
+                        id="telephone_mobile_client"
+                        value={formData.telephone_mobile_client}
+                        onChange={(e) => setFormData({ ...formData, telephone_mobile_client: e.target.value })}
+                        disabled={useExistingContact && !!selectedContactId}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="adresse_nom">Nom du destinataire *</Label>
+                    <Input
+                      id="adresse_nom"
+                      value={formData.adresse_nom}
+                      onChange={(e) => setFormData({ ...formData, adresse_nom: e.target.value })}
+                      required
+                      disabled={useExistingContact && !!selectedContactId}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="adresse_ligne_1">Adresse ligne 1 *</Label>
+                    <Input
+                      id="adresse_ligne_1"
+                      value={formData.adresse_ligne_1}
+                      onChange={(e) => setFormData({ ...formData, adresse_ligne_1: e.target.value })}
+                      required
+                      disabled={useExistingContact && !!selectedContactId}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="adresse_ligne_2">Adresse ligne 2</Label>
+                    <Input
+                      id="adresse_ligne_2"
+                      value={formData.adresse_ligne_2}
+                      onChange={(e) => setFormData({ ...formData, adresse_ligne_2: e.target.value })}
+                      disabled={useExistingContact && !!selectedContactId}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="adresse_ligne_3">Adresse ligne 3 (Bâtiment, étage...)</Label>
+                    <Input
+                      id="adresse_ligne_3"
+                      value={formData.adresse_ligne_3}
+                      onChange={(e) => setFormData({ ...formData, adresse_ligne_3: e.target.value })}
+                      disabled={useExistingContact && !!selectedContactId}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="code_postal">Code postal *</Label>
+                      <Input
+                        id="code_postal"
+                        value={formData.code_postal}
+                        onChange={(e) => setFormData({ ...formData, code_postal: e.target.value })}
+                        required
+                        disabled={useExistingContact && !!selectedContactId}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ville">Ville *</Label>
+                      <Input
+                        id="ville"
+                        value={formData.ville}
+                        onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
+                        required
+                        disabled={useExistingContact && !!selectedContactId}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pays_code">Pays *</Label>
+                      <Input
+                        id="pays_code"
+                        value={formData.pays_code}
+                        onChange={(e) => setFormData({ ...formData, pays_code: e.target.value.toUpperCase() })}
+                        placeholder="FR"
+                        maxLength={2}
+                        required
+                        disabled={useExistingContact && !!selectedContactId}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Instructions de livraison */}
+                  <div className="mt-6 p-4 border rounded-md bg-muted/50">
+                    <h4 className="font-semibold mb-3">📋 Instructions de livraison</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="digicode">Digicode</Label>
+                        <Input
+                          id="digicode"
+                          value={formData.digicode}
+                          onChange={(e) => setFormData({ ...formData, digicode: e.target.value })}
+                          placeholder="Ex: A1234"
+                          disabled={useExistingContact && !!selectedContactId}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="interphone">Interphone</Label>
+                        <Input
+                          id="interphone"
+                          value={formData.interphone}
+                          onChange={(e) => setFormData({ ...formData, interphone: e.target.value })}
+                          placeholder="Ex: Dupont"
+                          disabled={useExistingContact && !!selectedContactId}
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <Label htmlFor="instructions_acces">Instructions d'accès</Label>
+                      <Textarea
+                        id="instructions_acces"
+                        value={formData.instructions_acces}
+                        onChange={(e) => setFormData({ ...formData, instructions_acces: e.target.value })}
+                        placeholder="Ex: Sonner chez le gardien, laisser au concierge..."
+                        rows={2}
+                        disabled={useExistingContact && !!selectedContactId}
+                      />
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <Label htmlFor="instructions_livraison">Instructions de livraison</Label>
+                      <Textarea
+                        id="instructions_livraison"
+                        value={formData.instructions_livraison}
+                        onChange={(e) => setFormData({ ...formData, instructions_livraison: e.target.value })}
+                        placeholder="Ex: Ne pas laisser sans signature, appeler avant..."
+                        rows={2}
+                        disabled={useExistingContact && !!selectedContactId}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Option de sauvegarde */}
+                  {!useExistingContact && (
+                    <div className="mt-4 p-4 border rounded-md bg-primary/5">
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="save-as-contact"
+                          checked={saveAsContact}
+                          onCheckedChange={setSaveAsContact}
+                        />
+                        <Label htmlFor="save-as-contact" className="cursor-pointer">
+                          💾 Sauvegarder ce destinataire dans mes contacts
+                        </Label>
+                      </div>
+                      {saveAsContact && (
+                        <div className="mt-3 space-y-2">
+                          <Label htmlFor="labelContact">Label du contact (optionnel)</Label>
+                          <Input
+                            id="labelContact"
+                            value={labelContact}
+                            onChange={(e) => setLabelContact(e.target.value)}
+                            placeholder="Ex: Bureau Paris, Entrepôt Lyon..."
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -594,15 +989,28 @@ const CreerCommande = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Remarques</CardTitle>
+              <CardTitle>Transporteur & Remarques</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Textarea
-                value={formData.remarques}
-                onChange={(e) => setFormData({ ...formData, remarques: e.target.value })}
-                rows={4}
-                placeholder="Instructions spéciales, notes internes..."
-              />
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="transporteur">Transporteur</Label>
+                <Input
+                  id="transporteur"
+                  value={formData.transporteur}
+                  onChange={(e) => setFormData({ ...formData, transporteur: e.target.value })}
+                  placeholder="Ex: DHL, Chronopost, Colissimo..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="remarques">Remarques</Label>
+                <Textarea
+                  id="remarques"
+                  value={formData.remarques}
+                  onChange={(e) => setFormData({ ...formData, remarques: e.target.value })}
+                  rows={4}
+                  placeholder="Instructions spéciales, notes internes..."
+                />
+              </div>
             </CardContent>
           </Card>
 
