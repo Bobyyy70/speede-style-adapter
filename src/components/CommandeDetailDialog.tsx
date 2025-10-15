@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { RotateCcw } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +26,9 @@ interface CommandeDetailDialogProps {
 
 export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess }: CommandeDetailDialogProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { userRole } = useAuth();
+  const [existingRetour, setExistingRetour] = useState<any>(null);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -429,6 +435,11 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
                 Ajouter un commentaire
               </Button>
             </div>
+            {commande && (commande.statut_wms === 'Expédié' || commande.statut_wms === 'Livré') && !existingRetour && (
+              <Button variant="outline" onClick={() => { navigate(`${userRole === 'client' ? '/client/creer-retour' : '/retours/creer'}?commande_id=${commandeId}`); onOpenChange(false); }}>
+                <RotateCcw className="h-4 w-4 mr-2" />Créer retour
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

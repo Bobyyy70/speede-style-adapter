@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { RetourDetailDialog } from "@/components/RetourDetailDialog";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +19,10 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Retours() {
   const { user, userRole, getViewingClientId } = useAuth();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRetourId, setSelectedRetourId] = useState<string | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [statutFilter, setStatutFilter] = useState<string>("all");
   const [view, setView] = useState<'list' | 'kanban'>(() => {
     return (localStorage.getItem('retours_view') as 'list' | 'kanban') || 'list';
@@ -258,6 +263,12 @@ export default function Retours() {
           </Card>
         )}
       </div>
+
+      <RetourDetailDialog 
+        retourId={selectedRetourId}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+      />
     </DashboardLayout>
   );
 }

@@ -34,6 +34,7 @@ import SendCloudSync from "./pages/SendCloudSync";
 import NotFound from "./pages/NotFound";
 import ClientProduits from "./pages/client/MesProduits";
 import ClientRetours from "./pages/client/MesRetours";
+import CreerRetour from "./pages/client/CreerRetour";
 import ClientCommandes from "./pages/client/MesCommandes";
 import ClientMouvements from "./pages/client/MesMouvements";
 import ClientFacturation from "./pages/client/MaFacturation";

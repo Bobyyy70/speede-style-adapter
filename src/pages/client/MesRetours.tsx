@@ -153,6 +153,12 @@ export default function MesRetours() {
           </Card>
         )}
       </div>
+
+      <RetourDetailDialog 
+        retourId={selectedRetourId}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+      />
     </DashboardLayout>
   );
 }
