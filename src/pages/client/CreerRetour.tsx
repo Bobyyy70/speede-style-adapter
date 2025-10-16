@@ -103,8 +103,8 @@ export default function CreerRetour() {
     const { data, error } = await supabase
       .from('client')
       .select('*')
-      .eq('statut', 'Actif')
-      .order('nom_client');
+      .eq('actif', true)
+      .order('nom_entreprise');
     
     if (!error && data) {
       setClients(data);
@@ -242,26 +242,18 @@ export default function CreerRetour() {
       }, 0);
 
       // Créer le retour
+      const clientData = clients.find(c => c.id === validated.client_id);
       const { data: retour, error: retourError } = await supabase
         .from('retour_produit')
-        .insert({
+        .insert([{
           client_id: validated.client_id,
-          client_nom: validated.client_nom,
-          commande_origine_id: validated.commande_origine_id,
+          client_nom: clientData?.nom_entreprise || validated.client_nom,
+          numero_retour: `RET-${Date.now()}`,
           statut_retour: validated.statut_initial,
           raison_retour: validated.raison_globale || 'Non spécifiée',
           valeur_totale: valeurTotale,
-          adresse_retour_ligne_1: validated.adresse_retour.ligne_1,
-          adresse_retour_ligne_2: validated.adresse_retour.ligne_2,
-          adresse_retour_code_postal: validated.adresse_retour.code_postal,
-          adresse_retour_ville: validated.adresse_retour.ville,
-          adresse_retour_pays_code: validated.adresse_retour.pays_code,
-          transporteur_retour: validated.transporteur_retour,
-          numero_tracking_retour: validated.numero_tracking_retour,
-          instructions_retour: validated.instructions_retour,
-          date_retour_prevue: validated.date_retour_prevue,
           remarques: validated.remarques_internes,
-        })
+        }])
         .select()
         .single();
 

@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { RetoursKanban } from "@/components/RetoursKanban";
 import { ViewSelector } from "@/components/ViewSelector";
+import { RetourDetailDialog } from "@/components/RetourDetailDialog";
 
 interface Retour {
   id: string;
@@ -34,6 +35,8 @@ export default function MesRetours() {
   const [view, setView] = useState<'list' | 'kanban'>(() => {
     return (localStorage.getItem('client_retours_view') as 'list' | 'kanban') || 'list';
   });
+  const [selectedRetourId, setSelectedRetourId] = useState<string | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('client_retours_view', view);
@@ -85,6 +88,11 @@ export default function MesRetours() {
     }
   };
 
+  const handleRetourClick = (retourId: string) => {
+    setSelectedRetourId(retourId);
+    setDetailDialogOpen(true);
+  };
+
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       "recu": "secondary",
@@ -110,7 +118,7 @@ export default function MesRetours() {
         </div>
 
         {view === 'kanban' ? (
-          <RetoursKanban retours={retours} loading={loading} />
+          <RetoursKanban retours={retours} loading={loading} onRetourClick={handleRetourClick} />
         ) : (
           <Card>
             <CardHeader>
@@ -136,7 +144,7 @@ export default function MesRetours() {
                   </TableHeader>
                   <TableBody>
                     {retours.map((retour) => (
-                      <TableRow key={retour.id}>
+                      <TableRow key={retour.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleRetourClick(retour.id)}>
                         <TableCell className="font-medium">{retour.numero_retour}</TableCell>
                         <TableCell>
                           {format(new Date(retour.date_retour), "dd/MM/yyyy", { locale: fr })}
