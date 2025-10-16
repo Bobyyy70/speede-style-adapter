@@ -2440,6 +2440,10 @@ export type Database = {
         Args: { user_email: string }
         Returns: undefined
       }
+      reintegrer_produits_retour: {
+        Args: { p_retour_id: string }
+        Returns: Json
+      }
       reserver_stock: {
         Args: {
           p_commande_id: string

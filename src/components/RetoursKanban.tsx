@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PackageX, Clock, CheckCircle, XCircle } from "lucide-react";
+import { PackageX, Clock, CheckCircle, XCircle, Bell, Tag, Truck, Inbox, Search, Euro, Package } from "lucide-react";
 import { DeleteButton } from "./DeleteButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -25,10 +25,14 @@ interface RetoursKanbanProps {
 }
 
 const COLUMNS = [
-  { id: "recu", label: "Reçu", icon: PackageX, color: "text-blue-600" },
-  { id: "en_traitement", label: "En traitement", icon: Clock, color: "text-yellow-600" },
+  { id: "annonce", label: "Annoncé", icon: Bell, color: "text-slate-500" },
+  { id: "etiquette_generee", label: "Étiquette générée", icon: Tag, color: "text-purple-500" },
+  { id: "en_transit", label: "En transit", icon: Truck, color: "text-blue-500" },
+  { id: "recu", label: "Reçu", icon: Inbox, color: "text-cyan-600" },
+  { id: "en_inspection", label: "En inspection", icon: Search, color: "text-amber-600" },
   { id: "traite", label: "Traité", icon: CheckCircle, color: "text-green-600" },
-  { id: "non_conforme", label: "Non conforme", icon: XCircle, color: "text-red-600" },
+  { id: "rembourse", label: "Remboursé", icon: Euro, color: "text-emerald-600" },
+  { id: "echange_envoye", label: "Échange envoyé", icon: Package, color: "text-indigo-600" },
 ];
 
 export function RetoursKanban({ retours, onRetourClick, loading }: RetoursKanbanProps) {
@@ -59,8 +63,16 @@ export function RetoursKanban({ retours, onRetourClick, loading }: RetoursKanban
     return retours.filter((r) => r.statut_retour === status);
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 overflow-x-auto pb-4">
       {COLUMNS.map((column) => {
         const columnRetours = getRetoursByStatus(column.id);
         const Icon = column.icon;

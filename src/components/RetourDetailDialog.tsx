@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
-import { Package, MapPin, Truck, FileText, Clock } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Package, MapPin, Truck, FileText, Clock, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface RetourDetailDialogProps {
   retourId: string | null;
@@ -17,9 +19,12 @@ interface RetourDetailDialogProps {
 }
 
 export function RetourDetailDialog({ retourId, open, onOpenChange }: RetourDetailDialogProps) {
+  const { user } = useAuth();
   const [retour, setRetour] = useState<any>(null);
   const [lignes, setLignes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [reintegrating, setReintegrating] = useState(false);
 
   useEffect(() => {
     if (retourId && open) {
@@ -57,6 +62,65 @@ export function RetourDetailDialog({ retourId, open, onOpenChange }: RetourDetai
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!retour) return;
+    
+    setUpdatingStatus(true);
+    try {
+      const { error } = await supabase
+        .from('retour_produit')
+        .update({ statut_retour: newStatus })
+        .eq('id', retour.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Statut mis à jour",
+        description: `Le statut du retour a été changé en "${newStatus}"`,
+      });
+
+      fetchRetourDetails();
+    } catch (error: any) {
+      console.error('Erreur update statut:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le statut",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleReintegrerStock = async () => {
+    if (!retour) return;
+    
+    setReintegrating(true);
+    try {
+      const { data, error } = await supabase.rpc('reintegrer_produits_retour', {
+        p_retour_id: retour.id
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Stock réintégré",
+        description: "Les produits ont été réintégrés au stock avec succès",
+      });
+
+      fetchRetourDetails();
+    } catch (error: any) {
+      console.error('Erreur réintégration:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de réintégrer le stock",
+        variant: "destructive",
+      });
+    } finally {
+      setReintegrating(false);
     }
   };
 
@@ -288,8 +352,64 @@ export function RetourDetailDialog({ retourId, open, onOpenChange }: RetourDetai
                 <CardTitle>Traitement du Retour</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="text-center text-muted-foreground py-8">
-                  Fonctionnalité en cours de développement
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Changer le statut</label>
+                    <Select
+                      value={retour.statut_retour}
+                      onValueChange={handleStatusChange}
+                      disabled={updatingStatus}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="annonce">Annoncé</SelectItem>
+                        <SelectItem value="etiquette_generee">Étiquette générée</SelectItem>
+                        <SelectItem value="en_transit">En transit</SelectItem>
+                        <SelectItem value="recu">Reçu</SelectItem>
+                        <SelectItem value="en_inspection">En inspection</SelectItem>
+                        <SelectItem value="traite">Traité</SelectItem>
+                        <SelectItem value="rembourse">Remboursé</SelectItem>
+                        <SelectItem value="echange_envoye">Échange envoyé</SelectItem>
+                        <SelectItem value="annule">Annulé</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Separator />
+
+                  <div>
+                    <h4 className="font-medium mb-2">Actions disponibles</h4>
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={handleReintegrerStock}
+                        disabled={reintegrating || retour.statut_retour !== 'traite'}
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${reintegrating ? 'animate-spin' : ''}`} />
+                        Réintégrer les produits au stock
+                      </Button>
+                      {retour.statut_retour !== 'traite' && (
+                        <p className="text-xs text-muted-foreground px-2">
+                          Le retour doit être en statut "Traité" pour réintégrer le stock
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {retour.remarques && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h4 className="font-medium mb-2">Remarques internes</h4>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                          {retour.remarques}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
