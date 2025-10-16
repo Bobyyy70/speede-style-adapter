@@ -180,10 +180,32 @@ Deno.serve(async (req) => {
         
         console.log(`📍 Adresse: ${city}, ${postalCode}, Pays: ${paysCode}`);
 
-        // Utiliser UPSERT pour éviter les doublons (conflit sur sendcloud_id ou (source, numero_commande))
+        // ⚠️ VÉRIFIER SI DOUBLON AVANT INSERTION
+        const { data: existingOrder } = await supabase
+          .from('commande')
+          .select('id, numero_commande, statut_wms, date_creation')
+          .or(`sendcloud_id.eq.${String(sendcloudData.id)},numero_commande.eq.${orderNumber}`)
+          .maybeSingle();
+
+        if (existingOrder) {
+          console.log(`⚠️ DOUBLON DÉTECTÉ: ${orderNumber} existe déjà (ID: ${existingOrder.id}, statut: ${existingOrder.statut_wms})`);
+          
+          results.push({
+            order_number: orderNumber,
+            success: false,
+            already_exists: true,
+            commande_id: existingOrder.id,
+            error: 'Commande déjà existante',
+            details: `Créée le ${existingOrder.date_creation}, statut: ${existingOrder.statut_wms}`
+          });
+          existingCount++;
+          continue; // ❌ REJETER LE DOUBLON
+        }
+
+        // ✅ PAS DE DOUBLON, INSERTION NORMALE
         const { data: commande, error: commandeError } = await supabase
           .from('commande')
-          .upsert({
+          .insert({
             sendcloud_id: String(sendcloudData.id),
             numero_commande: orderNumber,
             nom_client: clientName,
@@ -199,9 +221,6 @@ Deno.serve(async (req) => {
             devise: sendcloudData.currency || 'EUR',
             statut_wms: 'En attente de réappro',
             source: 'sendcloud'
-          }, {
-            onConflict: 'sendcloud_id',
-            ignoreDuplicates: false
           })
           .select()
           .single();
