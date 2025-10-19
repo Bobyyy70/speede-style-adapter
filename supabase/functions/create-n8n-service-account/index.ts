@@ -45,10 +45,10 @@ serve(async (req) => {
 
     console.log('[N8N Setup] ✅ User created in auth.users:', authData.user.id);
 
-    // 2. Créer le profil (sans client_id)
+    // 2. Créer/Mettre à jour le profil (sans client_id)
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
+      .upsert({
         id: authData.user.id,
         email: email,
         nom_complet: nomComplet,
@@ -66,6 +66,8 @@ serve(async (req) => {
           'workflows',
           'connecteurs'
         ]
+      }, {
+        onConflict: 'id'
       });
 
     if (profileError) {
@@ -73,14 +75,16 @@ serve(async (req) => {
       throw profileError;
     }
 
-    console.log('[N8N Setup] ✅ Profile created');
+    console.log('[N8N Setup] ✅ Profile created/updated');
 
-    // 3. Assigner le rôle gestionnaire
+    // 3. Assigner le rôle gestionnaire (avec upsert pour éviter les doublons)
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
-      .insert({
+      .upsert({
         user_id: authData.user.id,
         role: 'gestionnaire'
+      }, {
+        onConflict: 'user_id,role'
       });
 
     if (roleError) {
