@@ -24,7 +24,7 @@ serve(async (req) => {
 
     console.log('[N8N Setup] Creating service account...');
 
-    const email = 'f.almanzo@speedelog.net';
+    const email = 'automate70170@gmail.com';
     const password = 'N8nService2025!SecureP@ssw0rd'; // Temporaire - à changer après première connexion
     const nomComplet = 'N8N Service Account';
 
