@@ -36,10 +36,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client with service role
+    // Initialize Supabase client with service account authentication
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const serviceEmail = Deno.env.get('N8N_SERVICE_EMAIL')!;
+    const servicePassword = Deno.env.get('N8N_SERVICE_PASSWORD')!;
+    
+    // Create client with anon key
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    
+    // Authenticate with service account (gestionnaire role)
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: serviceEmail,
+      password: servicePassword,
+    });
+
+    if (authError || !authData?.session) {
+      console.error('[n8n-gateway] Service account auth failed:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Service account authentication failed' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('[n8n-gateway] Service account authenticated:', serviceEmail);
 
     // Log request
     console.log(`[n8n-gateway] ${method} ${path}`);
