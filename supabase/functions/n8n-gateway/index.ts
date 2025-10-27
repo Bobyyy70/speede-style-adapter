@@ -260,21 +260,108 @@ Deno.serve(async (req) => {
       });
     }
 
-    // POST /commande - Créer une commande complète avec lignes et réservations
+    /**
+     * POST /commande - Créer une commande complète avec lignes et réservations
+     * 
+     * Formats acceptés pour le payload:
+     * 
+     * Format standard:
+     * {
+     *   "commande": {
+     *     "numero_commande": "ORD-123",
+     *     "nom_client": "Client Name",
+     *     "email_client": "client@example.com",  // optionnel
+     *     "adresse_ligne_1": "123 Rue Example",
+     *     "code_postal": "75001",
+     *     "ville": "Paris",
+     *     "pays_code": "FR",
+     *     "source": "n8n-custom"  // optionnel, défaut: "n8n-custom"
+     *   },
+     *   "lignes": [  // Peut aussi être "order_products" ou "line_items"
+     *     {
+     *       "sku": "PROD-001",  // Peut aussi être "ean" ou "product_sku"
+     *       "quantite": 2,      // Peut aussi être "quantity" ou "qty"
+     *       "prix_unitaire": 10.50  // optionnel, peut aussi être "price" ou "unit_price"
+     *     }
+     *   ]
+     * }
+     * 
+     * Note: Le champ "lignes" peut être un array JSON ou une string JSON à parser.
+     */
     if (path === '/commande' && method === 'POST') {
       const payload = await req.json();
+      
+      // Log debug du payload (masquer les emails)
+      console.log('[n8n-gateway] Payload reçu:', JSON.stringify({
+        ...payload,
+        commande: payload.commande ? {
+          ...payload.commande,
+          email_client: payload.commande.email_client ? '***@***.***' : undefined
+        } : undefined
+      }).substring(0, 500));
       
       // Validation du format
       if (!payload.commande) {
         console.error('[n8n-gateway] Format invalide: champ "commande" requis');
         return new Response(
-          JSON.stringify({ error: 'Format invalide: champ "commande" requis' }),
+          JSON.stringify({ 
+            error: 'Format invalide: champ "commande" requis',
+            received: Object.keys(payload)
+          }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       const commandeData = payload.commande;
-      const lignesData = payload.lignes || [];
+      
+      // Parser les lignes avec plusieurs formats acceptés
+      let lignesData = [];
+      
+      // 1. Essayer payload.lignes (peut être array ou string JSON)
+      if (payload.lignes) {
+        if (typeof payload.lignes === 'string') {
+          try {
+            lignesData = JSON.parse(payload.lignes);
+            console.log('[n8n-gateway] Lignes parsées depuis string JSON');
+          } catch (e) {
+            console.error('[n8n-gateway] Erreur parsing lignes:', e);
+            return new Response(
+              JSON.stringify({ 
+                error: 'Le champ "lignes" doit être un tableau JSON valide',
+                received_type: 'string (invalide)',
+                received_value: payload.lignes.substring(0, 100)
+              }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        } else if (Array.isArray(payload.lignes)) {
+          lignesData = payload.lignes;
+        } else {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Le champ "lignes" doit être un tableau',
+              received_type: typeof payload.lignes
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+      // 2. Fallback sur order_products (format SendCloud)
+      else if (payload.order_products) {
+        lignesData = Array.isArray(payload.order_products) 
+          ? payload.order_products 
+          : [payload.order_products];
+        console.log('[n8n-gateway] Lignes extraites de order_products');
+      }
+      // 3. Fallback sur line_items (format e-commerce standard)
+      else if (payload.line_items) {
+        lignesData = Array.isArray(payload.line_items) 
+          ? payload.line_items 
+          : [payload.line_items];
+        console.log('[n8n-gateway] Lignes extraites de line_items');
+      }
+      
+      console.log(`[n8n-gateway] ${lignesData.length} ligne(s) détectée(s)`);
       
       // Validation des champs obligatoires de la commande
       const requiredFields = ['numero_commande', 'nom_client', 'adresse_ligne_1', 'code_postal', 'ville', 'pays_code'];
@@ -323,10 +410,19 @@ Deno.serve(async (req) => {
       let tousProduitsDisponibles = true;
       
       for (const ligne of lignesData) {
-        if (!ligne.sku || !ligne.quantite) {
-          console.warn('[n8n-gateway] Ligne invalide (sku ou quantite manquant):', ligne);
+        // Normaliser les champs (accepter plusieurs noms de champs)
+        const sku = ligne.sku || ligne.ean || ligne.product_sku;
+        const quantite = ligne.quantite || ligne.quantity || ligne.qty;
+        const prixLigne = ligne.prix_unitaire || ligne.price || ligne.unit_price;
+        
+        if (!sku || !quantite) {
+          console.warn('[n8n-gateway] Ligne invalide (sku/quantite manquant):', { 
+            received_fields: Object.keys(ligne),
+            sku, 
+            quantite 
+          });
           lignesResultats.push({
-            sku: ligne.sku || 'N/A',
+            sku: sku || 'N/A',
             success: false,
             error: 'SKU ou quantité manquant'
           });
@@ -337,13 +433,13 @@ Deno.serve(async (req) => {
         const { data: produits, error: produitError } = await supabase
           .from('produit')
           .select('id, reference, nom, prix_unitaire')
-          .or(`reference.eq.${ligne.sku},code_barre_ean.eq.${ligne.sku}`)
+          .or(`reference.eq.${sku},code_barre_ean.eq.${sku}`)
           .limit(1);
         
         if (produitError || !produits || produits.length === 0) {
-          console.warn(`[n8n-gateway] Produit non trouvé: ${ligne.sku}`);
+          console.warn(`[n8n-gateway] Produit non trouvé: ${sku}`);
           lignesResultats.push({
-            sku: ligne.sku,
+            sku: sku,
             success: false,
             error: 'Produit introuvable'
           });
@@ -354,8 +450,8 @@ Deno.serve(async (req) => {
         const produit = produits[0];
         
         // Créer la ligne de commande
-        const prixUnitaire = ligne.prix_unitaire || produit.prix_unitaire || 0;
-        const valeurLigne = prixUnitaire * ligne.quantite;
+        const prixUnitaire = prixLigne || produit.prix_unitaire || 0;
+        const valeurLigne = prixUnitaire * quantite;
         
         const { data: ligneCreee, error: ligneError } = await supabase
           .from('ligne_commande')
@@ -364,7 +460,7 @@ Deno.serve(async (req) => {
             produit_id: produit.id,
             produit_reference: produit.reference,
             produit_nom: produit.nom,
-            quantite_commandee: ligne.quantite,
+            quantite_commandee: quantite,
             quantite_preparee: 0,
             prix_unitaire: prixUnitaire,
             valeur_totale: valeurLigne,
@@ -376,29 +472,29 @@ Deno.serve(async (req) => {
         if (ligneError) {
           console.error(`[n8n-gateway] Erreur création ligne:`, ligneError);
           lignesResultats.push({
-            sku: ligne.sku,
+            sku: sku,
             success: false,
             error: ligneError.message
           });
           continue;
         }
         
-        console.log(`[n8n-gateway] Ligne créée pour ${ligne.sku}, tentative réservation...`);
+        console.log(`[n8n-gateway] Ligne créée pour ${sku}, tentative réservation...`);
         
         // Réserver le stock
         const { data: reservation, error: reservationError } = await supabase
           .rpc('reserver_stock', {
             p_produit_id: produit.id,
-            p_quantite: ligne.quantite,
+            p_quantite: quantite,
             p_commande_id: commandeCreee.id,
             p_reference_origine: commandeCreee.numero_commande,
           });
         
         if (reservationError || !reservation?.success) {
-          console.warn(`[n8n-gateway] Stock insuffisant pour ${ligne.sku}, disponible: ${reservation?.stock_disponible || 0}`);
+          console.warn(`[n8n-gateway] Stock insuffisant pour ${sku}, disponible: ${reservation?.stock_disponible || 0}`);
           tousProduitsDisponibles = false;
           lignesResultats.push({
-            sku: ligne.sku,
+            sku: sku,
             produit_id: produit.id,
             ligne_id: ligneCreee.id,
             success: true,
@@ -406,9 +502,9 @@ Deno.serve(async (req) => {
             stock_disponible: reservation?.stock_disponible || 0,
           });
         } else {
-          console.log(`[n8n-gateway] Stock réservé pour ${ligne.sku}`);
+          console.log(`[n8n-gateway] Stock réservé pour ${sku}`);
           lignesResultats.push({
-            sku: ligne.sku,
+            sku: sku,
             produit_id: produit.id,
             ligne_id: ligneCreee.id,
             success: true,
