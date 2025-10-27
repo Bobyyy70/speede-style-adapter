@@ -263,19 +263,195 @@ Deno.serve(async (req) => {
       });
     }
 
-    // POST /commande - Créer une commande
+    // POST /commande - Créer une commande complète avec lignes et réservations
     if (path === '/commande' && method === 'POST') {
-      const body = await req.json();
-
-      const { data, error } = await supabase
+      const payload = await req.json();
+      
+      // Validation du format
+      if (!payload.commande) {
+        console.error('[n8n-gateway] Format invalide: champ "commande" requis');
+        return new Response(
+          JSON.stringify({ error: 'Format invalide: champ "commande" requis' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const commandeData = payload.commande;
+      const lignesData = payload.lignes || [];
+      
+      // Validation des champs obligatoires de la commande
+      const requiredFields = ['numero_commande', 'nom_client', 'adresse_ligne_1', 'code_postal', 'ville', 'pays_code'];
+      const missingFields = requiredFields.filter(field => !commandeData[field]);
+      
+      if (missingFields.length > 0) {
+        console.error('[n8n-gateway] Champs obligatoires manquants:', missingFields);
+        return new Response(
+          JSON.stringify({ error: `Champs obligatoires manquants: ${missingFields.join(', ')}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Définir les valeurs par défaut
+      const commande = {
+        ...commandeData,
+        source: commandeData.source || 'n8n-custom',
+        statut_wms: 'En attente de réappro',
+        devise: commandeData.devise || 'EUR',
+        valeur_totale: 0,
+        date_creation: new Date().toISOString(),
+      };
+      
+      console.log('[n8n-gateway] Création commande:', commande.numero_commande);
+      
+      // Créer la commande
+      const { data: commandeCreee, error: commandeError } = await supabase
         .from('commande')
-        .insert(body)
+        .insert(commande)
         .select()
         .single();
+      
+      if (commandeError) {
+        console.error('[n8n-gateway] Erreur création commande:', commandeError);
+        return new Response(
+          JSON.stringify({ error: 'Erreur création commande', details: commandeError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log('[n8n-gateway] Commande créée:', commandeCreee.id);
+      
+      // Traiter les lignes de commande
+      const lignesResultats = [];
+      let valeurTotale = 0;
+      let tousProduitsDisponibles = true;
+      
+      for (const ligne of lignesData) {
+        if (!ligne.sku || !ligne.quantite) {
+          console.warn('[n8n-gateway] Ligne invalide (sku ou quantite manquant):', ligne);
+          lignesResultats.push({
+            sku: ligne.sku || 'N/A',
+            success: false,
+            error: 'SKU ou quantité manquant'
+          });
+          continue;
+        }
 
-      if (error) throw error;
+        // Retrouver le produit par SKU (reference ou code_barre_ean)
+        const { data: produits, error: produitError } = await supabase
+          .from('produit')
+          .select('id, reference, nom, prix_unitaire')
+          .or(`reference.eq.${ligne.sku},code_barre_ean.eq.${ligne.sku}`)
+          .limit(1);
+        
+        if (produitError || !produits || produits.length === 0) {
+          console.warn(`[n8n-gateway] Produit non trouvé: ${ligne.sku}`);
+          lignesResultats.push({
+            sku: ligne.sku,
+            success: false,
+            error: 'Produit introuvable'
+          });
+          tousProduitsDisponibles = false;
+          continue;
+        }
 
-      return new Response(JSON.stringify({ commande: data }), {
+        const produit = produits[0];
+        
+        // Créer la ligne de commande
+        const prixUnitaire = ligne.prix_unitaire || produit.prix_unitaire || 0;
+        const valeurLigne = prixUnitaire * ligne.quantite;
+        
+        const { data: ligneCreee, error: ligneError } = await supabase
+          .from('ligne_commande')
+          .insert({
+            commande_id: commandeCreee.id,
+            produit_id: produit.id,
+            produit_reference: produit.reference,
+            produit_nom: produit.nom,
+            quantite_commandee: ligne.quantite,
+            quantite_preparee: 0,
+            prix_unitaire: prixUnitaire,
+            valeur_totale: valeurLigne,
+            statut_ligne: 'en_attente',
+          })
+          .select()
+          .single();
+        
+        if (ligneError) {
+          console.error(`[n8n-gateway] Erreur création ligne:`, ligneError);
+          lignesResultats.push({
+            sku: ligne.sku,
+            success: false,
+            error: ligneError.message
+          });
+          continue;
+        }
+        
+        console.log(`[n8n-gateway] Ligne créée pour ${ligne.sku}, tentative réservation...`);
+        
+        // Réserver le stock
+        const { data: reservation, error: reservationError } = await supabase
+          .rpc('reserver_stock', {
+            p_produit_id: produit.id,
+            p_quantite: ligne.quantite,
+            p_commande_id: commandeCreee.id,
+            p_reference_origine: commandeCreee.numero_commande,
+          });
+        
+        if (reservationError || !reservation?.success) {
+          console.warn(`[n8n-gateway] Stock insuffisant pour ${ligne.sku}, disponible: ${reservation?.stock_disponible || 0}`);
+          tousProduitsDisponibles = false;
+          lignesResultats.push({
+            sku: ligne.sku,
+            produit_id: produit.id,
+            ligne_id: ligneCreee.id,
+            success: true,
+            stock_reserve: false,
+            stock_disponible: reservation?.stock_disponible || 0,
+          });
+        } else {
+          console.log(`[n8n-gateway] Stock réservé pour ${ligne.sku}`);
+          lignesResultats.push({
+            sku: ligne.sku,
+            produit_id: produit.id,
+            ligne_id: ligneCreee.id,
+            success: true,
+            stock_reserve: true,
+          });
+        }
+        
+        valeurTotale += valeurLigne;
+      }
+      
+      // Mettre à jour le statut et la valeur de la commande
+      const nouveauStatut = tousProduitsDisponibles ? 'Prêt à préparer' : 'En attente de réappro';
+      
+      const { error: updateError } = await supabase
+        .from('commande')
+        .update({
+          valeur_totale: valeurTotale,
+          statut_wms: nouveauStatut,
+        })
+        .eq('id', commandeCreee.id);
+      
+      if (updateError) {
+        console.error('[n8n-gateway] Erreur mise à jour commande:', updateError);
+      }
+      
+      console.log(`[n8n-gateway] Commande finalisée: ${lignesResultats.length} lignes, statut=${nouveauStatut}`);
+      
+      return new Response(JSON.stringify({
+        success: true,
+        commande: {
+          id: commandeCreee.id,
+          numero_commande: commandeCreee.numero_commande,
+          statut_wms: nouveauStatut,
+          valeur_totale: valeurTotale,
+        },
+        lignes: lignesResultats,
+        total_lignes: lignesResultats.length,
+        lignes_ok: lignesResultats.filter(l => l.success).length,
+        lignes_erreur: lignesResultats.filter(l => !l.success).length,
+      }), {
         status: 201,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
