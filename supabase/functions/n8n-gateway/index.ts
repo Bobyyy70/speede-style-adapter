@@ -36,33 +36,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client with service account authentication
+    // Initialize Supabase client with Service Role Key (bypasses RLS)
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const serviceEmail = Deno.env.get('N8N_SERVICE_EMAIL')!;
-    const servicePassword = Deno.env.get('N8N_SERVICE_PASSWORD')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    // Create client with anon key
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Create admin client with service role key
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
     
-    // Authenticate with service account (gestionnaire role)
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: serviceEmail,
-      password: servicePassword,
-    });
-
-    if (authError || !authData?.session) {
-      console.error('[n8n-gateway] Service account auth failed:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Service account authentication failed' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('[n8n-gateway] Service account authenticated:', serviceEmail);
+    console.log('[n8n-gateway] Authenticated with Service Role Key');
 
     // Log request
     console.log(`[n8n-gateway] ${method} ${path}`);
+
+    // ========== HEALTH CHECK ==========
+    
+    // GET /health - Health check endpoint
+    if (path === '/health' && method === 'GET') {
+      return new Response(JSON.stringify({ 
+        ok: true,
+        service: 'n8n-gateway',
+        timestamp: new Date().toISOString()
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // ========== WORKFLOWS MANAGEMENT ==========
     
