@@ -375,6 +375,15 @@ Deno.serve(async (req) => {
         );
       }
       
+      // FALLBACK CRITIQUE: adresse_nom requis par DB mais souvent absent du payload
+      // Si absent, utiliser nom_client comme fallback
+      if (!commandeData.adresse_nom) {
+        commandeData.adresse_nom = commandeData.nom_client;
+        console.log(`[n8n-gateway] ✅ adresse_nom manquant, fallback sur nom_client: "${commandeData.adresse_nom}"`);
+      } else {
+        console.log(`[n8n-gateway] ✅ adresse_nom fourni: "${commandeData.adresse_nom}"`);
+      }
+      
       // Définir les valeurs par défaut
       const commande = {
         ...commandeData,
