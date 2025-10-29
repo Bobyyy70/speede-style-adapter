@@ -541,6 +541,31 @@ Deno.serve(async (req) => {
       
       console.log(`[n8n-gateway] Commande finalisée: ${lignesResultats.length} lignes, statut=${nouveauStatut}`);
       
+      // 4. Traiter les services logistiques si fournis
+      let servicesCreated = 0;
+      let servicesTotal = 0;
+      const servicesData = payload.services;
+
+      if (servicesData && Array.isArray(servicesData) && servicesData.length > 0) {
+        console.log(`[n8n-gateway] Traitement de ${servicesData.length} service(s)...`);
+        
+        const { data: servicesResult, error: servicesError } = await supabase
+          .rpc('process_commande_services', {
+            p_commande_id: commandeCreee.id,
+            p_services: servicesData
+          });
+        
+        if (servicesError) {
+          console.error('[n8n-gateway] ❌ Erreur traitement services:', servicesError);
+        } else {
+          servicesCreated = servicesResult?.created || 0;
+          servicesTotal = servicesData.reduce((sum, s) => sum + (s.prix_total || 0), 0);
+          console.log(`[n8n-gateway] ✅ Services créés: ${servicesCreated}/${servicesData.length}, total: ${servicesTotal.toFixed(2)}€`);
+        }
+      } else {
+        console.log('[n8n-gateway] Aucun service à traiter');
+      }
+      
       return new Response(JSON.stringify({
         success: true,
         commande: {
@@ -553,6 +578,9 @@ Deno.serve(async (req) => {
         total_lignes: lignesResultats.length,
         lignes_ok: lignesResultats.filter(l => l.success).length,
         lignes_erreur: lignesResultats.filter(l => !l.success).length,
+        // Nouveaux champs pour les services
+        services_count: servicesCreated,
+        services_total: servicesTotal > 0 ? `${servicesTotal.toFixed(2)}€` : '0.00€',
       }), {
         status: 201,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
