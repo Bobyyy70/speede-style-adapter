@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, AlertCircle } from "lucide-react";
+import { Search, Plus, AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSessionDialog } from "./CreateSessionDialog";
@@ -316,10 +316,20 @@ export function CommandesList({
 
             <div className="flex gap-2">
               {selectedCommandes.length > 0 && (
-                <Button onClick={handleCreateSession} className="w-full lg:w-auto">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Créer session ({selectedCommandes.length})
-                </Button>
+                <>
+                  <Button onClick={handleCreateSession} className="w-full lg:w-auto">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Créer session ({selectedCommandes.length})
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setSelectedCommandes([])} 
+                    className="w-full lg:w-auto"
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Effacer
+                  </Button>
+                </>
               )}
             </div>
           </div>
