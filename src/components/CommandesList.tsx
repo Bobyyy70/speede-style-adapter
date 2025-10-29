@@ -244,6 +244,19 @@ export function CommandesList({
     return new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime();
   });
 
+  const toggleSelectAll = () => {
+    if (selectedCommandes.length === sortedCommandes.length) {
+      // Tout désélectionner
+      setSelectedCommandes([]);
+    } else {
+      // Tout sélectionner
+      setSelectedCommandes(sortedCommandes.map((c) => c.id));
+    }
+  };
+
+  const allSelected = sortedCommandes.length > 0 && selectedCommandes.length === sortedCommandes.length;
+  const someSelected = selectedCommandes.length > 0 && selectedCommandes.length < sortedCommandes.length;
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -316,8 +329,25 @@ export function CommandesList({
           {sortedCommandes.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Aucune commande trouvée</p>
           ) : (
-            <div className="space-y-2">
-              {sortedCommandes.map((commande) => (
+            <>
+              <div className="flex items-center gap-3 p-3 mb-2 border-b">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={toggleSelectAll}
+                  className="flex-shrink-0"
+                />
+                <span className="text-sm font-medium text-muted-foreground">
+                  {allSelected 
+                    ? `Tout désélectionner (${sortedCommandes.length})` 
+                    : someSelected 
+                    ? `Sélectionner tout (${selectedCommandes.length}/${sortedCommandes.length})` 
+                    : `Sélectionner tout (${sortedCommandes.length})`
+                  }
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {sortedCommandes.map((commande) => (
                 <div
                   key={commande.id}
                   className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
@@ -369,6 +399,7 @@ export function CommandesList({
                 </div>
               ))}
             </div>
+            </>
           )}
         </CardContent>
       </Card>
