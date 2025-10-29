@@ -2408,14 +2408,9 @@ export type Database = {
         }
         Returns: Json
       }
-      backfill_missing_profiles: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      can_client_create_user: {
-        Args: { _client_id: string }
-        Returns: boolean
-      }
+      backfill_missing_profiles: { Args: never; Returns: undefined }
+      can_client_create_user: { Args: { _client_id: string }; Returns: boolean }
+      execute_sql_admin: { Args: { statements: string[] }; Returns: Json }
       generer_emplacements_auto: {
         Args: {
           p_allees?: string
@@ -2462,10 +2457,7 @@ export type Database = {
         }
         Returns: Json
       }
-      supprimer_emplacements_zone: {
-        Args: { p_zone?: string }
-        Returns: Json
-      }
+      supprimer_emplacements_zone: { Args: { p_zone?: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "operateur" | "gestionnaire" | "client"

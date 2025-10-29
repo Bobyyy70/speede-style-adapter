@@ -56,3 +56,6 @@ verify_jwt = true
 
 [functions.sendcloud-update-shipped-orders]
 verify_jwt = true
+
+[functions.admin-sql]
+verify_jwt = false
