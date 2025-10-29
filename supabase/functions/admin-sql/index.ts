@@ -16,6 +16,22 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Healthcheck GET endpoint
+  if (req.method === 'GET') {
+    return new Response(
+      JSON.stringify({ 
+        ok: true, 
+        service: 'admin-sql',
+        version: '1.0',
+        timestamp: new Date().toISOString()
+      }),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
   try {
     // Vérifier la clé MCP dans le header
     const mcpKey = req.headers.get('x-mcp-key');
@@ -109,9 +125,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[admin-sql] Executing ${statements.length} SQL statement(s)...`);
-    
     const startTime = Date.now();
+    console.log(`[admin-sql] Executing ${statements.length} SQL statement(s)...`);
 
     // Appeler la fonction SQL SECURITY DEFINER
     const { data, error } = await supabaseClient.rpc('execute_sql_admin', {
@@ -137,7 +152,7 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[admin-sql] ✅ Execution completed in ${duration}ms`);
-    console.log(`[admin-sql] Result:`, JSON.stringify(data, null, 2));
+    console.log(`[admin-sql] Success: ${data.success_count}/${data.total_statements} statements | Errors: ${data.error_count}`);
 
     return new Response(
       JSON.stringify({
