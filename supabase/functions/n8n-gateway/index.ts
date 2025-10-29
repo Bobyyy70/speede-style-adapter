@@ -396,7 +396,28 @@ Deno.serve(async (req) => {
       
       console.log('[n8n-gateway] Création commande:', commande.numero_commande);
       
-      // Créer la commande
+      // 1. Vérifier si commande existe déjà
+      const { data: existing } = await supabase
+        .from('commande')
+        .select('id')
+        .eq('numero_commande', commande.numero_commande)
+        .single();
+
+      if (existing) {
+        console.log('[n8n-gateway] Commande déjà existante:', commande.numero_commande);
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            commande_id: existing.id,
+            numero_commande: commande.numero_commande,
+            skipped: true,
+            reason: 'Déjà importée'
+          }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      // 1. Créer la commande
       const { data: commandeCreee, error: commandeError } = await supabase
         .from('commande')
         .insert(commande)
