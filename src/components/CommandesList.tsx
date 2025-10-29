@@ -185,6 +185,35 @@ export function CommandesList({
     setCreateDialogOpen(true);
   };
 
+  const handleDeleteCommandes = async () => {
+    if (selectedCommandes.length === 0) {
+      toast.error("Veuillez sélectionner au moins une commande");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Êtes-vous sûr de vouloir supprimer ${selectedCommandes.length} commande(s) ?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from("commande")
+        .delete()
+        .in("id", selectedCommandes);
+
+      if (error) throw error;
+
+      toast.success(`${selectedCommandes.length} commande(s) supprimée(s)`);
+      setSelectedCommandes([]);
+      fetchCommandes();
+    } catch (error) {
+      console.error("Erreur lors de la suppression:", error);
+      toast.error("Erreur lors de la suppression des commandes");
+    }
+  };
+
   const handleDialogClose = (open: boolean) => {
     setCreateDialogOpen(open);
     if (!open) {
@@ -322,12 +351,12 @@ export function CommandesList({
                     Créer session ({selectedCommandes.length})
                   </Button>
                   <Button 
-                    variant="outline" 
-                    onClick={() => setSelectedCommandes([])} 
+                    variant="destructive" 
+                    onClick={handleDeleteCommandes} 
                     className="w-full lg:w-auto"
                   >
                     <X className="mr-2 h-4 w-4" />
-                    Effacer
+                    Supprimer ({selectedCommandes.length})
                   </Button>
                 </>
               )}
