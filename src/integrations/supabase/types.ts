@@ -2431,6 +2431,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      process_commande_services: {
+        Args: { p_commande_id: string; p_services: Json }
+        Returns: Json
+      }
       promote_user_to_admin: {
         Args: { user_email: string }
         Returns: undefined
