@@ -436,8 +436,8 @@ Deno.serve(async (req) => {
       
       // Traiter les lignes de commande
       const lignesResultats = [];
+      const lignesFormatees = []; // Pour reserver_stock_commande
       let valeurTotale = 0;
-      let tousProduitsDisponibles = true;
       
       for (const ligne of lignesData) {
         // Normaliser les champs (accepter plusieurs noms de champs)
@@ -473,7 +473,6 @@ Deno.serve(async (req) => {
             success: false,
             error: 'Produit introuvable'
           });
-          tousProduitsDisponibles = false;
           continue;
         }
 
@@ -509,58 +508,31 @@ Deno.serve(async (req) => {
           continue;
         }
         
-        console.log(`[n8n-gateway] Ligne créée pour ${sku}, tentative réservation...`);
+        console.log(`[n8n-gateway] Ligne créée pour ${sku}`);
         
-        // Réserver le stock
-        const { data: reservation, error: reservationError } = await supabase
-          .rpc('reserver_stock', {
-            p_produit_id: produit.id,
-            p_quantite: quantite,
-            p_commande_id: commandeCreee.id,
-            p_reference_origine: commandeCreee.numero_commande,
-          });
+        lignesResultats.push({
+          sku: sku,
+          produit_id: produit.id,
+          ligne_id: ligneCreee.id,
+          success: true,
+        });
         
-        if (reservationError || !reservation?.success) {
-          console.warn(`[n8n-gateway] Stock insuffisant pour ${sku}, disponible: ${reservation?.stock_disponible || 0}`);
-          tousProduitsDisponibles = false;
-          lignesResultats.push({
-            sku: sku,
-            produit_id: produit.id,
-            ligne_id: ligneCreee.id,
-            success: true,
-            stock_reserve: false,
-            stock_disponible: reservation?.stock_disponible || 0,
-          });
-        } else {
-          console.log(`[n8n-gateway] Stock réservé pour ${sku}`);
-          lignesResultats.push({
-            sku: sku,
-            produit_id: produit.id,
-            ligne_id: ligneCreee.id,
-            success: true,
-            stock_reserve: true,
-          });
-        }
+        // Ajouter au format pour réservation
+        lignesFormatees.push({
+          sku: sku,
+          quantite: quantite
+        });
         
         valeurTotale += valeurLigne;
       }
       
-      // Mettre à jour le statut et la valeur de la commande
-      const nouveauStatut = tousProduitsDisponibles ? 'Prêt à préparer' : 'En attente de réappro';
-      
-      const { error: updateError } = await supabase
+      // Mettre à jour la valeur totale
+      await supabase
         .from('commande')
-        .update({
-          valeur_totale: valeurTotale,
-          statut_wms: nouveauStatut,
-        })
+        .update({ valeur_totale: valeurTotale })
         .eq('id', commandeCreee.id);
       
-      if (updateError) {
-        console.error('[n8n-gateway] Erreur mise à jour commande:', updateError);
-      }
-      
-      console.log(`[n8n-gateway] Commande finalisée: ${lignesResultats.length} lignes, statut=${nouveauStatut}`);
+      console.log(`[n8n-gateway] ${lignesResultats.length} ligne(s) créée(s), valeur: ${valeurTotale.toFixed(2)}€`);
       
       // 4. Traiter les services logistiques si fournis
       let servicesCreated = 0;
@@ -587,12 +559,63 @@ Deno.serve(async (req) => {
         console.log('[n8n-gateway] Aucun service à traiter');
       }
       
+      // 5. RÉSERVER LE STOCK (CRITIQUE - Transaction atomique)
+      if (lignesFormatees.length > 0) {
+        console.log('[n8n-gateway] 🔒 Réservation stock pour', lignesFormatees.length, 'produit(s)...');
+        
+        const { data: reservationResult, error: reservationError } = await supabase
+          .rpc('reserver_stock_commande', {
+            p_commande_id: commandeCreee.id,
+            p_lignes: lignesFormatees
+          });
+
+        if (reservationError) {
+          console.error('[n8n-gateway] ❌ ERREUR RÉSERVATION STOCK:', reservationError);
+          
+          // CRITIQUE: Stock insuffisant = commande invalide
+          // On DOIT supprimer la commande créée (rollback)
+          console.log('[n8n-gateway] 🔄 Rollback: suppression commande', commandeCreee.id);
+          
+          await supabase
+            .from('ligne_service_commande')
+            .delete()
+            .eq('commande_id', commandeCreee.id);
+          
+          await supabase
+            .from('ligne_commande')
+            .delete()
+            .eq('commande_id', commandeCreee.id);
+          
+          await supabase
+            .from('commande')
+            .delete()
+            .eq('id', commandeCreee.id);
+          
+          return new Response(
+            JSON.stringify({ 
+              error: 'Stock insuffisant',
+              details: reservationError.message,
+              commande_numero: commandeCreee.numero_commande
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        console.log('[n8n-gateway] ✅ Stock réservé:', reservationResult);
+        
+        // Mettre à jour le statut à "Prêt à préparer"
+        await supabase
+          .from('commande')
+          .update({ statut_wms: 'Prêt à préparer' })
+          .eq('id', commandeCreee.id);
+      }
+      
       return new Response(JSON.stringify({
         success: true,
         commande: {
           id: commandeCreee.id,
           numero_commande: commandeCreee.numero_commande,
-          statut_wms: nouveauStatut,
+          statut_wms: lignesFormatees.length > 0 ? 'Prêt à préparer' : 'En attente de réappro',
           valeur_totale: valeurTotale,
         },
         lignes: lignesResultats,
@@ -602,6 +625,9 @@ Deno.serve(async (req) => {
         // Nouveaux champs pour les services
         services_count: servicesCreated,
         services_total: servicesTotal > 0 ? `${servicesTotal.toFixed(2)}€` : '0.00€',
+        // Nouveaux champs pour la réservation stock
+        stock_reserved: lignesFormatees.length > 0,
+        reservations_count: lignesFormatees.length,
       }), {
         status: 201,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

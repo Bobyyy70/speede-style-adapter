@@ -2411,6 +2411,10 @@ export type Database = {
       backfill_missing_profiles: { Args: never; Returns: undefined }
       can_client_create_user: { Args: { _client_id: string }; Returns: boolean }
       execute_sql_admin: { Args: { statements: string[] }; Returns: Json }
+      expedier_commande_stock: {
+        Args: { p_commande_id: string }
+        Returns: Json
+      }
       generer_emplacements_auto: {
         Args: {
           p_allees?: string
@@ -2431,6 +2435,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      liberer_stock_commande: { Args: { p_commande_id: string }; Returns: Json }
       process_commande_services: {
         Args: { p_commande_id: string; p_services: Json }
         Returns: Json
@@ -2450,6 +2455,10 @@ export type Database = {
           p_quantite: number
           p_reference_origine: string
         }
+        Returns: Json
+      }
+      reserver_stock_commande: {
+        Args: { p_commande_id: string; p_lignes: Json }
         Returns: Json
       }
       retirer_stock_manuel: {
