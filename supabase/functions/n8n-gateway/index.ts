@@ -384,14 +384,53 @@ Deno.serve(async (req) => {
         console.log(`[n8n-gateway] ✅ adresse_nom fourni: "${commandeData.adresse_nom}"`);
       }
       
+      // Récupérer la configuration expéditeur par défaut
+      let expediteurData = {};
+      const { data: expediteurConfig } = await supabase
+        .from('configuration_expediteur')
+        .select('*')
+        .eq('est_defaut', true)
+        .eq('actif', true)
+        .maybeSingle();
+      
+      if (expediteurConfig) {
+        console.log(`[n8n-gateway] ✅ Config expéditeur trouvée: ${expediteurConfig.entreprise}`);
+        expediteurData = {
+          expediteur_nom: expediteurConfig.nom,
+          expediteur_entreprise: expediteurConfig.entreprise,
+          expediteur_email: expediteurConfig.email,
+          expediteur_telephone: expediteurConfig.telephone,
+          expediteur_adresse_ligne_1: expediteurConfig.adresse_ligne_1,
+          expediteur_adresse_ligne_2: expediteurConfig.adresse_ligne_2,
+          expediteur_code_postal: expediteurConfig.code_postal,
+          expediteur_ville: expediteurConfig.ville,
+          expediteur_pays_code: expediteurConfig.pays_code,
+        };
+      } else {
+        console.log('[n8n-gateway] ⚠️ Pas de config expéditeur par défaut');
+      }
+      
+      // Déterminer incoterm et priorité
+      const paysCode = commandeData.pays_code || 'FR';
+      const incoterm = commandeData.incoterm || (paysCode === 'FR' ? 'DDP' : 'DAP');
+      const priorite = commandeData.priorite_expedition || 'standard';
+      const dateExpeditionDemandee = commandeData.date_expedition_demandee || 
+        new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0];
+      
       // Définir les valeurs par défaut
       const commande = {
         ...commandeData,
+        ...expediteurData,
         source: commandeData.source || 'n8n-custom',
         statut_wms: 'En attente de réappro',
         devise: commandeData.devise || 'EUR',
         valeur_totale: 0,
         date_creation: new Date().toISOString(),
+        incoterm: incoterm,
+        priorite_expedition: priorite,
+        date_expedition_demandee: dateExpeditionDemandee,
+        pays_origine_marchandise: expediteurConfig?.pays_code || 'FR',
+        reference_interne: commandeData.reference_interne || commandeData.numero_commande,
       };
       
       console.log('[n8n-gateway] Création commande:', commande.numero_commande);
@@ -533,6 +572,62 @@ Deno.serve(async (req) => {
         .eq('id', commandeCreee.id);
       
       console.log(`[n8n-gateway] ${lignesResultats.length} ligne(s) créée(s), valeur: ${valeurTotale.toFixed(2)}€`);
+      
+      // 3. RÉSERVATION ATOMIQUE DU STOCK avec rollback en cas d'échec
+      console.log('[n8n-gateway] ⚙️ Réservation atomique du stock...');
+      
+      const { data: reservationResult, error: reservationError } = await supabase
+        .rpc('reserver_stock_commande', {
+          p_commande_id: commandeCreee.id,
+          p_lignes: lignesFormatees
+        });
+      
+      if (reservationError || !reservationResult?.success) {
+        console.error('[n8n-gateway] ❌ ÉCHEC réservation stock:', reservationError || reservationResult);
+        
+        // 🔥 ROLLBACK CRITIQUE: Supprimer toute la commande créée
+        console.log('[n8n-gateway] 🔄 ROLLBACK: Suppression commande suite échec stock...');
+        
+        // Supprimer services logistiques
+        await supabase
+          .from('ligne_service_commande')
+          .delete()
+          .eq('commande_id', commandeCreee.id);
+        
+        // Supprimer lignes de commande
+        await supabase
+          .from('ligne_commande')
+          .delete()
+          .eq('commande_id', commandeCreee.id);
+        
+        // Supprimer la commande
+        await supabase
+          .from('commande')
+          .delete()
+          .eq('id', commandeCreee.id);
+        
+        console.log('[n8n-gateway] ✅ ROLLBACK terminé, commande supprimée');
+        
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Stock insuffisant',
+            details: reservationError?.message || reservationResult,
+            commande_id: commandeCreee.id,
+            rollback: true,
+            message: 'Commande annulée: stock insuffisant pour un ou plusieurs produits'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log('[n8n-gateway] ✅ Stock réservé avec succès:', reservationResult);
+      
+      // Mettre à jour le statut de la commande
+      await supabase
+        .from('commande')
+        .update({ statut_wms: 'Prêt à préparer' })
+        .eq('id', commandeCreee.id);
       
       // 4. Traiter les services logistiques si fournis
       let servicesCreated = 0;

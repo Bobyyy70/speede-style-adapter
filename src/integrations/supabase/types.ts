@@ -337,11 +337,22 @@ export type Database = {
           adresse_ligne_1: string
           adresse_ligne_2: string | null
           adresse_nom: string
+          assurance_demandee: boolean | null
           client_id: string | null
+          code_hs: string | null
           code_postal: string
+          conditions_paiement: string | null
           date_creation: string
+          date_expedition: string | null
+          date_expedition_demandee: string | null
+          date_expiration_commande: string | null
+          date_livraison_estimee: string | null
+          date_livraison_reelle: string | null
           date_modification: string
+          date_packing: string | null
+          date_picking: string | null
           devise: string | null
+          documents_douane_requis: string[] | null
           email_client: string | null
           expediteur_adresse_ligne_1: string | null
           expediteur_adresse_ligne_2: string | null
@@ -357,20 +368,30 @@ export type Database = {
           facturation_ligne_2: string | null
           facturation_nom: string | null
           facturation_pays_code: string | null
+          facturation_siret: string | null
+          facturation_tva_numero: string | null
           facturation_ville: string | null
           id: string
+          incoterm: string | null
+          instructions_livraison: string | null
           label_pregenere: boolean | null
           label_source: string | null
           label_url: string | null
           methode_expedition: string | null
+          nature_marchandise: string | null
           nom_client: string
           notes_expedition: string | null
           numero_commande: string
           numero_facture_commerciale: string | null
           pays_code: string
+          pays_origine_marchandise: string | null
           poids_reel_kg: number | null
           poids_total: number | null
           poids_volumetrique_kg: number | null
+          point_relais_id: string | null
+          priorite_expedition: string | null
+          reference_client: string | null
+          reference_interne: string | null
           remarques: string | null
           sendcloud_id: string | null
           sendcloud_shipment_id: string | null
@@ -384,6 +405,8 @@ export type Database = {
           transporteur: string | null
           transporteur_choisi: string | null
           type_carton_id: string | null
+          valeur_assuree: number | null
+          valeur_declaree_douane: number | null
           valeur_totale: number
           ville: string
           zone_livraison: string | null
@@ -392,11 +415,22 @@ export type Database = {
           adresse_ligne_1: string
           adresse_ligne_2?: string | null
           adresse_nom: string
+          assurance_demandee?: boolean | null
           client_id?: string | null
+          code_hs?: string | null
           code_postal: string
+          conditions_paiement?: string | null
           date_creation?: string
+          date_expedition?: string | null
+          date_expedition_demandee?: string | null
+          date_expiration_commande?: string | null
+          date_livraison_estimee?: string | null
+          date_livraison_reelle?: string | null
           date_modification?: string
+          date_packing?: string | null
+          date_picking?: string | null
           devise?: string | null
+          documents_douane_requis?: string[] | null
           email_client?: string | null
           expediteur_adresse_ligne_1?: string | null
           expediteur_adresse_ligne_2?: string | null
@@ -412,20 +446,30 @@ export type Database = {
           facturation_ligne_2?: string | null
           facturation_nom?: string | null
           facturation_pays_code?: string | null
+          facturation_siret?: string | null
+          facturation_tva_numero?: string | null
           facturation_ville?: string | null
           id?: string
+          incoterm?: string | null
+          instructions_livraison?: string | null
           label_pregenere?: boolean | null
           label_source?: string | null
           label_url?: string | null
           methode_expedition?: string | null
+          nature_marchandise?: string | null
           nom_client: string
           notes_expedition?: string | null
           numero_commande: string
           numero_facture_commerciale?: string | null
           pays_code: string
+          pays_origine_marchandise?: string | null
           poids_reel_kg?: number | null
           poids_total?: number | null
           poids_volumetrique_kg?: number | null
+          point_relais_id?: string | null
+          priorite_expedition?: string | null
+          reference_client?: string | null
+          reference_interne?: string | null
           remarques?: string | null
           sendcloud_id?: string | null
           sendcloud_shipment_id?: string | null
@@ -439,6 +483,8 @@ export type Database = {
           transporteur?: string | null
           transporteur_choisi?: string | null
           type_carton_id?: string | null
+          valeur_assuree?: number | null
+          valeur_declaree_douane?: number | null
           valeur_totale?: number
           ville: string
           zone_livraison?: string | null
@@ -447,11 +493,22 @@ export type Database = {
           adresse_ligne_1?: string
           adresse_ligne_2?: string | null
           adresse_nom?: string
+          assurance_demandee?: boolean | null
           client_id?: string | null
+          code_hs?: string | null
           code_postal?: string
+          conditions_paiement?: string | null
           date_creation?: string
+          date_expedition?: string | null
+          date_expedition_demandee?: string | null
+          date_expiration_commande?: string | null
+          date_livraison_estimee?: string | null
+          date_livraison_reelle?: string | null
           date_modification?: string
+          date_packing?: string | null
+          date_picking?: string | null
           devise?: string | null
+          documents_douane_requis?: string[] | null
           email_client?: string | null
           expediteur_adresse_ligne_1?: string | null
           expediteur_adresse_ligne_2?: string | null
@@ -467,20 +524,30 @@ export type Database = {
           facturation_ligne_2?: string | null
           facturation_nom?: string | null
           facturation_pays_code?: string | null
+          facturation_siret?: string | null
+          facturation_tva_numero?: string | null
           facturation_ville?: string | null
           id?: string
+          incoterm?: string | null
+          instructions_livraison?: string | null
           label_pregenere?: boolean | null
           label_source?: string | null
           label_url?: string | null
           methode_expedition?: string | null
+          nature_marchandise?: string | null
           nom_client?: string
           notes_expedition?: string | null
           numero_commande?: string
           numero_facture_commerciale?: string | null
           pays_code?: string
+          pays_origine_marchandise?: string | null
           poids_reel_kg?: number | null
           poids_total?: number | null
           poids_volumetrique_kg?: number | null
+          point_relais_id?: string | null
+          priorite_expedition?: string | null
+          reference_client?: string | null
+          reference_interne?: string | null
           remarques?: string | null
           sendcloud_id?: string | null
           sendcloud_shipment_id?: string | null
@@ -494,6 +561,8 @@ export type Database = {
           transporteur?: string | null
           transporteur_choisi?: string | null
           type_carton_id?: string | null
+          valeur_assuree?: number | null
+          valeur_declaree_douane?: number | null
           valeur_totale?: number
           ville?: string
           zone_livraison?: string | null
@@ -519,6 +588,81 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "type_carton"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      configuration_expediteur: {
+        Row: {
+          actif: boolean | null
+          adresse_ligne_1: string
+          adresse_ligne_2: string | null
+          client_id: string | null
+          code_postal: string
+          date_creation: string | null
+          date_modification: string | null
+          email: string
+          entreprise: string
+          eori_number: string | null
+          est_defaut: boolean | null
+          id: string
+          nom: string
+          pays_code: string
+          telephone: string
+          vat_number: string | null
+          ville: string
+        }
+        Insert: {
+          actif?: boolean | null
+          adresse_ligne_1: string
+          adresse_ligne_2?: string | null
+          client_id?: string | null
+          code_postal: string
+          date_creation?: string | null
+          date_modification?: string | null
+          email: string
+          entreprise: string
+          eori_number?: string | null
+          est_defaut?: boolean | null
+          id?: string
+          nom: string
+          pays_code?: string
+          telephone: string
+          vat_number?: string | null
+          ville: string
+        }
+        Update: {
+          actif?: boolean | null
+          adresse_ligne_1?: string
+          adresse_ligne_2?: string | null
+          client_id?: string | null
+          code_postal?: string
+          date_creation?: string | null
+          date_modification?: string | null
+          email?: string
+          entreprise?: string
+          eori_number?: string | null
+          est_defaut?: boolean | null
+          id?: string
+          nom?: string
+          pays_code?: string
+          telephone?: string
+          vat_number?: string | null
+          ville?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configuration_expediteur_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "configuration_expediteur_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -2143,6 +2287,110 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "stock_disponible"
             referencedColumns: ["produit_id"]
+          },
+        ]
+      }
+      transporteur_configuration: {
+        Row: {
+          actif: boolean | null
+          api_credentials_encrypted: string | null
+          api_endpoint: string | null
+          code_transporteur: string
+          date_creation: string | null
+          date_modification: string | null
+          delais_moyens: Json | null
+          id: string
+          logo_url: string | null
+          nom_complet: string
+          services_disponibles: Json | null
+          zones_couverture: Json | null
+        }
+        Insert: {
+          actif?: boolean | null
+          api_credentials_encrypted?: string | null
+          api_endpoint?: string | null
+          code_transporteur: string
+          date_creation?: string | null
+          date_modification?: string | null
+          delais_moyens?: Json | null
+          id?: string
+          logo_url?: string | null
+          nom_complet: string
+          services_disponibles?: Json | null
+          zones_couverture?: Json | null
+        }
+        Update: {
+          actif?: boolean | null
+          api_credentials_encrypted?: string | null
+          api_endpoint?: string | null
+          code_transporteur?: string
+          date_creation?: string | null
+          date_modification?: string | null
+          delais_moyens?: Json | null
+          id?: string
+          logo_url?: string | null
+          nom_complet?: string
+          services_disponibles?: Json | null
+          zones_couverture?: Json | null
+        }
+        Relationships: []
+      }
+      transporteur_service: {
+        Row: {
+          actif: boolean | null
+          assurance_incluse: boolean | null
+          code_service: string
+          date_creation: string | null
+          delai_max_jours: number | null
+          delai_min_jours: number | null
+          description: string | null
+          dimensions_max_cm: Json | null
+          id: string
+          nom_affichage: string
+          poids_max_kg: number | null
+          poids_min_kg: number | null
+          suivi_disponible: boolean | null
+          transporteur_id: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          assurance_incluse?: boolean | null
+          code_service: string
+          date_creation?: string | null
+          delai_max_jours?: number | null
+          delai_min_jours?: number | null
+          description?: string | null
+          dimensions_max_cm?: Json | null
+          id?: string
+          nom_affichage: string
+          poids_max_kg?: number | null
+          poids_min_kg?: number | null
+          suivi_disponible?: boolean | null
+          transporteur_id?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          assurance_incluse?: boolean | null
+          code_service?: string
+          date_creation?: string | null
+          delai_max_jours?: number | null
+          delai_min_jours?: number | null
+          description?: string | null
+          dimensions_max_cm?: Json | null
+          id?: string
+          nom_affichage?: string
+          poids_max_kg?: number | null
+          poids_min_kg?: number | null
+          suivi_disponible?: boolean | null
+          transporteur_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transporteur_service_transporteur_id_fkey"
+            columns: ["transporteur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteur_configuration"
+            referencedColumns: ["id"]
           },
         ]
       }

@@ -18,6 +18,7 @@ import Transporteurs from "./pages/Transporteurs";
 import Facturation from "./pages/Facturation";
 import Retours from "./pages/Retours";
 import Parametres from "./pages/Parametres";
+import ConfigurationExpediteur from "./pages/ConfigurationExpediteur";
 import Preparation from "./pages/Preparation";
 import PreparationDetails from "./pages/PreparationDetails";
 import PickingMobile from "./pages/PickingMobile";
@@ -157,6 +158,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'client']}>
                   <Transporteurs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parametres/expediteur"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <ConfigurationExpediteur />
                 </ProtectedRoute>
               }
             />

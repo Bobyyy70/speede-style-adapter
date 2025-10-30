@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, Truck, FileText, Clock, MapPin, User, Mail, Phone, Euro, Weight, Play, Send, Download, Printer, MessageSquare } from "lucide-react";
+import { Package, Truck, FileText, Clock, MapPin, User, Mail, Phone, Euro, Weight, Play, Send, Download, Printer, MessageSquare, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -208,12 +208,52 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
 
           <TabsContent value="details" className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
+              {/* Expéditeur */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Expéditeur (From)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {commande.expediteur_entreprise ? (
+                    <>
+                      <div className="font-semibold">{commande.expediteur_entreprise}</div>
+                      {commande.expediteur_nom && <div className="text-sm">{commande.expediteur_nom}</div>}
+                      <div className="text-sm">{commande.expediteur_adresse_ligne_1}</div>
+                      {commande.expediteur_adresse_ligne_2 && (
+                        <div className="text-sm">{commande.expediteur_adresse_ligne_2}</div>
+                      )}
+                      <div className="text-sm">
+                        {commande.expediteur_code_postal} {commande.expediteur_ville}
+                      </div>
+                      <div className="font-medium text-sm">{commande.expediteur_pays_code}</div>
+                      {commande.expediteur_email && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Mail className="h-3 w-3" />
+                          {commande.expediteur_email}
+                        </div>
+                      )}
+                      {commande.expediteur_telephone && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Phone className="h-3 w-3" />
+                          {commande.expediteur_telephone}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Non renseigné</div>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Adresse de livraison */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
-                    Adresse de livraison
+                    Destinataire (To)
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -228,9 +268,17 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
                       {commande.telephone_client}
                     </div>
                   )}
+                  {commande.email_client && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Mail className="h-3 w-3" />
+                      {commande.email_client}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
+            </div>
 
+            <div className="grid grid-cols-2 gap-4">
               {/* Adresse de facturation */}
               <Card>
                 <CardHeader>
