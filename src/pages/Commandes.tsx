@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import { useAutoRules } from "@/hooks/useAutoRules";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshCw } from "lucide-react";
+import { ORDER_STATUSES, ORDER_STATUS_LABELS } from "@/lib/orderStatuses";
 
 export default function Commandes() {
   const navigate = useNavigate();
@@ -24,7 +25,11 @@ export default function Commandes() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedClientFilter, setSelectedClientFilter] = useState<string | null>(null);
   const [clientList, setClientList] = useState<{ id: string; nom_entreprise: string; }[]>([]);
-  const [statusFilters, setStatusFilters] = useState<string[]>(["En attente de réappro", "Prêt à préparer", "En préparation"]);
+  const [statusFilters, setStatusFilters] = useState<string[]>([
+    ORDER_STATUSES.EN_ATTENTE_REAPPRO,
+    ORDER_STATUSES.STOCK_RESERVE,
+    ORDER_STATUSES.EN_PREPARATION
+  ]);
   const [view, setView] = useState<'list' | 'kanban'>(() => {
     return (localStorage.getItem('commandes_view') as 'list' | 'kanban') || 'list';
   });
@@ -161,9 +166,9 @@ export default function Commandes() {
       if (error) throw error;
       setStats({
         total: data?.length || 0,
-        enAttente: data?.filter(c => c.statut_wms === "En attente de réappro").length || 0,
-        prete: data?.filter(c => c.statut_wms === "prete").length || 0,
-        enPreparation: data?.filter(c => c.statut_wms === "En préparation").length || 0
+        enAttente: data?.filter(c => c.statut_wms === ORDER_STATUSES.EN_ATTENTE_REAPPRO).length || 0,
+        prete: data?.filter(c => c.statut_wms === ORDER_STATUSES.EXPEDIE).length || 0,
+        enPreparation: data?.filter(c => c.statut_wms === ORDER_STATUSES.EN_PREPARATION).length || 0
       });
     } catch (error: any) {
       console.error("Erreur stats:", error);
@@ -220,24 +225,24 @@ export default function Commandes() {
                   <PopoverContent className="w-[280px] p-0" align="start">
                     <div className="p-4 space-y-2">
                       <h4 className="font-medium text-sm mb-3">Filtrer par statut</h4>
-                      {["En attente de réappro", "Prêt à préparer", "En préparation", "Expédié", "Livré", "Produits introuvables"].map(status => (
-                        <div key={status} className="flex items-center space-x-2">
+                      {Object.entries(ORDER_STATUS_LABELS).map(([key, label]) => (
+                        <div key={key} className="flex items-center space-x-2">
                           <Checkbox 
-                            id={`status-${status}`} 
-                            checked={statusFilters.includes(status)} 
+                            id={`status-${key}`} 
+                            checked={statusFilters.includes(key)} 
                             onCheckedChange={checked => {
                               if (checked) {
-                                setStatusFilters([...statusFilters, status]);
+                                setStatusFilters([...statusFilters, key]);
                               } else {
-                                setStatusFilters(statusFilters.filter(s => s !== status));
+                                setStatusFilters(statusFilters.filter(s => s !== key));
                               }
                             }} 
                           />
                           <label 
-                            htmlFor={`status-${status}`} 
+                            htmlFor={`status-${key}`} 
                             className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                           >
-                            {status}
+                            {label}
                           </label>
                         </div>
                       ))}

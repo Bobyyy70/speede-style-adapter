@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSessionDialog } from "./CreateSessionDialog";
 import { CommandeDetailDialog } from "./CommandeDetailDialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ORDER_STATUSES, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, FILTER_STATUSES } from "@/lib/orderStatuses";
 
 interface Commande {
   id: string;
@@ -31,15 +32,7 @@ interface StatsData {
   expedie: number;
 }
 
-const STATUTS = [
-  { value: "all", label: "Tous les statuts" },
-  { value: "En attente de réappro", label: "En attente de réappro" },
-  { value: "Prêt à préparer", label: "Prêt à préparer" },
-  { value: "En préparation", label: "En préparation" },
-  { value: "En attente d'expédition", label: "En attente d'expédition" },
-  { value: "En cours de livraison", label: "En cours de livraison" },
-  { value: "Livré", label: "Livré" },
-];
+const STATUTS = FILTER_STATUSES;
 
 const SOURCES = [
   { value: "all", label: "Toutes les sources" },
@@ -145,11 +138,11 @@ export function CommandesList({
       const allCommandes = data || [];
       setStats({
         total: allCommandes.length,
-        en_attente: allCommandes.filter((c) => c.statut_wms === "En attente de réappro").length,
-        pret_a_preparer: allCommandes.filter((c) => c.statut_wms === "Prêt à préparer").length,
-        en_preparation: allCommandes.filter((c) => c.statut_wms === "En préparation").length,
+        en_attente: allCommandes.filter((c) => c.statut_wms === ORDER_STATUSES.EN_ATTENTE_REAPPRO).length,
+        pret_a_preparer: allCommandes.filter((c) => c.statut_wms === ORDER_STATUSES.STOCK_RESERVE).length,
+        en_preparation: allCommandes.filter((c) => c.statut_wms === ORDER_STATUSES.EN_PREPARATION).length,
         expedie: allCommandes.filter((c) =>
-          ["En attente d'expédition", "En cours de livraison", "Livré"].includes(c.statut_wms)
+          [ORDER_STATUSES.PRET_EXPEDITION, ORDER_STATUSES.EXPEDIE, ORDER_STATUSES.LIVRE].includes(c.statut_wms as any)
         ).length,
       });
       setCommandes(allCommandes);
@@ -228,41 +221,31 @@ export function CommandesList({
   };
 
   const getStatutColor = (statut: string): string => {
-    switch (statut) {
-      case "En attente de réappro":
-        return "text-orange-600";
-      case "Prêt à préparer":
-        return "text-blue-600";
-      case "En préparation":
-        return "text-yellow-600";
-      case "En attente d'expédition":
-        return "text-purple-600";
-      case "En cours de livraison":
-        return "text-indigo-600";
-      case "Livré":
-        return "text-green-600";
-      case "Expédié":
-        return "text-green-600";
-      default:
-        return "text-muted-foreground";
-    }
+    return ORDER_STATUS_COLORS[statut as keyof typeof ORDER_STATUS_COLORS] || "text-muted-foreground";
+  };
+
+  const getStatutLabel = (statut: string): string => {
+    return ORDER_STATUS_LABELS[statut as keyof typeof ORDER_STATUS_LABELS] || statut;
   };
 
   const needsStockAlert = (statut: string): boolean => {
-    return statut === "En attente de réappro";
+    return statut === ORDER_STATUSES.EN_ATTENTE_REAPPRO;
   };
 
   // Tri intelligent: non expédiées en haut, expédiées en bas
   const sortedCommandes = [...filteredCommandes].sort((a, b) => {
     const statusOrder: Record<string, number> = {
-      "En attente de réappro": 1,
-      "Prêt à préparer": 2,
-      "En préparation": 3,
-      "En attente d'expédition": 4,
-      "Expédié": 5,
-      "En cours de livraison": 5,
-      "Livré": 6,
-      "Archivé": 7,
+      [ORDER_STATUSES.EN_ATTENTE_REAPPRO]: 1,
+      [ORDER_STATUSES.STOCK_RESERVE]: 2,
+      [ORDER_STATUSES.EN_PICKING]: 3,
+      [ORDER_STATUSES.PICKING_TERMINE]: 4,
+      [ORDER_STATUSES.EN_PREPARATION]: 5,
+      [ORDER_STATUSES.PRET_EXPEDITION]: 6,
+      [ORDER_STATUSES.ETIQUETTE_GENEREE]: 7,
+      [ORDER_STATUSES.EXPEDIE]: 8,
+      [ORDER_STATUSES.LIVRE]: 9,
+      [ORDER_STATUSES.ANNULE]: 10,
+      [ORDER_STATUSES.ERREUR]: 11,
     };
 
     const aOrder = statusOrder[a.statut_wms] || 999;
@@ -413,7 +396,7 @@ export function CommandesList({
                         
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`text-sm font-medium ${getStatutColor(commande.statut_wms)}`}>
-                            {commande.statut_wms}
+                            {getStatutLabel(commande.statut_wms)}
                           </span>
                           
                           {needsStockAlert(commande.statut_wms) && (

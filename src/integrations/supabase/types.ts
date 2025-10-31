@@ -252,6 +252,13 @@ export type Database = {
             referencedRelation: "commande_gestionnaire_secure"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "calculateur_volumetrique_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
         ]
       }
       client: {
@@ -397,7 +404,8 @@ export type Database = {
           sendcloud_shipment_id: string | null
           source: string
           sous_client: string | null
-          statut_wms: string
+          statut_wms: Database["public"]["Enums"]["statut_commande_enum"]
+          statut_wms_old: string
           tags: string[] | null
           telephone_client: string | null
           tracking_number: string | null
@@ -475,7 +483,8 @@ export type Database = {
           sendcloud_shipment_id?: string | null
           source: string
           sous_client?: string | null
-          statut_wms?: string
+          statut_wms?: Database["public"]["Enums"]["statut_commande_enum"]
+          statut_wms_old?: string
           tags?: string[] | null
           telephone_client?: string | null
           tracking_number?: string | null
@@ -553,7 +562,8 @@ export type Database = {
           sendcloud_shipment_id?: string | null
           source?: string
           sous_client?: string | null
-          statut_wms?: string
+          statut_wms?: Database["public"]["Enums"]["statut_commande_enum"]
+          statut_wms_old?: string
           tags?: string[] | null
           telephone_client?: string | null
           tracking_number?: string | null
@@ -635,6 +645,13 @@ export type Database = {
             columns: ["commande_id"]
             isOneToOne: false
             referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commande_transition_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
             referencedColumns: ["id"]
           },
         ]
@@ -863,6 +880,13 @@ export type Database = {
             columns: ["commande_id"]
             isOneToOne: false
             referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
             referencedColumns: ["id"]
           },
         ]
@@ -1193,6 +1217,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ligne_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ligne_commande_emplacement_picking_id_fkey"
             columns: ["emplacement_picking_id"]
             isOneToOne: false
@@ -1329,6 +1360,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ligne_service_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ligne_service_commande_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -1405,6 +1443,13 @@ export type Database = {
             columns: ["commande_id"]
             isOneToOne: false
             referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvement_stock_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
             referencedColumns: ["id"]
           },
           {
@@ -1901,6 +1946,13 @@ export type Database = {
             referencedRelation: "commande_gestionnaire_secure"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "retour_produit_commande_origine_id_fkey"
+            columns: ["commande_origine_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
         ]
       }
       scan_picking: {
@@ -1956,6 +2008,13 @@ export type Database = {
             columns: ["commande_id"]
             isOneToOne: false
             referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scan_picking_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
             referencedColumns: ["id"]
           },
           {
@@ -2041,6 +2100,13 @@ export type Database = {
             columns: ["commande_id"]
             isOneToOne: false
             referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sendcloud_api_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
             referencedColumns: ["id"]
           },
         ]
@@ -2173,6 +2239,13 @@ export type Database = {
             columns: ["commande_id"]
             isOneToOne: false
             referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
             referencedColumns: ["id"]
           },
           {
@@ -2542,6 +2615,13 @@ export type Database = {
             referencedRelation: "commande_gestionnaire_secure"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "webhook_sendcloud_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -2692,6 +2772,281 @@ export type Database = {
         }
         Relationships: []
       }
+      v_commandes_avec_statut: {
+        Row: {
+          adresse_ligne_1: string | null
+          adresse_ligne_2: string | null
+          adresse_nom: string | null
+          assurance_demandee: boolean | null
+          client_id: string | null
+          code_hs: string | null
+          code_postal: string | null
+          conditions_paiement: string | null
+          date_creation: string | null
+          date_expedition: string | null
+          date_expedition_demandee: string | null
+          date_expiration_commande: string | null
+          date_livraison_estimee: string | null
+          date_livraison_reelle: string | null
+          date_modification: string | null
+          date_packing: string | null
+          date_picking: string | null
+          devise: string | null
+          documents_douane_requis: string[] | null
+          email_client: string | null
+          expediteur_adresse_ligne_1: string | null
+          expediteur_adresse_ligne_2: string | null
+          expediteur_code_postal: string | null
+          expediteur_email: string | null
+          expediteur_entreprise: string | null
+          expediteur_nom: string | null
+          expediteur_pays_code: string | null
+          expediteur_telephone: string | null
+          expediteur_ville: string | null
+          facturation_code_postal: string | null
+          facturation_ligne_1: string | null
+          facturation_ligne_2: string | null
+          facturation_nom: string | null
+          facturation_pays_code: string | null
+          facturation_siret: string | null
+          facturation_tva_numero: string | null
+          facturation_ville: string | null
+          id: string | null
+          incoterm: string | null
+          instructions_livraison: string | null
+          label_pregenere: boolean | null
+          label_source: string | null
+          label_url: string | null
+          methode_expedition: string | null
+          nature_marchandise: string | null
+          nb_transitions: number | null
+          nom_client: string | null
+          notes_expedition: string | null
+          numero_commande: string | null
+          numero_facture_commerciale: string | null
+          pays_code: string | null
+          pays_origine_marchandise: string | null
+          poids_reel_kg: number | null
+          poids_total: number | null
+          poids_volumetrique_kg: number | null
+          point_relais_id: string | null
+          priorite_expedition: string | null
+          reference_client: string | null
+          reference_interne: string | null
+          remarques: string | null
+          sendcloud_id: string | null
+          sendcloud_shipment_id: string | null
+          source: string | null
+          sous_client: string | null
+          statut_affichage_fr: string | null
+          statut_libelle: string | null
+          statut_wms: Database["public"]["Enums"]["statut_commande_enum"] | null
+          statut_wms_old: string | null
+          tags: string[] | null
+          telephone_client: string | null
+          tracking_number: string | null
+          tracking_url: string | null
+          transporteur: string | null
+          transporteur_choisi: string | null
+          type_carton_id: string | null
+          valeur_assuree: number | null
+          valeur_declaree_douane: number | null
+          valeur_totale: number | null
+          ville: string | null
+          zone_livraison: string | null
+        }
+        Insert: {
+          adresse_ligne_1?: string | null
+          adresse_ligne_2?: string | null
+          adresse_nom?: string | null
+          assurance_demandee?: boolean | null
+          client_id?: string | null
+          code_hs?: string | null
+          code_postal?: string | null
+          conditions_paiement?: string | null
+          date_creation?: string | null
+          date_expedition?: string | null
+          date_expedition_demandee?: string | null
+          date_expiration_commande?: string | null
+          date_livraison_estimee?: string | null
+          date_livraison_reelle?: string | null
+          date_modification?: string | null
+          date_packing?: string | null
+          date_picking?: string | null
+          devise?: string | null
+          documents_douane_requis?: string[] | null
+          email_client?: string | null
+          expediteur_adresse_ligne_1?: string | null
+          expediteur_adresse_ligne_2?: string | null
+          expediteur_code_postal?: string | null
+          expediteur_email?: string | null
+          expediteur_entreprise?: string | null
+          expediteur_nom?: string | null
+          expediteur_pays_code?: string | null
+          expediteur_telephone?: string | null
+          expediteur_ville?: string | null
+          facturation_code_postal?: string | null
+          facturation_ligne_1?: string | null
+          facturation_ligne_2?: string | null
+          facturation_nom?: string | null
+          facturation_pays_code?: string | null
+          facturation_siret?: string | null
+          facturation_tva_numero?: string | null
+          facturation_ville?: string | null
+          id?: string | null
+          incoterm?: string | null
+          instructions_livraison?: string | null
+          label_pregenere?: boolean | null
+          label_source?: string | null
+          label_url?: string | null
+          methode_expedition?: string | null
+          nature_marchandise?: string | null
+          nb_transitions?: never
+          nom_client?: string | null
+          notes_expedition?: string | null
+          numero_commande?: string | null
+          numero_facture_commerciale?: string | null
+          pays_code?: string | null
+          pays_origine_marchandise?: string | null
+          poids_reel_kg?: number | null
+          poids_total?: number | null
+          poids_volumetrique_kg?: number | null
+          point_relais_id?: string | null
+          priorite_expedition?: string | null
+          reference_client?: string | null
+          reference_interne?: string | null
+          remarques?: string | null
+          sendcloud_id?: string | null
+          sendcloud_shipment_id?: string | null
+          source?: string | null
+          sous_client?: string | null
+          statut_affichage_fr?: never
+          statut_libelle?: never
+          statut_wms?:
+            | Database["public"]["Enums"]["statut_commande_enum"]
+            | null
+          statut_wms_old?: string | null
+          tags?: string[] | null
+          telephone_client?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          transporteur?: string | null
+          transporteur_choisi?: string | null
+          type_carton_id?: string | null
+          valeur_assuree?: number | null
+          valeur_declaree_douane?: number | null
+          valeur_totale?: number | null
+          ville?: string | null
+          zone_livraison?: string | null
+        }
+        Update: {
+          adresse_ligne_1?: string | null
+          adresse_ligne_2?: string | null
+          adresse_nom?: string | null
+          assurance_demandee?: boolean | null
+          client_id?: string | null
+          code_hs?: string | null
+          code_postal?: string | null
+          conditions_paiement?: string | null
+          date_creation?: string | null
+          date_expedition?: string | null
+          date_expedition_demandee?: string | null
+          date_expiration_commande?: string | null
+          date_livraison_estimee?: string | null
+          date_livraison_reelle?: string | null
+          date_modification?: string | null
+          date_packing?: string | null
+          date_picking?: string | null
+          devise?: string | null
+          documents_douane_requis?: string[] | null
+          email_client?: string | null
+          expediteur_adresse_ligne_1?: string | null
+          expediteur_adresse_ligne_2?: string | null
+          expediteur_code_postal?: string | null
+          expediteur_email?: string | null
+          expediteur_entreprise?: string | null
+          expediteur_nom?: string | null
+          expediteur_pays_code?: string | null
+          expediteur_telephone?: string | null
+          expediteur_ville?: string | null
+          facturation_code_postal?: string | null
+          facturation_ligne_1?: string | null
+          facturation_ligne_2?: string | null
+          facturation_nom?: string | null
+          facturation_pays_code?: string | null
+          facturation_siret?: string | null
+          facturation_tva_numero?: string | null
+          facturation_ville?: string | null
+          id?: string | null
+          incoterm?: string | null
+          instructions_livraison?: string | null
+          label_pregenere?: boolean | null
+          label_source?: string | null
+          label_url?: string | null
+          methode_expedition?: string | null
+          nature_marchandise?: string | null
+          nb_transitions?: never
+          nom_client?: string | null
+          notes_expedition?: string | null
+          numero_commande?: string | null
+          numero_facture_commerciale?: string | null
+          pays_code?: string | null
+          pays_origine_marchandise?: string | null
+          poids_reel_kg?: number | null
+          poids_total?: number | null
+          poids_volumetrique_kg?: number | null
+          point_relais_id?: string | null
+          priorite_expedition?: string | null
+          reference_client?: string | null
+          reference_interne?: string | null
+          remarques?: string | null
+          sendcloud_id?: string | null
+          sendcloud_shipment_id?: string | null
+          source?: string | null
+          sous_client?: string | null
+          statut_affichage_fr?: never
+          statut_libelle?: never
+          statut_wms?:
+            | Database["public"]["Enums"]["statut_commande_enum"]
+            | null
+          statut_wms_old?: string | null
+          tags?: string[] | null
+          telephone_client?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          transporteur?: string | null
+          transporteur_choisi?: string | null
+          type_carton_id?: string | null
+          valeur_assuree?: number | null
+          valeur_declaree_douane?: number | null
+          valeur_totale?: number | null
+          ville?: string | null
+          zone_livraison?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commande_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commande_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "commande_type_carton_id_fkey"
+            columns: ["type_carton_id"]
+            isOneToOne: false
+            referencedRelation: "type_carton"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       ajouter_stock_manuel: {
@@ -2720,6 +3075,17 @@ export type Database = {
         }
         Returns: number
       }
+      get_commande_historique: {
+        Args: { p_commande_id: string }
+        Returns: {
+          date_transition: string
+          metadata: Json
+          raison: string
+          statut_nouveau: string
+          statut_precedent: string
+          utilisateur_nom: string
+        }[]
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -2732,6 +3098,13 @@ export type Database = {
         Returns: boolean
       }
       liberer_stock_commande: { Args: { p_commande_id: string }; Returns: Json }
+      peut_transitionner: {
+        Args: {
+          p_statut_actuel: Database["public"]["Enums"]["statut_commande_enum"]
+          p_statut_cible: Database["public"]["Enums"]["statut_commande_enum"]
+        }
+        Returns: boolean
+      }
       process_commande_services: {
         Args: { p_commande_id: string; p_services: Json }
         Returns: Json
@@ -2767,14 +3140,25 @@ export type Database = {
         Returns: Json
       }
       supprimer_emplacements_zone: { Args: { p_zone?: string }; Returns: Json }
-      transition_statut_commande: {
-        Args: {
-          p_commande_id: string
-          p_nouveau_statut: string
-          p_remarques?: string
-        }
-        Returns: Json
-      }
+      transition_statut_commande:
+        | {
+            Args: {
+              p_commande_id: string
+              p_nouveau_statut: string
+              p_remarques?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_commande_id: string
+              p_metadata?: Json
+              p_nouveau_statut: Database["public"]["Enums"]["statut_commande_enum"]
+              p_raison?: string
+              p_utilisateur_id?: string
+            }
+            Returns: Json
+          }
     }
     Enums: {
       app_role: "admin" | "operateur" | "gestionnaire" | "client"

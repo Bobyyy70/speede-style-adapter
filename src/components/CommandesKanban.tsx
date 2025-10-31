@@ -1,9 +1,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, Clock, Truck, CheckCircle2, AlertCircle } from "lucide-react";
+import { Package, Truck, CheckCircle2, AlertCircle, PackageSearch, PackageOpen, PackageCheck } from "lucide-react";
 import { DeleteButton } from "./DeleteButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ORDER_STATUSES, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, KANBAN_COLUMNS } from "@/lib/orderStatuses";
 
 interface Commande {
   id: string;
@@ -23,12 +24,20 @@ interface CommandesKanbanProps {
   loading?: boolean;
 }
 
-const COLUMNS = [
-  { id: "En attente de réappro", label: "En attente", icon: AlertCircle, color: "text-orange-600" },
-  { id: "Prêt à préparer", label: "Prêt à préparer", icon: Package, color: "text-blue-600" },
-  { id: "En préparation", label: "En préparation", icon: Truck, color: "text-yellow-600" },
-  { id: "Expédié", label: "Expédiée", icon: CheckCircle2, color: "text-green-600" },
-];
+const ICON_MAP: Record<string, any> = {
+  'AlertCircle': AlertCircle,
+  'Package': Package,
+  'PackageSearch': PackageSearch,
+  'PackageOpen': PackageOpen,
+  'PackageCheck': PackageCheck,
+  'Truck': Truck,
+  'CheckCircle2': CheckCircle2
+};
+
+const COLUMNS = KANBAN_COLUMNS.map(col => ({
+  ...col,
+  icon: ICON_MAP[col.icon] || Package
+}));
 
 export function CommandesKanban({ commandes, onCommandeClick, loading }: CommandesKanbanProps) {
   const { toast } = useToast();
@@ -36,7 +45,7 @@ export function CommandesKanban({ commandes, onCommandeClick, loading }: Command
   const handleDelete = async (commandeId: string) => {
     const { error } = await supabase
       .from("commande")
-      .update({ statut_wms: "Annulée" })
+      .update({ statut_wms: ORDER_STATUSES.ANNULE })
       .eq("id", commandeId);
 
     if (error) {
@@ -55,9 +64,9 @@ export function CommandesKanban({ commandes, onCommandeClick, loading }: Command
   };
 
   const getCommandesByStatus = (status: string) => {
-    if (status === "Expédié") {
+    if (status === ORDER_STATUSES.EXPEDIE) {
       return commandes.filter((c) =>
-        ["Expédié", "En attente d'expédition", "En cours de livraison", "Livré"].includes(c.statut_wms)
+        [ORDER_STATUSES.EXPEDIE, ORDER_STATUSES.LIVRE].includes(c.statut_wms as any)
       );
     }
     return commandes.filter((c) => c.statut_wms === status);
