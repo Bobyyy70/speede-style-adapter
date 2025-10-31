@@ -591,6 +591,54 @@ export type Database = {
           },
         ]
       }
+      commande_transition_log: {
+        Row: {
+          commande_id: string
+          date_transition: string | null
+          effectue_par: string | null
+          id: string
+          metadata: Json | null
+          remarques: string | null
+          statut_nouveau: string
+          statut_precedent: string | null
+        }
+        Insert: {
+          commande_id: string
+          date_transition?: string | null
+          effectue_par?: string | null
+          id?: string
+          metadata?: Json | null
+          remarques?: string | null
+          statut_nouveau: string
+          statut_precedent?: string | null
+        }
+        Update: {
+          commande_id?: string
+          date_transition?: string | null
+          effectue_par?: string | null
+          id?: string
+          metadata?: Json | null
+          remarques?: string | null
+          statut_nouveau?: string
+          statut_precedent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commande_transition_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commande_transition_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuration_expediteur: {
         Row: {
           actif: boolean | null
@@ -2719,6 +2767,14 @@ export type Database = {
         Returns: Json
       }
       supprimer_emplacements_zone: { Args: { p_zone?: string }; Returns: Json }
+      transition_statut_commande: {
+        Args: {
+          p_commande_id: string
+          p_nouveau_statut: string
+          p_remarques?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "operateur" | "gestionnaire" | "client"
@@ -2731,6 +2787,18 @@ export type Database = {
         | "réceptionné_totalement"
         | "anomalie"
         | "annulé"
+      statut_commande_enum:
+        | "en_attente_reappro"
+        | "stock_reserve"
+        | "en_picking"
+        | "picking_termine"
+        | "en_preparation"
+        | "pret_expedition"
+        | "etiquette_generee"
+        | "expedie"
+        | "livre"
+        | "annule"
+        | "erreur"
       statut_ligne_attendu:
         | "attendu"
         | "réceptionné"
@@ -2874,6 +2942,19 @@ export const Constants = {
         "réceptionné_totalement",
         "anomalie",
         "annulé",
+      ],
+      statut_commande_enum: [
+        "en_attente_reappro",
+        "stock_reserve",
+        "en_picking",
+        "picking_termine",
+        "en_preparation",
+        "pret_expedition",
+        "etiquette_generee",
+        "expedie",
+        "livre",
+        "annule",
+        "erreur",
       ],
       statut_ligne_attendu: [
         "attendu",
