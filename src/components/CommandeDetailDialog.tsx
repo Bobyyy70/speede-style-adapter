@@ -1,22 +1,60 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { RotateCcw } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, Truck, FileText, Clock, MapPin, User, Mail, Phone, Euro, Weight, Play, Send, Download, Printer, MessageSquare, Building2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/hooks/useAuth";
 import { DocumentsSection } from "./expedition/DocumentsSection";
-import { ServicesSection } from "./expedition/ServicesSection";
 import { HistoireTimeline } from "./expedition/HistoireTimeline";
-import { ORDER_STATUSES } from "@/lib/orderStatuses";
+import { FicheCommandeComplete } from "./FicheCommandeComplete";
+import { CreerRetourDialog } from "./CreerRetourDialog";
+import { ORDER_STATUS_LABELS, getStatutBadgeVariant } from "@/lib/orderStatuses";
+import {
+  Package,
+  Printer,
+  Download,
+  Copy,
+  XCircle,
+  Trash2,
+  PackageX,
+  ChevronDown,
+  Loader2,
+  ArrowRight,
+  Archive,
+  Euro,
+  Clock,
+  User,
+} from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface CommandeDetailDialogProps {
   commandeId: string;
@@ -25,31 +63,21 @@ interface CommandeDetailDialogProps {
   onSuccess?: () => void;
 }
 
-export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess }: CommandeDetailDialogProps) => {
+export const CommandeDetailDialog = ({
+  commandeId,
+  open,
+  onOpenChange,
+  onSuccess,
+}: CommandeDetailDialogProps) => {
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { userRole } = useAuth();
-  const [existingRetour, setExistingRetour] = useState<any>(null);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    if (!open) return;
-    
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onOpenChange(false);
-      } else if (e.key === "p" || e.key === "P") {
-        e.preventDefault();
-        handlePrint();
-      } else if (e.key === "d" || e.key === "D") {
-        e.preventDefault();
-        handleDownloadAll();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, onOpenChange]);
+  const [showRetourDialog, setShowRetourDialog] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [statusChanging, setStatusChanging] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Fetch commande complète
   const { data: commande, refetch } = useQuery({
@@ -60,7 +88,7 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
         .select("*")
         .eq("id", commandeId)
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -76,426 +104,478 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
         .select("*")
         .eq("commande_id", commandeId)
         .order("date_creation", { ascending: true });
-      
+
       if (error) throw error;
       return data;
     },
     enabled: open && !!commandeId,
   });
 
-  if (!commande) return null;
-
-  const getStatutBadge = (statut: string) => {
-    const statutMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      "En attente de réappro": { label: "En attente", variant: "secondary" },
-      "prete": { label: "Prêt à préparer", variant: "outline" },
-      "En préparation": { label: "En préparation", variant: "default" },
-      "Expédiée": { label: "Expédiée", variant: "default" },
+  // Calculer les transitions possibles côté client
+  const getTransitionsPossibles = (currentStatut: string): string[] => {
+    const transitions: Record<string, string[]> = {
+      "en_attente_reappro": ["stock_reserve", "annule", "erreur"],
+      "stock_reserve": ["en_picking", "en_preparation", "annule", "erreur"],
+      "en_picking": ["picking_termine", "en_attente_reappro", "erreur", "annule"],
+      "picking_termine": ["en_preparation", "en_picking", "annule"],
+      "en_preparation": ["pret_expedition", "picking_termine", "erreur", "annule"],
+      "pret_expedition": ["etiquette_generee", "expedie", "en_preparation", "annule"],
+      "etiquette_generee": ["expedie", "pret_expedition", "annule"],
+      "expedie": ["livre", "erreur"],
+      "livre": ["erreur"],
+      "erreur": ["en_attente_reappro", "stock_reserve", "en_picking", "en_preparation", "pret_expedition", "annule"],
+      "annule": [],
     };
-    const config = statutMap[statut] || { label: statut, variant: "outline" };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return transitions[currentStatut] || [];
   };
+
+  const transitionsPossibles = commande ? getTransitionsPossibles(commande.statut_wms) : [];
 
   const handlePrint = () => {
     window.print();
     toast({ title: "Impression lancée" });
   };
 
-  const handleDownloadAll = () => {
-    // This will be handled by DocumentsSection component
-    toast({ title: "Téléchargement en cours..." });
-  };
-
-  const handleStartPreparation = async () => {
-    if (!commandeId) return;
+  const handleDuplicate = async () => {
+    setActionLoading("duplicate");
     try {
-      const { error } = await supabase
+      // Créer une nouvelle commande avec les mêmes données
+      const { data: newCommande, error: commandeError } = await supabase
         .from("commande")
-        .update({ statut_wms: ORDER_STATUSES.EN_PREPARATION })
-        .eq("id", commandeId);
-      
-      if (error) throw error;
-      toast({ title: "Préparation lancée" });
-    } catch (error) {
-      toast({ title: "Erreur", description: "Impossible de lancer la préparation", variant: "destructive" });
+        .insert({
+          ...commande,
+          id: undefined,
+          numero_commande: `CMD-${Date.now()}`,
+          statut_wms: "en_attente_reappro",
+          date_creation: new Date().toISOString(),
+          date_modification: new Date().toISOString(),
+          sendcloud_id: null,
+          sendcloud_shipment_id: null,
+          tracking_number: null,
+          tracking_url: null,
+          label_url: null,
+        })
+        .select()
+        .single();
+
+      if (commandeError) throw commandeError;
+
+      // Dupliquer les lignes
+      if (lignes && lignes.length > 0) {
+        const newLignes = lignes.map((l) => ({
+          ...l,
+          id: undefined,
+          commande_id: newCommande.id,
+          quantite_preparee: 0,
+          statut_ligne: "en_attente",
+        }));
+
+        const { error: lignesError } = await supabase
+          .from("ligne_commande")
+          .insert(newLignes);
+
+        if (lignesError) throw lignesError;
+      }
+
+      toast({
+        title: "Commande dupliquée",
+        description: `Nouvelle commande ${newCommande.numero_commande} créée`,
+      });
+
+      onSuccess?.();
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const canStartPreparation = commande?.statut_wms === ORDER_STATUSES.STOCK_RESERVE;
-  const canCreateShipment = commande?.statut_wms === ORDER_STATUSES.PRET_EXPEDITION;
+  const handleChangeStatus = async (nouveauStatut: string) => {
+    setStatusChanging(true);
+    try {
+      const { data, error } = await supabase.rpc("transition_statut_commande", {
+        p_commande_id: commandeId,
+        p_nouveau_statut: nouveauStatut,
+        p_remarques: `Changement manuel de statut`,
+      });
 
-  const tagsArray = Array.isArray(commande?.tags) ? commande.tags : [];
+      if (error) throw error;
+
+      const result = data as any;
+      if (result && !result.success) {
+        throw new Error(result.error || "Transition refusée");
+      }
+
+      toast({
+        title: "Statut mis à jour",
+        description: `Commande passée à ${ORDER_STATUS_LABELS[nouveauStatut]}`,
+      });
+
+      refetch();
+      onSuccess?.();
+    } catch (error: any) {
+      toast({
+        title: "Erreur de transition",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setStatusChanging(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    setActionLoading("cancel");
+    try {
+      // Transition vers annulé
+      const { data, error } = await supabase.rpc("transition_statut_commande", {
+        p_commande_id: commandeId,
+        p_nouveau_statut: "annule",
+        p_remarques: cancelReason || "Annulation manuelle",
+      });
+
+      if (error) throw error;
+
+      const result = data as any;
+      if (result && !result.success) {
+        throw new Error(result.error || "Impossible d'annuler");
+      }
+
+      // Libérer le stock réservé
+      await supabase.rpc("liberer_stock_commande", {
+        p_commande_id: commandeId,
+      });
+
+      toast({
+        title: "Commande annulée",
+        description: "Stock libéré",
+      });
+
+      setShowCancelConfirm(false);
+      setCancelReason("");
+      refetch();
+      onSuccess?.();
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    setActionLoading("delete");
+    try {
+      // Vérifier que la commande peut être supprimée
+      if (commande?.statut_wms === "expedie" || commande?.statut_wms === "livre") {
+        throw new Error(
+          "Impossible de supprimer une commande expédiée ou livrée"
+        );
+      }
+
+      // Supprimer (cascade vers lignes, mouvements, etc.)
+      const { error } = await supabase
+        .from("commande")
+        .delete()
+        .eq("id", commandeId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Commande supprimée",
+        description: "La commande a été définitivement supprimée",
+      });
+
+      setShowDeleteConfirm(false);
+      onOpenChange(false);
+      onSuccess?.();
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (!commande) return null;
+
+  const canDelete = userRole === "admin" || userRole === "gestionnaire";
+  const isExpedieOrLivre =
+    commande.statut_wms === "expedie" || commande.statut_wms === "livre";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="flex items-center gap-2 text-2xl">
-                <Package className="h-6 w-6" />
-                Commande {commande.numero_commande}
-              </DialogTitle>
-              <DialogDescription>
-                Fiche logistique complète
-              </DialogDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              {getStatutBadge(commande.statut_wms)}
-              <Badge variant="outline">{commande.source}</Badge>
-            </div>
-          </div>
-        </DialogHeader>
-
-        {/* En-tête avec informations clés */}
-        <div className="grid grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Client</span>
-            </div>
-            <div className="font-semibold">{commande.nom_client}</div>
-            <div className="text-xs text-muted-foreground">{commande.email_client}</div>
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Euro className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Valeur</span>
-            </div>
-            <div className="text-2xl font-bold text-primary">
-              {commande.valeur_totale.toFixed(2)} {commande.devise}
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Weight className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Poids total</span>
-            </div>
-            <div className="text-xl font-semibold">
-              {commande.poids_total ? `${commande.poids_total} kg` : "Non calculé"}
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Créée le</span>
-            </div>
-            <div className="text-sm font-medium">
-              {new Date(commande.date_creation).toLocaleDateString('fr-FR')}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {new Date(commande.date_creation).toLocaleTimeString('fr-FR')}
-            </div>
-          </div>
-        </div>
-
-        {/* Tags */}
-        {tagsArray.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-muted-foreground">Tags:</span>
-            {tagsArray.map((tag, i) => (
-              <Badge key={i} variant="secondary">{tag}</Badge>
-            ))}
-          </div>
-        )}
-
-        <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="details">Détails</TabsTrigger>
-            <TabsTrigger value="produits">Produits</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="services">Services & Historique</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="details" className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Expéditeur */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    Expéditeur (From)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {commande.expediteur_entreprise ? (
-                    <>
-                      <div className="font-semibold">{commande.expediteur_entreprise}</div>
-                      {commande.expediteur_nom && <div className="text-sm">{commande.expediteur_nom}</div>}
-                      <div className="text-sm">{commande.expediteur_adresse_ligne_1}</div>
-                      {commande.expediteur_adresse_ligne_2 && (
-                        <div className="text-sm">{commande.expediteur_adresse_ligne_2}</div>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  <Package className="h-6 w-6 text-muted-foreground" />
+                  <DialogTitle className="text-3xl">
+                    {commande.numero_commande}
+                  </DialogTitle>
+                  <Badge
+                    variant={getStatutBadgeVariant(commande.statut_wms)}
+                    className="text-base px-3 py-1"
+                  >
+                    {ORDER_STATUS_LABELS[commande.statut_wms] ||
+                      commande.statut_wms}
+                  </Badge>
+                  <Badge variant="outline">{commande.source}</Badge>
+                </div>
+                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    <span>
+                      {format(
+                        new Date(commande.date_creation),
+                        "dd MMM yyyy HH:mm",
+                        { locale: fr }
                       )}
-                      <div className="text-sm">
-                        {commande.expediteur_code_postal} {commande.expediteur_ville}
-                      </div>
-                      <div className="font-medium text-sm">{commande.expediteur_pays_code}</div>
-                      {commande.expediteur_email && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Mail className="h-3 w-3" />
-                          {commande.expediteur_email}
-                        </div>
-                      )}
-                      {commande.expediteur_telephone && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Phone className="h-3 w-3" />
-                          {commande.expediteur_telephone}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">Non renseigné</div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Adresse de livraison */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Destinataire (To)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="font-semibold">{commande.adresse_nom}</div>
-                  <div>{commande.adresse_ligne_1}</div>
-                  {commande.adresse_ligne_2 && <div>{commande.adresse_ligne_2}</div>}
-                  <div>{commande.code_postal} {commande.ville}</div>
-                  <div className="font-medium">{commande.pays_code}</div>
-                  {commande.telephone_client && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Phone className="h-3 w-3" />
-                      {commande.telephone_client}
-                    </div>
-                  )}
-                  {commande.email_client && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Mail className="h-3 w-3" />
-                      {commande.email_client}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* Adresse de facturation */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Adresse de facturation
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {commande.facturation_nom ? (
-                    <>
-                      <div className="font-semibold">{commande.facturation_nom}</div>
-                      <div>{commande.facturation_ligne_1}</div>
-                      {commande.facturation_ligne_2 && <div>{commande.facturation_ligne_2}</div>}
-                      <div>{commande.facturation_code_postal} {commande.facturation_ville}</div>
-                      <div className="font-medium">{commande.facturation_pays_code}</div>
-                    </>
-                  ) : (
-                    <div className="text-muted-foreground text-sm">Identique à l'adresse de livraison</div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Transport */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Truck className="h-4 w-4" />
-                  Informations de transport
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Transporteur</div>
-                    <div className="font-semibold">
-                      {commande.transporteur_choisi || commande.transporteur || "Non assigné"}
-                    </div>
+                    </span>
                   </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Méthode</div>
-                    <div className="font-semibold">{commande.methode_expedition || "-"}</div>
+                  <div className="flex items-center gap-1">
+                    <User className="h-4 w-4" />
+                    <span>{commande.nom_client}</span>
                   </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Poids réel</div>
-                    <div className="font-semibold">
-                      {commande.poids_reel_kg ? `${commande.poids_reel_kg} kg` : "-"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Poids volumétrique</div>
-                    <div className="font-semibold">
-                      {commande.poids_volumetrique_kg ? `${commande.poids_volumetrique_kg} kg` : "-"}
-                    </div>
+                  <div className="flex items-center gap-1">
+                    <Euro className="h-4 w-4" />
+                    <span className="font-semibold">
+                      {commande.valeur_totale.toFixed(2)} {commande.devise}
+                    </span>
                   </div>
                 </div>
-                <Separator />
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">SendCloud</div>
-                  {commande.sendcloud_id && (
-                    <div className="text-sm">ID: <span className="font-mono">{commande.sendcloud_id}</span></div>
-                  )}
-                  {commande.tracking_number && (
-                    <div className="text-sm">
-                      Tracking: <a href={commande.tracking_url || "#"} target="_blank" rel="noopener" className="font-mono text-primary hover:underline">
-                        {commande.tracking_number}
-                      </a>
-                    </div>
-                  )}
-                  {commande.label_url && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={commande.label_url} target="_blank" rel="noopener">
-                        Voir l'étiquette
-                      </a>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {/* BARRE D'ACTIONS */}
+          <div className="flex items-center justify-between gap-2 py-3 border-t border-b bg-muted/30 -mx-6 px-6">
+            <div className="flex items-center gap-2">
+              {/* Changer le statut */}
+              {transitionsPossibles && transitionsPossibles.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={statusChanging}
+                    >
+                      {statusChanging ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <ArrowRight className="h-4 w-4 mr-2" />
+                      )}
+                      Changer le statut
+                      <ChevronDown className="h-3 w-3 ml-1" />
                     </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="produits" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Produits commandés</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Référence</TableHead>
-                      <TableHead>Nom produit</TableHead>
-                      <TableHead className="text-center">Qté commandée</TableHead>
-                      <TableHead className="text-center">Qté préparée</TableHead>
-                      <TableHead className="text-right">Prix unitaire</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead>Statut</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {lignes && lignes.length > 0 ? (
-                      lignes.map((ligne) => (
-                        <TableRow key={ligne.id}>
-                          <TableCell className="font-mono text-sm">{ligne.produit_reference}</TableCell>
-                          <TableCell>{ligne.produit_nom}</TableCell>
-                          <TableCell className="text-center">{ligne.quantite_commandee}</TableCell>
-                          <TableCell className="text-center">
-                            <span className={ligne.quantite_preparee === ligne.quantite_commandee ? "text-green-600 font-semibold" : ""}>
-                              {ligne.quantite_preparee}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {ligne.prix_unitaire ? `${ligne.prix_unitaire.toFixed(2)} €` : "-"}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold">
-                            {ligne.valeur_totale ? `${ligne.valeur_totale.toFixed(2)} €` : "-"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={ligne.statut_ligne === "preparee" ? "default" : "secondary"}>
-                              {ligne.statut_ligne}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground">
-                          Aucune ligne de commande
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="documents" className="space-y-4 mt-4">
-            <DocumentsSection commandeId={commandeId} commande={commande} />
-          </TabsContent>
-
-          <TabsContent value="services" className="space-y-4 mt-4">
-            <div className="space-y-4">
-              <ServicesSection commandeId={commandeId} />
-              <HistoireTimeline commande={commande} />
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Actions Bar */}
-        <div className="border-t bg-muted/30 px-6 py-4 mt-6">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              {canStartPreparation && (
-                <Button onClick={handleStartPreparation} size="sm">
-                  <Play className="h-4 w-4 mr-2" />
-                  Lancer la préparation
-                </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuLabel>Transitions possibles</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {transitionsPossibles.map((statut) => (
+                      <DropdownMenuItem
+                        key={statut}
+                        onClick={() => handleChangeStatus(statut)}
+                      >
+                        <ArrowRight className="h-3 w-3 mr-2" />
+                        {ORDER_STATUS_LABELS[statut] || statut}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
-              {!commande.label_url && !commande.sendcloud_shipment_id && (
-                <Button 
-                  variant="default" 
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      const { data, error } = await supabase.functions.invoke('sendcloud-create-parcel', {
-                        body: { commande_id: commandeId },
-                      });
 
-                      if (error) throw error;
-
-                      if (data.success) {
-                        toast({ title: 'Étiquette SendCloud générée' });
-                        refetch();
-                        onSuccess?.();
-                      } else {
-                        toast({ title: 'Erreur', description: data.error || 'Erreur lors de la création', variant: 'destructive' });
-                      }
-                    } catch (error: any) {
-                      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
-                    }
-                  }}
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Créer étiquette SendCloud
-                </Button>
-              )}
+              {/* Créer un retour */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRetourDialog(true)}
+              >
+                <PackageX className="h-4 w-4 mr-2" />
+                Créer un retour
+              </Button>
             </div>
-            
+
             <div className="flex items-center gap-2">
+              {/* Dupliquer */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDuplicate}
+                disabled={actionLoading === "duplicate"}
+              >
+                {actionLoading === "duplicate" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Copy className="h-4 w-4 mr-2" />
+                )}
+                Dupliquer
+              </Button>
+
+              {/* Imprimer */}
               <Button variant="outline" size="sm" onClick={handlePrint}>
                 <Printer className="h-4 w-4 mr-2" />
-                Imprimer (P)
+                Imprimer
               </Button>
-              <Button variant="outline" size="sm" onClick={handleDownloadAll}>
-                <Download className="h-4 w-4 mr-2" />
-                Tout télécharger (D)
+
+              {/* Télécharger tout */}
+              <Button variant="outline" size="sm">
+                <Archive className="h-4 w-4 mr-2" />
+                Télécharger
               </Button>
-              <Button variant="ghost" size="sm">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Ajouter un commentaire
-              </Button>
+
+              {/* Annuler */}
+              {!isExpedieOrLivre && commande.statut_wms !== "annule" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCancelConfirm(true)}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Annuler
+                </Button>
+              )}
+
+              {/* Supprimer (admin only) */}
+              {canDelete && !isExpedieOrLivre && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Supprimer
+                </Button>
+              )}
             </div>
-            {commande && (commande.statut_wms === ORDER_STATUSES.EXPEDIE || commande.statut_wms === ORDER_STATUSES.LIVRE) && !existingRetour && (
-              <Button variant="outline" onClick={() => { navigate(`${userRole === 'client' ? '/client/creer-retour' : '/retours/creer'}?commande_id=${commandeId}`); onOpenChange(false); }}>
-                <RotateCcw className="h-4 w-4 mr-2" />Créer retour
-              </Button>
-            )}
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+          {/* TABS */}
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
+              <TabsTrigger value="products">Produits</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="history">Historique</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="mt-4">
+              <FicheCommandeComplete
+                commande={commande}
+                lignes={lignes}
+                showTimeline={false}
+                showProducts={false}
+                compact={true}
+              />
+            </TabsContent>
+
+            <TabsContent value="products" className="mt-4">
+              <FicheCommandeComplete
+                commande={commande}
+                lignes={lignes}
+                showTimeline={false}
+                showProducts={true}
+                compact={true}
+              />
+            </TabsContent>
+
+            <TabsContent value="documents" className="mt-4">
+              <DocumentsSection commandeId={commandeId} commande={commande} />
+            </TabsContent>
+
+            <TabsContent value="history" className="mt-4">
+              <HistoireTimeline commande={commande} />
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de création de retour */}
+      <CreerRetourDialog
+        open={showRetourDialog}
+        onOpenChange={setShowRetourDialog}
+        commandeId={commandeId}
+        commande={commande}
+      />
+
+      {/* Confirmation annulation */}
+      <AlertDialog
+        open={showCancelConfirm}
+        onOpenChange={setShowCancelConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Annuler la commande ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action libérera les stocks réservés. Voulez-vous continuer ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label htmlFor="cancel-reason">Raison de l'annulation</Label>
+            <Input
+              id="cancel-reason"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Optionnel"
+              className="mt-2"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Retour</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancel}
+              disabled={actionLoading === "cancel"}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {actionLoading === "cancel" && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              Annuler la commande
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmation suppression */}
+      <AlertDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer la commande ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Toutes les données (lignes,
+              mouvements de stock, documents) seront définitivement supprimées.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={actionLoading === "delete"}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {actionLoading === "delete" && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              Supprimer définitivement
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
-
-function Label({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={className}>{children}</div>;
-}
