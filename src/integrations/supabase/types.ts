@@ -605,32 +605,38 @@ export type Database = {
         Row: {
           commande_id: string
           date_transition: string | null
-          effectue_par: string | null
           id: string
           metadata: Json | null
-          remarques: string | null
-          statut_nouveau: string
-          statut_precedent: string | null
+          raison: string | null
+          statut_nouveau: Database["public"]["Enums"]["statut_commande_enum"]
+          statut_precedent:
+            | Database["public"]["Enums"]["statut_commande_enum"]
+            | null
+          utilisateur_id: string | null
         }
         Insert: {
           commande_id: string
           date_transition?: string | null
-          effectue_par?: string | null
           id?: string
           metadata?: Json | null
-          remarques?: string | null
-          statut_nouveau: string
-          statut_precedent?: string | null
+          raison?: string | null
+          statut_nouveau: Database["public"]["Enums"]["statut_commande_enum"]
+          statut_precedent?:
+            | Database["public"]["Enums"]["statut_commande_enum"]
+            | null
+          utilisateur_id?: string | null
         }
         Update: {
           commande_id?: string
           date_transition?: string | null
-          effectue_par?: string | null
           id?: string
           metadata?: Json | null
-          remarques?: string | null
-          statut_nouveau?: string
-          statut_precedent?: string | null
+          raison?: string | null
+          statut_nouveau?: Database["public"]["Enums"]["statut_commande_enum"]
+          statut_precedent?:
+            | Database["public"]["Enums"]["statut_commande_enum"]
+            | null
+          utilisateur_id?: string | null
         }
         Relationships: [
           {
@@ -2411,6 +2417,24 @@ export type Database = {
           },
         ]
       }
+      statut_migration_map: {
+        Row: {
+          ancien_statut: string
+          date_migration: string | null
+          nouveau_statut: Database["public"]["Enums"]["statut_commande_enum"]
+        }
+        Insert: {
+          ancien_statut: string
+          date_migration?: string | null
+          nouveau_statut: Database["public"]["Enums"]["statut_commande_enum"]
+        }
+        Update: {
+          ancien_statut?: string
+          date_migration?: string | null
+          nouveau_statut?: Database["public"]["Enums"]["statut_commande_enum"]
+        }
+        Relationships: []
+      }
       transporteur_configuration: {
         Row: {
           actif: boolean | null
@@ -3085,6 +3109,10 @@ export type Database = {
           statut_precedent: string
           utilisateur_nom: string
         }[]
+      }
+      get_statut_label: {
+        Args: { statut: Database["public"]["Enums"]["statut_commande_enum"] }
+        Returns: string
       }
       get_user_role: {
         Args: { user_id: string }
