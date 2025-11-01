@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { ArrowLeft, Package, CheckCircle2, AlertCircle, Scan } from "lucide-react";
+import { ORDER_STATUSES } from "@/lib/orderStatuses";
 
 interface LigneCommande {
   id: string;
@@ -146,7 +147,7 @@ export default function PickingMobile() {
       if (commandeComplete) {
         await supabase
           .from("commande")
-          .update({ statut_wms: "prete" })
+          .update({ statut_wms: ORDER_STATUSES.PRET_EXPEDITION })
           .eq("id", currentCommande.id);
 
         toast.success("Commande complète! Passage à la suivante...");

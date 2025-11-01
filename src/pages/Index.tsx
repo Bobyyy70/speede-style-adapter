@@ -9,6 +9,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { format, subDays } from "date-fns";
 import { DashboardAIAssistant } from "@/components/DashboardAIAssistant";
 import { useAuth } from "@/hooks/useAuth";
+import { ORDER_STATUSES } from "@/lib/orderStatuses";
 const Index = () => {
   const { user, userRole, getViewingClientId } = useAuth();
   const [stats, setStats] = useState({
@@ -46,8 +47,8 @@ const Index = () => {
       }
       const { data: commandes } = await commandesQuery;
 
-      const enPreparation = commandes?.filter(c => c.statut_wms === "En préparation").length || 0;
-      const expediees = commandes?.filter(c => c.statut_wms === "Expédiée").length || 0;
+      const enPreparation = commandes?.filter(c => c.statut_wms === ORDER_STATUSES.EN_PREPARATION).length || 0;
+      const expediees = commandes?.filter(c => c.statut_wms === ORDER_STATUSES.EXPEDIE).length || 0;
       const {
         count: retoursCount
       } = await supabase.from("retour_produit").select("*", {
@@ -136,7 +137,7 @@ const Index = () => {
         const dateStr = format(new Date(cmd.date_creation), "dd/MM");
         if (groupedData[dateStr]) {
           groupedData[dateStr].commandes++;
-          if (cmd.statut_wms === "Expédiée") {
+          if (cmd.statut_wms === ORDER_STATUSES.EXPEDIE) {
             groupedData[dateStr].expeditions++;
           }
         }

@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { DocumentsSection } from "./expedition/DocumentsSection";
 import { ServicesSection } from "./expedition/ServicesSection";
 import { HistoireTimeline } from "./expedition/HistoireTimeline";
+import { ORDER_STATUSES } from "@/lib/orderStatuses";
 
 interface CommandeDetailDialogProps {
   commandeId: string;
@@ -110,7 +111,7 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
     try {
       const { error } = await supabase
         .from("commande")
-        .update({ statut_wms: "En préparation" })
+        .update({ statut_wms: ORDER_STATUSES.EN_PREPARATION })
         .eq("id", commandeId);
       
       if (error) throw error;
@@ -120,8 +121,8 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
     }
   };
 
-  const canStartPreparation = commande?.statut_wms === "Prêt à préparer";
-  const canCreateShipment = commande?.statut_wms === "prete";
+  const canStartPreparation = commande?.statut_wms === ORDER_STATUSES.STOCK_RESERVE;
+  const canCreateShipment = commande?.statut_wms === ORDER_STATUSES.PRET_EXPEDITION;
 
   const tagsArray = Array.isArray(commande?.tags) ? commande.tags : [];
 
@@ -483,7 +484,7 @@ export const CommandeDetailDialog = ({ commandeId, open, onOpenChange, onSuccess
                 Ajouter un commentaire
               </Button>
             </div>
-            {commande && (commande.statut_wms === 'Expédié' || commande.statut_wms === 'Livré') && !existingRetour && (
+            {commande && (commande.statut_wms === ORDER_STATUSES.EXPEDIE || commande.statut_wms === ORDER_STATUSES.LIVRE) && !existingRetour && (
               <Button variant="outline" onClick={() => { navigate(`${userRole === 'client' ? '/client/creer-retour' : '/retours/creer'}?commande_id=${commandeId}`); onOpenChange(false); }}>
                 <RotateCcw className="h-4 w-4 mr-2" />Créer retour
               </Button>

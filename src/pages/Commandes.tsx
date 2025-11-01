@@ -51,7 +51,6 @@ export default function Commandes() {
       let query = supabase
         .from("commande")
         .select("*")
-        .neq("statut_wms", "Archivé")
         .order("date_creation", { ascending: false });
 
       const viewingClientId = getViewingClientId();

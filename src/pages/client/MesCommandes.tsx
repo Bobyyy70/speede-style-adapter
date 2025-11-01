@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { CommandesKanban } from "@/components/CommandesKanban";
 import { ViewSelector } from "@/components/ViewSelector";
 import { CommandeDetailDialog } from "@/components/CommandeDetailDialog";
+import { ORDER_STATUSES, ORDER_STATUS_LABELS } from "@/lib/orderStatuses";
 
 interface Commande {
   id: string;
@@ -82,9 +83,9 @@ export default function MesCommandes() {
       setCommandes(data || []);
       setStats({
         total: data?.length || 0,
-        enAttente: data?.filter(c => c.statut_wms === "En attente de réappro").length || 0,
-        prete: data?.filter(c => c.statut_wms === "prete").length || 0,
-        enPreparation: data?.filter(c => c.statut_wms === "En préparation").length || 0
+        enAttente: data?.filter(c => c.statut_wms === ORDER_STATUSES.EN_ATTENTE_REAPPRO).length || 0,
+        prete: data?.filter(c => c.statut_wms === ORDER_STATUSES.PRET_EXPEDITION).length || 0,
+        enPreparation: data?.filter(c => c.statut_wms === ORDER_STATUSES.EN_PREPARATION).length || 0
       });
     } catch (error: any) {
       console.error("Erreur:", error);
@@ -95,17 +96,16 @@ export default function MesCommandes() {
   };
 
   const getStatutBadge = (statut: string) => {
-    const variants: Record<string, { variant: any; label: string }> = {
-      "En attente de réappro": { variant: "secondary", label: "En attente" },
-      "Prêt à préparer": { variant: "default", label: "Prête" },
-      "En préparation": { variant: "default", label: "En préparation" },
-      "prete": { variant: "default", label: "Prête" },
-      "expediee": { variant: "secondary", label: "Expédiée" },
-      "Expédiée": { variant: "secondary", label: "Expédiée" },
-      "Livré": { variant: "outline", label: "Livrée" }
+    const label = ORDER_STATUS_LABELS[statut as keyof typeof ORDER_STATUS_LABELS] || statut;
+    const variants: Record<string, any> = {
+      [ORDER_STATUSES.EN_ATTENTE_REAPPRO]: "secondary",
+      [ORDER_STATUSES.STOCK_RESERVE]: "default",
+      [ORDER_STATUSES.EN_PREPARATION]: "default",
+      [ORDER_STATUSES.PRET_EXPEDITION]: "default",
+      [ORDER_STATUSES.EXPEDIE]: "secondary",
+      [ORDER_STATUSES.LIVRE]: "outline"
     };
-    const config = variants[statut] || { variant: "outline", label: statut };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return <Badge variant={variants[statut] || "outline"}>{label}</Badge>;
   };
 
   return (

@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAutoRules } from "@/hooks/useAutoRules";
 import { useAuth } from "@/hooks/useAuth";
+import { ORDER_STATUSES, ORDER_STATUS_LABELS } from "@/lib/orderStatuses";
 interface Commande {
   id: string;
   numero_commande: string;
@@ -49,7 +50,7 @@ export default function Expedition() {
         clientId = profileData?.client_id || null;
       }
 
-      let query = supabase.from('commande').select('*').in('statut_wms', ['prete', 'expediee']).order('date_creation', {
+      let query = supabase.from('commande').select('*').in('statut_wms', [ORDER_STATUSES.PRET_EXPEDITION, ORDER_STATUSES.EXPEDIE]).order('date_creation', {
         ascending: false
       });
       

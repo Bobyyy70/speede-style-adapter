@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSessionDialog } from "./CreateSessionDialog";
 import { CommandeDetailDialog } from "./CommandeDetailDialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ORDER_STATUSES, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, FILTER_STATUSES } from "@/lib/orderStatuses";
+import { ORDER_STATUSES, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, FILTER_STATUSES, OrderStatus } from "@/lib/orderStatuses";
 
 interface Commande {
   id: string;
@@ -70,7 +70,7 @@ export function CommandesList({
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatut, setSelectedStatut] = useState(filter || "all");
+  const [selectedStatut, setSelectedStatut] = useState<string>(filter || "all");
   const [selectedSource, setSelectedSource] = useState("all");
   const [selectedCommandes, setSelectedCommandes] = useState<string[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -103,7 +103,6 @@ export function CommandesList({
           ville,
           pays_code
         `)
-        .neq("statut_wms", "Archivé")
         .order("date_creation", { ascending: false });
 
       if (clientFilter) {
@@ -123,9 +122,9 @@ export function CommandesList({
       }
 
       if (statusFilters && statusFilters.length > 0) {
-        query = query.in("statut_wms", statusFilters);
+        query = query.in("statut_wms", statusFilters as any);
       } else if (selectedStatut !== "all") {
-        query = query.eq("statut_wms", selectedStatut);
+        query = query.eq("statut_wms", selectedStatut as any);
       }
 
       if (selectedSource !== "all") {

@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Plus, Trash2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { ORDER_STATUSES } from "@/lib/orderStatuses";
 
 interface LigneCommande {
   produit_id: string;
@@ -358,7 +359,7 @@ const CreerCommande = () => {
           client_id: clientId,
           numero_commande: `CMD-${Date.now()}`,
           source: "manuel",
-          statut_wms: "En attente de réappro",
+          statut_wms: ORDER_STATUSES.EN_ATTENTE_REAPPRO,
           valeur_totale: valeurTotale,
           poids_total: poidsTotal,
           label_pregenere: !!labelUrl && !!trackingNumber,
