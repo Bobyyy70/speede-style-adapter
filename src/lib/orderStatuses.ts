@@ -100,3 +100,27 @@ export const FILTER_STATUSES = [
     label
   }))
 ];
+
+// Fonction helper pour obtenir la variante de Badge selon le statut
+export const getStatutBadgeVariant = (statut: OrderStatus): "default" | "secondary" | "destructive" | "outline" => {
+  switch (statut) {
+    case ORDER_STATUSES.EN_ATTENTE_REAPPRO:
+      return "outline";
+    case ORDER_STATUSES.STOCK_RESERVE:
+      return "secondary";
+    case ORDER_STATUSES.EN_PICKING:
+    case ORDER_STATUSES.PICKING_TERMINE:
+    case ORDER_STATUSES.EN_PREPARATION:
+      return "default";
+    case ORDER_STATUSES.PRET_EXPEDITION:
+    case ORDER_STATUSES.ETIQUETTE_GENEREE:
+    case ORDER_STATUSES.EXPEDIE:
+    case ORDER_STATUSES.LIVRE:
+      return "default";
+    case ORDER_STATUSES.ANNULE:
+    case ORDER_STATUSES.ERREUR:
+      return "destructive";
+    default:
+      return "secondary";
+  }
+};
