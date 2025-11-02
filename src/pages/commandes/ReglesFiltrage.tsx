@@ -208,7 +208,7 @@ export default function ReglesFiltrage() {
                         <Badge variant="outline">{regle.type_session}</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {regle.conditions?.length || 0} condition(s)
+                        {Array.isArray(regle.conditions) ? regle.conditions.length : 0} condition(s)
                       </TableCell>
                       <TableCell>{regle.priorite}</TableCell>
                       <TableCell>

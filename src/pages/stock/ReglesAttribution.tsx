@@ -209,7 +209,7 @@ export default function ReglesAttribution() {
                         <Badge variant="secondary">{regle.type_emplacement_cible}</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {regle.conditions?.length || 0} condition(s)
+                        {Array.isArray(regle.conditions) ? regle.conditions.length : 0} condition(s)
                       </TableCell>
                       <TableCell>{regle.priorite}</TableCell>
                       <TableCell>

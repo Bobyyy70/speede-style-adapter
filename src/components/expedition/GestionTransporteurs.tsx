@@ -183,13 +183,19 @@ export function GestionTransporteurs() {
                   <ConditionBuilder
                     conditions={conditions}
                     onChange={setConditions}
-                    availableFields={[
-                      { value: "pays_code", label: "Pays" },
-                      { value: "zone_livraison", label: "Zone" },
-                      { value: "poids_total", label: "Poids total (kg)" },
-                      { value: "valeur_totale", label: "Valeur (€)" },
-                      { value: "source", label: "Source commande" },
-                      { value: "nom_client", label: "Client" }
+                    availableRelations={[
+                      {
+                        value: "commande",
+                        label: "Commande",
+                        fields: [
+                          { value: "pays_code", label: "Pays", type: "text" },
+                          { value: "zone_livraison", label: "Zone", type: "text" },
+                          { value: "poids_total", label: "Poids total (kg)", type: "number" },
+                          { value: "valeur_totale", label: "Valeur (€)", type: "number" },
+                          { value: "source", label: "Source commande", type: "text" },
+                          { value: "nom_client", label: "Client", type: "text" }
+                        ]
+                      }
                     ]}
                   />
 

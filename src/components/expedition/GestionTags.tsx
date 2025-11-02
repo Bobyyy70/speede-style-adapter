@@ -186,15 +186,21 @@ export function GestionTags() {
                   <ConditionBuilder
                     conditions={conditions}
                     onChange={setConditions}
-                    availableFields={[
-                      { value: "source", label: "Source commande" },
-                      { value: "methode_expedition", label: "Méthode expédition" },
-                      { value: "transporteur", label: "Transporteur" },
-                      { value: "pays_code", label: "Pays" },
-                      { value: "zone_livraison", label: "Zone" },
-                      { value: "valeur_totale", label: "Valeur (€)" },
-                      { value: "poids_total", label: "Poids (kg)" },
-                      { value: "nom_client", label: "Client" }
+                    availableRelations={[
+                      {
+                        value: "commande",
+                        label: "Commande",
+                        fields: [
+                          { value: "source", label: "Source", type: "text" },
+                          { value: "methode_expedition", label: "Méthode expédition", type: "text" },
+                          { value: "transporteur", label: "Transporteur", type: "text" },
+                          { value: "pays_code", label: "Pays", type: "text" },
+                          { value: "zone_livraison", label: "Zone", type: "text" },
+                          { value: "valeur_totale", label: "Valeur (€)", type: "number" },
+                          { value: "poids_total", label: "Poids (kg)", type: "number" },
+                          { value: "nom_client", label: "Client", type: "text" }
+                        ]
+                      }
                     ]}
                   />
                   <Button onClick={handleAddRegle} className="w-full">

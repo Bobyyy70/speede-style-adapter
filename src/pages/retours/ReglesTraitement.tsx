@@ -205,7 +205,7 @@ export default function ReglesTraitement() {
                     <TableRow key={regle.id}>
                       <TableCell className="font-medium">{regle.nom_regle}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {regle.actions_automatiques?.length || 0} action(s)
+                        {Array.isArray(regle.actions_automatiques) ? regle.actions_automatiques.length : 0} action(s)
                       </TableCell>
                       <TableCell>
                         {regle.validation_manuelle_requise ? (
