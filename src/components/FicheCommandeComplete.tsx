@@ -20,7 +20,9 @@ import {
   ExternalLink,
   Globe,
   Tag,
+  Barcode as BarcodeIcon,
 } from "lucide-react";
+import Barcode from 'react-barcode';
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ORDER_STATUS_LABELS, getStatutBadgeVariant } from "@/lib/orderStatuses";
@@ -67,6 +69,7 @@ export function FicheCommandeComplete({
               </div>
             </div>
             <div className="flex flex-col items-end gap-2">
+              <Barcode value={commande.numero_commande} height={40} width={1.2} displayValue={false} />
               <Badge variant={getStatutBadgeVariant(commande.statut_wms)} className="text-base px-3 py-1">
                 {ORDER_STATUS_LABELS[commande.statut_wms] || commande.statut_wms}
               </Badge>
@@ -258,28 +261,7 @@ export function FicheCommandeComplete({
         </Card>
       </div>
 
-      {/* ADRESSE DE FACTURATION (si différente) */}
-      {commande.facturation_nom && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-purple-600" />
-              Adresse de facturation
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              <div className="font-semibold">{commande.facturation_nom}</div>
-              <div>{commande.facturation_ligne_1}</div>
-              {commande.facturation_ligne_2 && <div>{commande.facturation_ligne_2}</div>}
-              <div className="font-medium">
-                {commande.facturation_code_postal} {commande.facturation_ville}
-              </div>
-              <div className="font-semibold">{commande.facturation_pays_code}</div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Adresse de facturation supprimée - facturation transport toujours sous Speed E-Log */}
 
       {/* TRANSPORT & TRACKING */}
       <Card>
@@ -294,12 +276,12 @@ export function FicheCommandeComplete({
             <div>
               <div className="text-sm text-muted-foreground mb-1">Transporteur</div>
               <div className="font-semibold">
-                {commande.transporteur_choisi || commande.transporteur || "Non assigné"}
+                {commande.transporteur || "Non assigné"}
               </div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground mb-1">Méthode</div>
-              <div className="font-semibold">{commande.methode_expedition || "-"}</div>
+              <div className="text-sm text-muted-foreground mb-1">Service Transport</div>
+              <div className="font-semibold">{commande.service_transport || commande.methode_expedition || "-"}</div>
             </div>
             <div>
               <div className="text-sm text-muted-foreground mb-1">Poids réel</div>

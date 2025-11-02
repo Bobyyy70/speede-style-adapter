@@ -13,11 +13,17 @@ export const ORDER_STATUSES = {
   // États d'expédition
   ETIQUETTE_GENEREE: 'etiquette_generee',
   EXPEDIE: 'expedie',
+  EN_TRANSIT: 'en_transit',
+  EN_LIVRAISON: 'en_livraison',
   
   // États finaux
   LIVRE: 'livre',
   ANNULE: 'annule',
-  ERREUR: 'erreur'
+  ERREUR: 'erreur',
+  
+  // États incidents
+  INCIDENT_LIVRAISON: 'incident_livraison',
+  RETOUR_EXPEDITEUR: 'retour_expediteur'
 } as const;
 
 export type OrderStatus = typeof ORDER_STATUSES[keyof typeof ORDER_STATUSES];
@@ -32,9 +38,13 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   [ORDER_STATUSES.PRET_EXPEDITION]: 'Prêt à expédier',
   [ORDER_STATUSES.ETIQUETTE_GENEREE]: 'Étiquette générée',
   [ORDER_STATUSES.EXPEDIE]: 'Expédié',
+  [ORDER_STATUSES.EN_TRANSIT]: 'En transit',
+  [ORDER_STATUSES.EN_LIVRAISON]: 'En livraison',
   [ORDER_STATUSES.LIVRE]: 'Livré',
   [ORDER_STATUSES.ANNULE]: 'Annulé',
-  [ORDER_STATUSES.ERREUR]: 'Erreur'
+  [ORDER_STATUSES.ERREUR]: 'Erreur',
+  [ORDER_STATUSES.INCIDENT_LIVRAISON]: 'Incident livraison',
+  [ORDER_STATUSES.RETOUR_EXPEDITEUR]: 'Retour expéditeur'
 };
 
 // Couleurs pour l'affichage
@@ -47,9 +57,13 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   [ORDER_STATUSES.PRET_EXPEDITION]: 'text-cyan-600',
   [ORDER_STATUSES.ETIQUETTE_GENEREE]: 'text-teal-600',
   [ORDER_STATUSES.EXPEDIE]: 'text-green-600',
+  [ORDER_STATUSES.EN_TRANSIT]: 'text-lime-600',
+  [ORDER_STATUSES.EN_LIVRAISON]: 'text-emerald-500',
   [ORDER_STATUSES.LIVRE]: 'text-emerald-600',
   [ORDER_STATUSES.ANNULE]: 'text-red-600',
-  [ORDER_STATUSES.ERREUR]: 'text-destructive'
+  [ORDER_STATUSES.ERREUR]: 'text-destructive',
+  [ORDER_STATUSES.INCIDENT_LIVRAISON]: 'text-rose-600',
+  [ORDER_STATUSES.RETOUR_EXPEDITEUR]: 'text-amber-600'
 };
 
 // Colonnes Kanban
@@ -115,8 +129,13 @@ export const getStatutBadgeVariant = (statut: OrderStatus): "default" | "seconda
     case ORDER_STATUSES.PRET_EXPEDITION:
     case ORDER_STATUSES.ETIQUETTE_GENEREE:
     case ORDER_STATUSES.EXPEDIE:
+    case ORDER_STATUSES.EN_TRANSIT:
+    case ORDER_STATUSES.EN_LIVRAISON:
     case ORDER_STATUSES.LIVRE:
       return "default";
+    case ORDER_STATUSES.INCIDENT_LIVRAISON:
+    case ORDER_STATUSES.RETOUR_EXPEDITEUR:
+      return "outline";
     case ORDER_STATUSES.ANNULE:
     case ORDER_STATUSES.ERREUR:
       return "destructive";

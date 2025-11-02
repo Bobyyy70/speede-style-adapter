@@ -72,16 +72,31 @@ serve(async (req) => {
 
         const parcel = parcelData.parcels[0];
 
-        // Mapper le statut SendCloud vers statut WMS
-        let statutWms = 'En attente de réappro';
+        // Mapper le statut SendCloud vers statut WMS (nouveaux statuts ajoutés)
+        let statutWms = 'en_attente_reappro';
         if (parcel.status) {
           const statusId = parcel.status.id;
-          if (statusId >= 1000 && statusId < 2000) {
-            statutWms = 'En préparation';
+          const statusMessage = parcel.status.message?.toLowerCase() || '';
+          
+          // Mapping précis des statuts SendCloud
+          if (statusId >= 1 && statusId < 1000) {
+            // Announced, Ready to send
+            statutWms = 'pret_expedition';
+          } else if (statusId >= 1000 && statusId < 1100) {
+            // Being processed, Sorted
+            statutWms = 'en_transit';
+          } else if (statusId >= 1100 && statusId < 2000) {
+            // En route to recipient
+            statutWms = 'en_livraison';
           } else if (statusId >= 2000 && statusId < 3000) {
-            statutWms = 'En cours de livraison';
-          } else if (statusId >= 3000) {
-            statutWms = 'Livré';
+            // Delivered, at pickup point
+            statutWms = 'livre';
+          } else if (statusId >= 3000 && statusId < 4000) {
+            // Exception (lost, damaged)
+            statutWms = 'incident_livraison';
+          } else if (statusId >= 4000) {
+            // Returned to sender
+            statutWms = 'retour_expediteur';
           }
         }
 
@@ -90,11 +105,14 @@ serve(async (req) => {
           .from('commande')
           .update({
             transporteur: parcel.carrier?.name || null,
+            service_transport: parcel.shipment_method_name || parcel.shipping_method?.name || null,
             methode_expedition: parcel.shipping_method?.name || null,
             tracking_number: parcel.tracking_number || null,
             tracking_url: parcel.tracking_url || null,
             label_url: parcel.label?.label_printer || null,
             sendcloud_shipment_id: parcel.id?.toString() || null,
+            poids_reel_kg: parcel.weight || null,
+            poids_volumetrique_kg: parcel.order_weight || null,
             statut_wms: statutWms,
           })
           .eq('id', commande.id);
