@@ -273,6 +273,14 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Configuration Expéditeur",
         href: "/parametres/expediteur",
         icon: Settings
+      }, {
+        name: "Règles Expéditeur",
+        href: "/parametres/regles-expediteur",
+        icon: Settings
+      }, {
+        name: "Mon Dashboard",
+        href: "/parametres/mon-dashboard",
+        icon: LayoutDashboard
       }]
     }];
   }

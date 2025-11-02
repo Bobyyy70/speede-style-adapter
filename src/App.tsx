@@ -43,6 +43,8 @@ import ClientAttenduReception from "./pages/client/AttenduReception";
 import ClientCreerCommande from "./pages/client/CreerCommande";
 import AdminBootstrap from "./pages/AdminBootstrap";
 import ServiceClient from "./pages/ServiceClient";
+import ReglesExpediteur from "./pages/ReglesExpediteur";
+import MonDashboard from "./pages/MonDashboard";
 
 const queryClient = new QueryClient();
 
@@ -255,6 +257,38 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <SendCloudSync />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parametres/expediteur"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ConfigurationExpediteur />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parametres/regles-expediteur"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ReglesExpediteur />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parametres/mon-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'operateur', 'client']}>
+                  <MonDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/administratif/services"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ServicesLogistiques />
                 </ProtectedRoute>
               }
             />

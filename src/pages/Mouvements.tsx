@@ -137,63 +137,82 @@ const Mouvements = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>N° Mouvement</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Produit</TableHead>
-                      <TableHead>Référence</TableHead>
-                      <TableHead className="text-right">Quantité</TableHead>
-                      <TableHead>Raison</TableHead>
-                      <TableHead>Utilisateur</TableHead>
-                      <TableHead>Empl. Source</TableHead>
-                      <TableHead>Empl. Destination</TableHead>
-                      <TableHead>Remarques</TableHead>
+                      <TableHead className="w-[130px]">Date</TableHead>
+                      <TableHead className="w-[60px]">Sens</TableHead>
+                      <TableHead className="w-[120px]">Type</TableHead>
+                      <TableHead className="w-[200px]">Produit</TableHead>
+                      <TableHead className="w-[100px]">Référence</TableHead>
+                      <TableHead className="text-right w-[80px]">Qté</TableHead>
+                      <TableHead className="text-right w-[100px]">Stock Après</TableHead>
+                      <TableHead className="w-[150px]">Utilisateur</TableHead>
+                      <TableHead className="w-[120px]">Raison</TableHead>
+                      <TableHead className="w-[100px]">Empl. Source</TableHead>
+                      <TableHead className="w-[100px]">Empl. Dest</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredMouvements.map((mouvement: any) => (
-                      <TableRow key={mouvement.id}>
-                        <TableCell className="text-sm whitespace-nowrap">
-                          {format(new Date(mouvement.date_mouvement), "dd/MM/yyyy HH:mm", { locale: fr })}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">{mouvement.numero_mouvement}</TableCell>
-                        <TableCell>
-                          <Badge variant={
-                            mouvement.type_mouvement === "entrée" ? "default" :
-                            mouvement.type_mouvement === "sortie" ? "destructive" :
-                            "secondary"
-                          }>
-                            {mouvement.type_mouvement}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate">{mouvement.produit?.nom || "-"}</TableCell>
-                        <TableCell className="font-mono text-sm">{mouvement.produit?.reference || "-"}</TableCell>
-                        <TableCell className="text-right font-medium">
-                          <span className={mouvement.quantite > 0 ? "text-green-600" : "text-red-600"}>
-                            {mouvement.quantite > 0 ? "+" : ""}{mouvement.quantite}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {mouvement.raison ? (
-                            <Badge variant="outline">{mouvement.raison}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm max-w-[150px] truncate">
-                          {mouvement.utilisateur?.nom_complet || mouvement.utilisateur?.email || "-"}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {mouvement.emplacement_source?.code_emplacement || "-"}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {mouvement.emplacement_destination?.code_emplacement || "-"}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                          {mouvement.remarques || "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredMouvements.map((mouvement: any) => {
+                      const isEntree = mouvement.type_mouvement === "entrée";
+                      const isSortie = mouvement.type_mouvement === "sortie";
+                      const isTransfert = mouvement.type_mouvement === "transfert";
+                      
+                      return (
+                        <TableRow key={mouvement.id}>
+                          <TableCell className="text-sm whitespace-nowrap">
+                            {format(new Date(mouvement.date_mouvement), "dd/MM/yy HH:mm", { locale: fr })}
+                          </TableCell>
+                          <TableCell>
+                            {isEntree && (
+                              <Badge variant="default" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100">
+                                ↗️ In
+                              </Badge>
+                            )}
+                            {isSortie && (
+                              <Badge variant="destructive" className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100">
+                                ↘️ Out
+                              </Badge>
+                            )}
+                            {isTransfert && (
+                              <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100">
+                                ↔️ Mvt
+                              </Badge>
+                            )}
+                            {!isEntree && !isSortie && !isTransfert && (
+                              <Badge variant="outline">{mouvement.type_mouvement}</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-xs font-medium">{mouvement.type_mouvement}</span>
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate text-sm">{mouvement.produit?.nom || "-"}</TableCell>
+                          <TableCell className="font-mono text-xs">{mouvement.produit?.reference || "-"}</TableCell>
+                          <TableCell className="text-right font-bold">
+                            <span className={mouvement.quantite > 0 ? "text-green-600" : "text-red-600"}>
+                              {mouvement.quantite > 0 ? "+" : ""}{mouvement.quantite}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-primary">
+                            {mouvement.stock_apres_mouvement !== null ? mouvement.stock_apres_mouvement : "-"}
+                          </TableCell>
+                          <TableCell className="text-xs max-w-[150px] truncate">
+                            {mouvement.utilisateur?.nom_complet || mouvement.utilisateur?.email || "Système"}
+                          </TableCell>
+                          <TableCell>
+                            {mouvement.raison ? (
+                              <Badge variant="outline" className="text-xs">{mouvement.raison}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {mouvement.emplacement_source?.code_emplacement || "-"}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {mouvement.emplacement_destination?.code_emplacement || "-"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

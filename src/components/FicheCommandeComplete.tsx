@@ -263,37 +263,38 @@ export function FicheCommandeComplete({
 
       {/* Adresse de facturation supprimée - facturation transport toujours sous Speed E-Log */}
 
-      {/* TRANSPORT & TRACKING */}
+      {/* TRANSPORT & TRACKING - Version Compacte */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Truck className="h-5 w-5 text-orange-600" />
-            Informations de transport
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Truck className="h-4 w-4" />
+            Transport
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <div className="text-sm text-muted-foreground mb-1">Transporteur</div>
-              <div className="font-semibold">
-                {commande.transporteur || "Non assigné"}
-              </div>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm bg-muted/30 p-3 rounded-lg">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Expéditeur:</span>
+              <span className="font-semibold">{commande.expediteur_entreprise || "-"}</span>
             </div>
-            <div>
-              <div className="text-sm text-muted-foreground mb-1">Service Transport</div>
-              <div className="font-semibold">{commande.service_transport || commande.methode_expedition || "-"}</div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Transporteur:</span>
+              <span className="font-semibold">{commande.transporteur || "-"}</span>
             </div>
-            <div>
-              <div className="text-sm text-muted-foreground mb-1">Poids réel</div>
-              <div className="font-semibold">
-                {commande.poids_reel_kg ? `${commande.poids_reel_kg} kg` : "-"}
-              </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Service:</span>
+              <Badge variant="outline" className="text-xs">{commande.service_transport || commande.methode_expedition || "-"}</Badge>
             </div>
-            <div>
-              <div className="text-sm text-muted-foreground mb-1">Poids volumétrique</div>
-              <div className="font-semibold">
-                {commande.poids_volumetrique_kg ? `${commande.poids_volumetrique_kg} kg` : "-"}
-              </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Poids réel:</span>
+              <span className="font-semibold">{commande.poids_reel_kg ? `${commande.poids_reel_kg} kg` : "-"}</span>
+            </div>
+            <div className="flex justify-between col-span-2">
+              <span className="text-muted-foreground">Poids volumétrique:</span>
+              <span className="font-semibold text-orange-600">{commande.poids_volumetrique_kg ? `${commande.poids_volumetrique_kg} kg (taxé)` : "-"}</span>
+            </div>
+            <div className="col-span-2 flex justify-center pt-2 border-t border-border/50">
+              <Barcode value={commande.numero_commande} height={35} width={1.3} fontSize={10} />
             </div>
           </div>
 

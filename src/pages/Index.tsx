@@ -16,6 +16,9 @@ const Index = () => {
     commandesEnPreparation: 0,
     commandesExpediees: 0,
     retoursEnCours: 0,
+    retoursEnVue: 0,
+    reapprosEnAttente: 0,
+    sessionsActives: 0,
     receptionsAttendues: 0,
     tauxLivraisonHeure: 0,
     tauxErreurs: 0,
@@ -82,10 +85,30 @@ const Index = () => {
       }
       const { data: produits } = await produitsQuery;
       const produitsAvecAlerte = produits?.filter(p => (p.stock_actuel || 0) < (p.stock_minimum || 0)).length || 0;
+
+      // Nouveaux KPIs: Retours en vue, Réappros, Sessions
+      let retoursEnVueQuery = supabase.from("retour_produit").select("*", { count: "exact", head: true }).in("statut_retour", ["recu", "en_inspection"]);
+      if (clientId) {
+        retoursEnVueQuery = retoursEnVueQuery.eq("client_id", clientId);
+      }
+      const { count: retoursEnVueCount } = await retoursEnVueQuery;
+
+      // Réappros en attente (à implémenter quand table réappro existe)
+      const reapprosEnAttente = 0; // TODO: query table reappro_en_30 statut != 'terminé'
+
+      // Sessions actives
+      const { count: sessionsActivesCount } = await supabase
+        .from("session_preparation")
+        .select("*", { count: "exact", head: true })
+        .eq("statut", "active");
+
       setStats({
         commandesEnPreparation: enPreparation,
         commandesExpediees: expediees,
         retoursEnCours: retoursCountValue || 0,
+        retoursEnVue: retoursEnVueCount || 0,
+        reapprosEnAttente,
+        sessionsActives: sessionsActivesCount || 0,
         receptionsAttendues: 0,
         tauxLivraisonHeure: tauxLivraison,
         tauxErreurs: tauxErreurs,
@@ -155,14 +178,14 @@ const Index = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard title="En Préparation" value={stats.commandesEnPreparation} icon={Package} variant="accent" />
           <StatCard title="Expédiées" value={stats.commandesExpediees} icon={TruckIcon} variant="success" />
-          <StatCard title="Retours en Cours" value={stats.retoursEnCours} icon={Package} variant="default" />
-          <StatCard title="Réceptions Attendues" value={stats.receptionsAttendues} icon={Clock} variant="primary" />
+          <StatCard title="Retours en Vue" value={stats.retoursEnVue} icon={PackageCheck} variant="default" />
+          <StatCard title="Sessions Actives" value={stats.sessionsActives} icon={Clock} variant="primary" />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Taux Livraison à l'Heure" value={`${stats.tauxLivraisonHeure}%`} icon={TrendingUp} variant="success" />
-          <StatCard title="Taux Erreurs Préparation" value={`${stats.tauxErreurs}%`} icon={XCircle} variant="default" />
+          <StatCard title="Réappros en Attente" value={stats.reapprosEnAttente} icon={TrendingUp} variant="default" />
           <StatCard title="Alertes Stock" value={stats.alertesStock} icon={AlertTriangle} variant="default" />
+          <StatCard title="Taux Livraison" value={`${stats.tauxLivraisonHeure}%`} icon={PackageCheck} variant="success" />
           <StatCard title="Délai Moyen Prépa (h)" value={stats.delaiMoyenPreparation} icon={Clock} variant="primary" />
         </div>
 

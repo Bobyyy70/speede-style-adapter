@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.chatbot-service-client]
 verify_jwt = true
+
+[functions.apply-expediteur-rules]
+verify_jwt = true

@@ -877,6 +877,95 @@ export type Database = {
           },
         ]
       }
+      dashboard_widget_config: {
+        Row: {
+          date_creation: string | null
+          height: number | null
+          id: string
+          position_x: number
+          position_y: number
+          user_id: string
+          visible: boolean | null
+          widget_config: Json
+          widget_library_id: string | null
+          widget_type: string
+          width: number | null
+        }
+        Insert: {
+          date_creation?: string | null
+          height?: number | null
+          id?: string
+          position_x?: number
+          position_y?: number
+          user_id: string
+          visible?: boolean | null
+          widget_config: Json
+          widget_library_id?: string | null
+          widget_type: string
+          width?: number | null
+        }
+        Update: {
+          date_creation?: string | null
+          height?: number | null
+          id?: string
+          position_x?: number
+          position_y?: number
+          user_id?: string
+          visible?: boolean | null
+          widget_config?: Json
+          widget_library_id?: string | null
+          widget_type?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_widget_config_widget_library_id_fkey"
+            columns: ["widget_library_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_widget_library"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_widget_library: {
+        Row: {
+          actif: boolean | null
+          categorie: string | null
+          date_ajout: string | null
+          default_config: Json
+          description: string | null
+          id: string
+          nom: string
+          preview_image: string | null
+          version: number | null
+          widget_type: string
+        }
+        Insert: {
+          actif?: boolean | null
+          categorie?: string | null
+          date_ajout?: string | null
+          default_config: Json
+          description?: string | null
+          id?: string
+          nom: string
+          preview_image?: string | null
+          version?: number | null
+          widget_type: string
+        }
+        Update: {
+          actif?: boolean | null
+          categorie?: string | null
+          date_ajout?: string | null
+          default_config?: Json
+          description?: string | null
+          id?: string
+          nom?: string
+          preview_image?: string | null
+          version?: number | null
+          widget_type?: string
+        }
+        Relationships: []
+      }
       document_commande: {
         Row: {
           categorie: string
@@ -1437,6 +1526,7 @@ export type Database = {
           reference_origine: string | null
           remarques: string | null
           statut_mouvement: string | null
+          stock_apres_mouvement: number | null
           type_contenant: string | null
           type_mouvement: string
           type_origine: string | null
@@ -1455,6 +1545,7 @@ export type Database = {
           reference_origine?: string | null
           remarques?: string | null
           statut_mouvement?: string | null
+          stock_apres_mouvement?: number | null
           type_contenant?: string | null
           type_mouvement: string
           type_origine?: string | null
@@ -1473,6 +1564,7 @@ export type Database = {
           reference_origine?: string | null
           remarques?: string | null
           statut_mouvement?: string | null
+          stock_apres_mouvement?: number | null
           type_contenant?: string | null
           type_mouvement?: string
           type_origine?: string | null
@@ -1842,6 +1934,67 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      regle_expediteur_automatique: {
+        Row: {
+          actif: boolean | null
+          client_id: string
+          condition_type: string
+          condition_value: string
+          configuration_expediteur_id: string
+          date_creation: string | null
+          date_modification: string | null
+          id: string
+          nom_regle: string
+          priorite: number | null
+        }
+        Insert: {
+          actif?: boolean | null
+          client_id: string
+          condition_type: string
+          condition_value: string
+          configuration_expediteur_id: string
+          date_creation?: string | null
+          date_modification?: string | null
+          id?: string
+          nom_regle: string
+          priorite?: number | null
+        }
+        Update: {
+          actif?: boolean | null
+          client_id?: string
+          condition_type?: string
+          condition_value?: string
+          configuration_expediteur_id?: string
+          date_creation?: string | null
+          date_modification?: string | null
+          id?: string
+          nom_regle?: string
+          priorite?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regle_expediteur_automatique_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regle_expediteur_automatique_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "regle_expediteur_automatique_configuration_expediteur_id_fkey"
+            columns: ["configuration_expediteur_id"]
+            isOneToOne: false
+            referencedRelation: "configuration_expediteur"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       regle_tag_automatique: {
         Row: {
