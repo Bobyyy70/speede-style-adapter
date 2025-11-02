@@ -32,6 +32,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useStatutTransition } from "@/hooks/useStatutTransition";
 import { DocumentsSection } from "./expedition/DocumentsSection";
 import { HistoireTimeline } from "./expedition/HistoireTimeline";
 import { FicheCommandeComplete } from "./FicheCommandeComplete";
@@ -79,6 +80,9 @@ export const CommandeDetailDialog = ({
   const [statusChanging, setStatusChanging] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Import du hook de transition
+  const { transitionStatut, subscribeToStatutChanges } = useStatutTransition();
+
   // Fetch commande complète
   const { data: commande, refetch } = useQuery({
     queryKey: ["commande", commandeId],
@@ -94,6 +98,20 @@ export const CommandeDetailDialog = ({
     },
     enabled: open && !!commandeId,
   });
+
+  // Realtime subscription pour les mises à jour de statut
+  useEffect(() => {
+    if (!commandeId || !open) return;
+
+    const unsubscribe = subscribeToStatutChanges('commande', (payload) => {
+      if (payload.new.id === commandeId) {
+        console.log('[Realtime] Commande updated:', payload.new);
+        refetch();
+      }
+    });
+
+    return () => unsubscribe();
+  }, [commandeId, open]);
 
   // Fetch lignes de commande
   const { data: lignes } = useQuery({
@@ -197,32 +215,11 @@ export const CommandeDetailDialog = ({
   const handleChangeStatus = async (nouveauStatut: string) => {
     setStatusChanging(true);
     try {
-      const { data, error } = await supabase.rpc("transition_statut_commande", {
-        p_commande_id: commandeId,
-        p_nouveau_statut: nouveauStatut,
-        p_remarques: `Changement manuel de statut`,
-      });
-
-      if (error) throw error;
-
-      const result = data as any;
-      if (result && !result.success) {
-        throw new Error(result.error || "Transition refusée");
-      }
-
-      toast({
-        title: "Statut mis à jour",
-        description: `Commande passée à ${ORDER_STATUS_LABELS[nouveauStatut]}`,
-      });
-
+      await transitionStatut('commande', commandeId, nouveauStatut, 'Changement manuel de statut');
       refetch();
       onSuccess?.();
     } catch (error: any) {
-      toast({
-        title: "Erreur de transition",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Error already handled by useStatutTransition
     } finally {
       setStatusChanging(false);
     }

@@ -42,6 +42,7 @@ import ClientFacturation from "./pages/client/MaFacturation";
 import ClientAttenduReception from "./pages/client/AttenduReception";
 import ClientCreerCommande from "./pages/client/CreerCommande";
 import AdminBootstrap from "./pages/AdminBootstrap";
+import ServiceClient from "./pages/ServiceClient";
 
 const queryClient = new QueryClient();
 
@@ -206,6 +207,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur']}>
                   <Expedition />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/service-client"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ServiceClient />
                 </ProtectedRoute>
               }
             />

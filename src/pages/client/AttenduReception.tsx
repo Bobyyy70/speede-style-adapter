@@ -11,9 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useStatutTransition } from "@/hooks/useStatutTransition";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Package, TruckIcon, CheckCircle, AlertCircle, Plus, Eye, X } from "lucide-react";
+import { AttenduDetailDialog } from "@/components/AttenduDetailDialog";
+import { Package, TruckIcon, CheckCircle, AlertCircle, Plus, Eye, X, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -30,6 +32,7 @@ interface AttenduReception {
 const AttenduReception = () => {
   const { user, getViewingClientId } = useAuth();
   const { toast } = useToast();
+  const { subscribeToStatutChanges } = useStatutTransition();
   const [searchParams] = useSearchParams();
   const [attendus, setAttendus] = useState<AttenduReception[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +40,6 @@ const AttenduReception = () => {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedAttendu, setSelectedAttendu] = useState<string | null>(null);
 
-  // Formulaire nouveau attendu
   const [formData, setFormData] = useState({
     fournisseur: "",
     date_reception_prevue: "",
@@ -97,6 +99,16 @@ const AttenduReception = () => {
     }
   }, [user, searchParams]);
 
+  // Realtime subscription
+  useEffect(() => {
+    const unsubscribe = subscribeToStatutChanges('attendu', () => {
+      console.log('[Realtime] Attendu updated, refreshing list');
+      fetchAttendus();
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const fetchAttendus = async () => {
     try {
       setLoading(true);
@@ -104,12 +116,10 @@ const AttenduReception = () => {
       const asClient = searchParams.get("asClient");
       let clientId = asClient;
 
-      // Fallback to viewing client ID from localStorage
       if (!clientId) {
         clientId = getViewingClientId();
       }
 
-      // Final fallback to profile client_id
       if (!clientId) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -128,7 +138,6 @@ const AttenduReception = () => {
         return;
       }
 
-      // 🔥 Charger les produits du client pour le dropdown
       const { data: produitsData } = await supabase
         .from('produit')
         .select('id, reference, nom, stock_actuel')
@@ -175,12 +184,10 @@ const AttenduReception = () => {
       const asClient = searchParams.get("asClient");
       let clientId = asClient;
 
-      // Fallback to viewing client ID from localStorage
       if (!clientId) {
         clientId = getViewingClientId();
       }
 
-      // Final fallback to profile client_id
       if (!clientId) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -199,7 +206,6 @@ const AttenduReception = () => {
         return;
       }
 
-      // 🔥 Créer l'attendu de réception
       const { data: newAttendu, error } = await supabase
         .from("attendu_reception")
         .insert([{
@@ -213,7 +219,6 @@ const AttenduReception = () => {
 
       if (error) throw error;
 
-      // 🔥 Créer les lignes d'attendu de réception
       if (newAttendu) {
         const { error: lignesError } = await supabase
           .from('ligne_attendu_reception')
@@ -350,7 +355,7 @@ const AttenduReception = () => {
                     Nouvel Attendu
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Créer un Attendu de Réception</DialogTitle>
                     <DialogDescription>
@@ -477,23 +482,23 @@ const AttenduReception = () => {
                                 <TableHead>Référence</TableHead>
                                 <TableHead>Produit</TableHead>
                                 <TableHead className="text-right">Quantité</TableHead>
-                                <TableHead className="w-12"></TableHead>
+                                <TableHead className="w-[50px]"></TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {lignesProduits.map((ligne, index) => (
-                                <TableRow key={index}>
+                              {lignesProduits.map((ligne, idx) => (
+                                <TableRow key={idx}>
                                   <TableCell className="font-mono text-sm">{ligne.produit_reference}</TableCell>
                                   <TableCell>{ligne.produit_nom}</TableCell>
-                                  <TableCell className="text-right font-semibold">{ligne.quantite_attendue}</TableCell>
+                                  <TableCell className="text-right">{ligne.quantite_attendue}</TableCell>
                                   <TableCell>
                                     <Button
                                       type="button"
                                       variant="ghost"
                                       size="icon"
-                                      onClick={() => retirerLigneProduit(index)}
+                                      onClick={() => retirerLigneProduit(idx)}
                                     >
-                                      <Eye className="h-4 w-4" />
+                                      <X className="h-4 w-4" />
                                     </Button>
                                   </TableCell>
                                 </TableRow>
@@ -504,12 +509,12 @@ const AttenduReception = () => {
                       )}
                     </div>
 
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 pt-4">
                       <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
                         Annuler
                       </Button>
-                      <Button type="submit" disabled={lignesProduits.length === 0}>
-                        Créer l'Attendu ({lignesProduits.length} produit(s))
+                      <Button type="submit">
+                        Créer l'attendu
                       </Button>
                     </div>
                   </form>
@@ -522,7 +527,7 @@ const AttenduReception = () => {
               <div className="text-center py-8">Chargement...</div>
             ) : attendus.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Aucun attendu de réception pour le moment
+                Aucun attendu de réception
               </div>
             ) : (
               <Table>
@@ -533,31 +538,32 @@ const AttenduReception = () => {
                     <TableHead>Date Prévue</TableHead>
                     <TableHead>Colis</TableHead>
                     <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {attendus.map((attendu) => (
                     <TableRow key={attendu.id}>
-                      <TableCell className="font-medium">{attendu.numero_attendu}</TableCell>
+                      <TableCell className="font-mono">{attendu.numero_attendu}</TableCell>
                       <TableCell>{attendu.fournisseur}</TableCell>
                       <TableCell>
                         {attendu.date_reception_prevue
-                          ? format(new Date(attendu.date_reception_prevue), "dd/MM/yyyy", { locale: fr })
+                          ? format(new Date(attendu.date_reception_prevue), "dd MMM yyyy", { locale: fr })
                           : "-"}
                       </TableCell>
                       <TableCell>{attendu.nombre_colis}</TableCell>
                       <TableCell>{getStatutBadge(attendu.statut)}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-right">
                         <Button
-                          variant="ghost"
                           size="sm"
+                          variant="ghost"
                           onClick={() => {
                             setSelectedAttendu(attendu.id);
                             setDetailDialogOpen(true);
                           }}
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-4 w-4 mr-2" />
+                          Voir
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -568,6 +574,12 @@ const AttenduReception = () => {
           </CardContent>
         </Card>
       </div>
+
+      <AttenduDetailDialog
+        attenduId={selectedAttendu}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+      />
     </DashboardLayout>
   );
 };

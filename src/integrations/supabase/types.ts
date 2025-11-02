@@ -92,6 +92,47 @@ export type Database = {
           },
         ]
       }
+      attendu_transition_log: {
+        Row: {
+          attendu_id: string
+          date_transition: string
+          id: string
+          metadata: Json | null
+          raison: string | null
+          statut_nouveau: string
+          statut_precedent: string
+          utilisateur_id: string | null
+        }
+        Insert: {
+          attendu_id: string
+          date_transition?: string
+          id?: string
+          metadata?: Json | null
+          raison?: string | null
+          statut_nouveau: string
+          statut_precedent: string
+          utilisateur_id?: string | null
+        }
+        Update: {
+          attendu_id?: string
+          date_transition?: string
+          id?: string
+          metadata?: Json | null
+          raison?: string | null
+          statut_nouveau?: string
+          statut_precedent?: string
+          utilisateur_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendu_transition_log_attendu_id_fkey"
+            columns: ["attendu_id"]
+            isOneToOne: false
+            referencedRelation: "attendu_reception"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -1961,6 +2002,47 @@ export type Database = {
           },
         ]
       }
+      retour_transition_log: {
+        Row: {
+          date_transition: string
+          id: string
+          metadata: Json | null
+          raison: string | null
+          retour_id: string
+          statut_nouveau: string
+          statut_precedent: string
+          utilisateur_id: string | null
+        }
+        Insert: {
+          date_transition?: string
+          id?: string
+          metadata?: Json | null
+          raison?: string | null
+          retour_id: string
+          statut_nouveau: string
+          statut_precedent: string
+          utilisateur_id?: string | null
+        }
+        Update: {
+          date_transition?: string
+          id?: string
+          metadata?: Json | null
+          raison?: string | null
+          retour_id?: string
+          statut_nouveau?: string
+          statut_precedent?: string
+          utilisateur_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retour_transition_log_retour_id_fkey"
+            columns: ["retour_id"]
+            isOneToOne: false
+            referencedRelation: "retour_produit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scan_picking: {
         Row: {
           code_barre: string
@@ -3168,6 +3250,16 @@ export type Database = {
         Returns: Json
       }
       supprimer_emplacements_zone: { Args: { p_zone?: string }; Returns: Json }
+      transition_statut_attendu: {
+        Args: {
+          p_attendu_id: string
+          p_metadata?: Json
+          p_nouveau_statut: Database["public"]["Enums"]["statut_attendu_reception"]
+          p_raison?: string
+          p_utilisateur_id?: string
+        }
+        Returns: Json
+      }
       transition_statut_commande:
         | {
             Args: {
@@ -3187,6 +3279,16 @@ export type Database = {
             }
             Returns: Json
           }
+      transition_statut_retour: {
+        Args: {
+          p_metadata?: Json
+          p_nouveau_statut: string
+          p_raison?: string
+          p_retour_id: string
+          p_utilisateur_id?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "operateur" | "gestionnaire" | "client"

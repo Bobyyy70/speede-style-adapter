@@ -9,8 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Package, MapPin, Truck, FileText, Clock, RefreshCw } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
+import { useAuth } from "@/hooks/useAuth";
+import { useStatutTransition } from '@/hooks/useStatutTransition';
+import { TransitionTimeline } from './TransitionTimeline';
 
 interface RetourDetailDialogProps {
   retourId: string | null;
@@ -25,11 +27,31 @@ export function RetourDetailDialog({ retourId, open, onOpenChange }: RetourDetai
   const [loading, setLoading] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [reintegrating, setReintegrating] = useState(false);
+  const [historique, setHistorique] = useState<any[]>([]);
+  const [historiqueLoading, setHistoriqueLoading] = useState(false);
+
+  const { transitionStatut, subscribeToStatutChanges, fetchTransitionHistory } = useStatutTransition();
 
   useEffect(() => {
     if (retourId && open) {
       fetchRetourDetails();
+      fetchHistorique();
     }
+  }, [retourId, open]);
+
+  // Realtime subscription
+  useEffect(() => {
+    if (!retourId || !open) return;
+
+    const unsubscribe = subscribeToStatutChanges('retour', (payload) => {
+      if (payload.new.id === retourId) {
+        console.log('[Realtime] Retour updated:', payload.new);
+        fetchRetourDetails();
+        fetchHistorique();
+      }
+    });
+
+    return () => unsubscribe();
   }, [retourId, open]);
 
   const fetchRetourDetails = async () => {
@@ -55,13 +77,23 @@ export function RetourDetailDialog({ retourId, open, onOpenChange }: RetourDetai
       setLignes(lignesData || []);
     } catch (error: any) {
       console.error('Erreur fetch retour:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les détails du retour",
-        variant: "destructive",
-      });
+      toast.error("Impossible de charger les détails du retour");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchHistorique = async () => {
+    if (!retourId) return;
+
+    setHistoriqueLoading(true);
+    try {
+      const data = await fetchTransitionHistory('retour', retourId);
+      setHistorique(data);
+    } catch (error: any) {
+      console.error('Erreur fetch historique:', error);
+    } finally {
+      setHistoriqueLoading(false);
     }
   };
 
@@ -70,26 +102,11 @@ export function RetourDetailDialog({ retourId, open, onOpenChange }: RetourDetai
     
     setUpdatingStatus(true);
     try {
-      const { error } = await supabase
-        .from('retour_produit')
-        .update({ statut_retour: newStatus })
-        .eq('id', retour.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Statut mis à jour",
-        description: `Le statut du retour a été changé en "${newStatus}"`,
-      });
-
+      await transitionStatut('retour', retour.id, newStatus);
       fetchRetourDetails();
+      fetchHistorique();
     } catch (error: any) {
-      console.error('Erreur update statut:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le statut",
-        variant: "destructive",
-      });
+      // Error already handled by useStatutTransition
     } finally {
       setUpdatingStatus(false);
     }
@@ -106,19 +123,12 @@ export function RetourDetailDialog({ retourId, open, onOpenChange }: RetourDetai
 
       if (error) throw error;
 
-      toast({
-        title: "Stock réintégré",
-        description: "Les produits ont été réintégrés au stock avec succès",
-      });
+      toast.success("Les produits ont été réintégrés au stock avec succès");
 
       fetchRetourDetails();
     } catch (error: any) {
       console.error('Erreur réintégration:', error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de réintégrer le stock",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Impossible de réintégrer le stock");
     } finally {
       setReintegrating(false);
     }
@@ -416,38 +426,7 @@ export function RetourDetailDialog({ retourId, open, onOpenChange }: RetourDetai
           </TabsContent>
 
           <TabsContent value="historique" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Historique
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-primary mt-2"></div>
-                    <div>
-                      <p className="font-medium">Retour créé</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(retour.date_creation).toLocaleString('fr-FR')}
-                      </p>
-                    </div>
-                  </div>
-                  {retour.date_retour && (
-                    <div className="flex items-start gap-3">
-                      <div className="w-2 h-2 rounded-full bg-primary mt-2"></div>
-                      <div>
-                        <p className="font-medium">Retour effectué</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(retour.date_retour).toLocaleString('fr-FR')}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <TransitionTimeline transitions={historique} loading={historiqueLoading} />
           </TabsContent>
         </Tabs>
 

@@ -58,6 +58,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       href: "/commandes/preparation",
       icon: PackagePlus,
       children: [{
+        name: "Sessions de préparation",
+        href: "/commandes/preparation",
+        icon: ClipboardList
+      }, {
         name: "Réappro",
         href: "/commandes/reappro",
         icon: RefreshCw
@@ -80,6 +84,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       href: "/commandes/retours",
       icon: Undo2,
       children: [{
+        name: "Gestion des retours",
+        href: "/commandes/retours",
+        icon: ClipboardList
+      }, {
         name: "Créer un retour",
         href: "/client/retours/creer",
         icon: PlusCircle
@@ -99,10 +107,6 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Emplacements",
         href: "/stock/emplacements",
         icon: MapPin
-      }, {
-        name: "Bacs/Adresses",
-        href: "/stock/bacs",
-        icon: Boxes
       }, {
         name: "Mouvements",
         href: "/stock/mouvements",
@@ -160,6 +164,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       href: "/commandes/preparation",
       icon: PackagePlus,
       children: [{
+        name: "Sessions de préparation",
+        href: "/commandes/preparation",
+        icon: ClipboardList
+      }, {
         name: "Réappro",
         href: "/commandes/reappro",
         icon: RefreshCw
@@ -182,6 +190,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       href: "/commandes/retours",
       icon: Undo2,
       children: [{
+        name: "Gestion des retours",
+        href: "/commandes/retours",
+        icon: ClipboardList
+      }, {
         name: "Créer un retour",
         href: "/client/retours/creer",
         icon: PlusCircle
@@ -201,10 +213,6 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Emplacements",
         href: "/stock/emplacements",
         icon: MapPin
-      }, {
-        name: "Bacs/Adresses",
-        href: "/stock/bacs",
-        icon: Boxes
       }, {
         name: "Mouvements",
         href: "/stock/mouvements",
@@ -278,6 +286,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       href: "/commandes/preparation",
       icon: PackagePlus,
       children: [{
+        name: "Sessions de préparation",
+        href: "/commandes/preparation",
+        icon: ClipboardList
+      }, {
         name: "Réappro",
         href: "/commandes/reappro",
         icon: RefreshCw
@@ -314,10 +326,6 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Emplacements",
         href: "/stock/emplacements",
         icon: MapPin
-      }, {
-        name: "Bacs/Adresses",
-        href: "/stock/bacs",
-        icon: Boxes
       }, {
         name: "Mouvements",
         href: "/stock/mouvements",
@@ -393,7 +401,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       });
     });
 
-    // Toujours ajouter Produits, Réception, Mouvements, Intégrations (tabs fixes)
+    // Toujours ajouter Produits, Attendu de Réception, Mouvements, Intégrations (tabs fixes)
     const fixedItems: NavigationItem[] = [
       {
         name: "Produits",
@@ -401,7 +409,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         icon: Boxes
       },
       {
-        name: "Réception",
+        name: "Attendu de Réception",
         href: "/client/reception",
         icon: PackageOpen
       },

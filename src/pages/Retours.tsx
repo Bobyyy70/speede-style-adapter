@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useStatutTransition } from "@/hooks/useStatutTransition";
 import { RetourDetailDialog } from "@/components/RetourDetailDialog";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,8 @@ export default function Retours() {
   const [view, setView] = useState<'list' | 'kanban'>(() => {
     return (localStorage.getItem('retours_view') as 'list' | 'kanban') || 'list';
   });
+
+  const { subscribeToStatutChanges } = useStatutTransition();
 
   useEffect(() => {
     localStorage.setItem('retours_view', view);
@@ -65,6 +68,16 @@ export default function Retours() {
       return data;
     },
   });
+
+  // Realtime subscription
+  useEffect(() => {
+    const unsubscribe = subscribeToStatutChanges('retour', () => {
+      console.log('[Realtime] Retour updated, refreshing list');
+      refetch();
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleCreateReturn = async (commandeId: string) => {
     try {
@@ -237,28 +250,28 @@ export default function Retours() {
                               </>
                             )}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="font-medium">{Number(retour.valeur_totale).toFixed(2)}€</div>
-                            <div className="text-xs text-muted-foreground">Coût traitement</div>
-                          </div>
-                          {retour.commande_origine_id && retour.statut_retour === 'recu' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleCreateReturn(retour.commande_origine_id!)}
-                            >
-                              <RotateCcw className="h-4 w-4 mr-2" />
-                              Générer étiquette
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+                           </div>
+                           <div className="flex items-center gap-4">
+                             <div className="text-right">
+                               <div className="font-medium">{Number(retour.valeur_totale).toFixed(2)}€</div>
+                               <div className="text-xs text-muted-foreground">Coût traitement</div>
+                             </div>
+                             <Button
+                               size="sm"
+                               variant="outline"
+                               onClick={() => {
+                                 setSelectedRetourId(retour.id);
+                                 setDetailDialogOpen(true);
+                               }}
+                             >
+                               Voir détails
+                             </Button>
+                           </div>
+                         </div>
+                       );
+                     })
+                   )}
+                 </div>
             </CardContent>
           </Card>
         )}
