@@ -966,6 +966,76 @@ export type Database = {
         }
         Relationships: []
       }
+      demande_service_personnalise: {
+        Row: {
+          client_id: string
+          created_by: string | null
+          date_creation: string | null
+          date_modification: string | null
+          date_rdv: string | null
+          formulaire_data: Json
+          hubspot_ticket_id: string | null
+          id: string
+          prix_estime: number | null
+          prix_final: number | null
+          remarques_admin: string | null
+          service_id: string
+          statut: string | null
+        }
+        Insert: {
+          client_id: string
+          created_by?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          date_rdv?: string | null
+          formulaire_data: Json
+          hubspot_ticket_id?: string | null
+          id?: string
+          prix_estime?: number | null
+          prix_final?: number | null
+          remarques_admin?: string | null
+          service_id: string
+          statut?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_by?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          date_rdv?: string | null
+          formulaire_data?: Json
+          hubspot_ticket_id?: string | null
+          id?: string
+          prix_estime?: number | null
+          prix_final?: number | null
+          remarques_admin?: string | null
+          service_id?: string
+          statut?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demande_service_personnalise_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demande_service_personnalise_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "demande_service_personnalise_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_logistique"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_commande: {
         Row: {
           categorie: string
@@ -1446,71 +1516,6 @@ export type Database = {
           },
         ]
       }
-      ligne_service_commande: {
-        Row: {
-          commande_id: string | null
-          date_creation: string | null
-          genere_automatiquement: boolean | null
-          id: string
-          prix_total: number | null
-          prix_unitaire: number
-          quantite: number
-          remarques: string | null
-          service_id: string | null
-        }
-        Insert: {
-          commande_id?: string | null
-          date_creation?: string | null
-          genere_automatiquement?: boolean | null
-          id?: string
-          prix_total?: number | null
-          prix_unitaire: number
-          quantite?: number
-          remarques?: string | null
-          service_id?: string | null
-        }
-        Update: {
-          commande_id?: string | null
-          date_creation?: string | null
-          genere_automatiquement?: boolean | null
-          id?: string
-          prix_total?: number | null
-          prix_unitaire?: number
-          quantite?: number
-          remarques?: string | null
-          service_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ligne_service_commande_commande_id_fkey"
-            columns: ["commande_id"]
-            isOneToOne: false
-            referencedRelation: "commande"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ligne_service_commande_commande_id_fkey"
-            columns: ["commande_id"]
-            isOneToOne: false
-            referencedRelation: "commande_gestionnaire_secure"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ligne_service_commande_commande_id_fkey"
-            columns: ["commande_id"]
-            isOneToOne: false
-            referencedRelation: "v_commandes_avec_statut"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ligne_service_commande_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "service_logistique"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       mouvement_stock: {
         Row: {
           commande_id: string | null
@@ -1751,6 +1756,7 @@ export type Database = {
           prix_unitaire: number | null
           protection_individuelle: boolean | null
           reference: string
+          rotation_stock: string | null
           statut_actif: boolean | null
           stock_actuel: number | null
           stock_maximum: number | null
@@ -1791,6 +1797,7 @@ export type Database = {
           prix_unitaire?: number | null
           protection_individuelle?: boolean | null
           reference: string
+          rotation_stock?: string | null
           statut_actif?: boolean | null
           stock_actuel?: number | null
           stock_maximum?: number | null
@@ -1831,6 +1838,7 @@ export type Database = {
           prix_unitaire?: number | null
           protection_individuelle?: boolean | null
           reference?: string
+          rotation_stock?: string | null
           statut_actif?: boolean | null
           stock_actuel?: number | null
           stock_maximum?: number | null
@@ -1935,6 +1943,86 @@ export type Database = {
         }
         Relationships: []
       }
+      regle_attribution_emballage: {
+        Row: {
+          actif: boolean | null
+          code_emballage: string | null
+          conditions: Json
+          date_creation: string | null
+          description: string | null
+          id: string
+          nom_regle: string
+          priorite: number | null
+          type_carton_id: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          code_emballage?: string | null
+          conditions: Json
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle: string
+          priorite?: number | null
+          type_carton_id?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          code_emballage?: string | null
+          conditions?: Json
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle?: string
+          priorite?: number | null
+          type_carton_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regle_attribution_emballage_type_carton_id_fkey"
+            columns: ["type_carton_id"]
+            isOneToOne: false
+            referencedRelation: "type_carton"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      regle_attribution_emplacement: {
+        Row: {
+          actif: boolean | null
+          conditions: Json
+          date_creation: string | null
+          description: string | null
+          id: string
+          nom_regle: string
+          priorite: number | null
+          type_emplacement_cible: string | null
+          zone_cible: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          conditions: Json
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle: string
+          priorite?: number | null
+          type_emplacement_cible?: string | null
+          zone_cible?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          conditions?: Json
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle?: string
+          priorite?: number | null
+          type_emplacement_cible?: string | null
+          zone_cible?: string | null
+        }
+        Relationships: []
+      }
       regle_expediteur_automatique: {
         Row: {
           actif: boolean | null
@@ -1996,6 +2084,81 @@ export type Database = {
           },
         ]
       }
+      regle_picking_optimal: {
+        Row: {
+          actif: boolean | null
+          conditions: Json | null
+          date_creation: string | null
+          description: string | null
+          id: string
+          nom_regle: string
+          parametres: Json | null
+          priorite: number | null
+          strategie: string
+        }
+        Insert: {
+          actif?: boolean | null
+          conditions?: Json | null
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle: string
+          parametres?: Json | null
+          priorite?: number | null
+          strategie: string
+        }
+        Update: {
+          actif?: boolean | null
+          conditions?: Json | null
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle?: string
+          parametres?: Json | null
+          priorite?: number | null
+          strategie?: string
+        }
+        Relationships: []
+      }
+      regle_session_preparation: {
+        Row: {
+          actif: boolean | null
+          auto_assignation_operateur: string | null
+          conditions: Json
+          date_creation: string | null
+          date_modification: string | null
+          description: string | null
+          id: string
+          nom_regle: string
+          priorite: number | null
+          type_session: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          auto_assignation_operateur?: string | null
+          conditions: Json
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          id?: string
+          nom_regle: string
+          priorite?: number | null
+          type_session?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          auto_assignation_operateur?: string | null
+          conditions?: Json
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          id?: string
+          nom_regle?: string
+          priorite?: number | null
+          type_session?: string | null
+        }
+        Relationships: []
+      }
       regle_tag_automatique: {
         Row: {
           actif: boolean | null
@@ -2032,6 +2195,42 @@ export type Database = {
           nom_regle?: string
           priorite?: number
           tag?: string
+        }
+        Relationships: []
+      }
+      regle_traitement_retour: {
+        Row: {
+          actif: boolean | null
+          actions_automatiques: Json
+          conditions: Json
+          date_creation: string | null
+          description: string | null
+          id: string
+          nom_regle: string
+          priorite: number | null
+          validation_manuelle_requise: boolean | null
+        }
+        Insert: {
+          actif?: boolean | null
+          actions_automatiques: Json
+          conditions: Json
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle: string
+          priorite?: number | null
+          validation_manuelle_requise?: boolean | null
+        }
+        Update: {
+          actif?: boolean | null
+          actions_automatiques?: Json
+          conditions?: Json
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle?: string
+          priorite?: number | null
+          validation_manuelle_requise?: boolean | null
         }
         Relationships: []
       }
@@ -2408,9 +2607,10 @@ export type Database = {
           date_creation: string | null
           date_modification: string | null
           description: string | null
+          formulaire_hubspot_url: string | null
           id: string
           nom_service: string
-          prix_unitaire: number
+          prix_unitaire: number | null
           type_facturation: string
         }
         Insert: {
@@ -2420,9 +2620,10 @@ export type Database = {
           date_creation?: string | null
           date_modification?: string | null
           description?: string | null
+          formulaire_hubspot_url?: string | null
           id?: string
           nom_service: string
-          prix_unitaire: number
+          prix_unitaire?: number | null
           type_facturation: string
         }
         Update: {
@@ -2432,9 +2633,10 @@ export type Database = {
           date_creation?: string | null
           date_modification?: string | null
           description?: string | null
+          formulaire_hubspot_url?: string | null
           id?: string
           nom_service?: string
-          prix_unitaire?: number
+          prix_unitaire?: number | null
           type_facturation?: string
         }
         Relationships: []
@@ -2571,6 +2773,7 @@ export type Database = {
           nom_session: string
           ordre_priorite: number
           statut: string | null
+          strategie_picking: string | null
         }
         Insert: {
           created_by?: string | null
@@ -2586,6 +2789,7 @@ export type Database = {
           nom_session: string
           ordre_priorite?: number
           statut?: string | null
+          strategie_picking?: string | null
         }
         Update: {
           created_by?: string | null
@@ -2601,6 +2805,7 @@ export type Database = {
           nom_session?: string
           ordre_priorite?: number
           statut?: string | null
+          strategie_picking?: string | null
         }
         Relationships: []
       }

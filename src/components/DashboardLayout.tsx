@@ -131,10 +131,6 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Connecteurs",
         href: "/integrations/connecteurs",
         icon: Cable
-      }, {
-        name: "SendCloud Sync",
-        href: "/integrations/sendcloud-sync",
-        icon: RefreshCw
       }]
     }, {
       name: "Gestion des Données",
