@@ -36,13 +36,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client with service role
+    // Initialize Supabase client with Service Role Key (bypasses RLS)
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    // Create admin client with service role key
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    
+    console.log('[n8n-gateway] Authenticated with Service Role Key');
 
     // Log request
     console.log(`[n8n-gateway] ${method} ${path}`);
+
+    // ========== HEALTH CHECK ==========
+    
+    // GET /health - Health check endpoint
+    if (path === '/health' && method === 'GET') {
+      return new Response(JSON.stringify({ 
+        ok: true,
+        service: 'n8n-gateway',
+        timestamp: new Date().toISOString()
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // ========== WORKFLOWS MANAGEMENT ==========
     
@@ -243,19 +260,470 @@ Deno.serve(async (req) => {
       });
     }
 
-    // POST /commande - Créer une commande
+    /**
+     * POST /commande - Créer une commande complète avec lignes et réservations
+     * 
+     * Formats acceptés pour le payload:
+     * 
+     * Format standard:
+     * {
+     *   "commande": {
+     *     "numero_commande": "ORD-123",
+     *     "nom_client": "Client Name",
+     *     "email_client": "client@example.com",  // optionnel
+     *     "adresse_ligne_1": "123 Rue Example",
+     *     "code_postal": "75001",
+     *     "ville": "Paris",
+     *     "pays_code": "FR",
+     *     "source": "n8n-custom"  // optionnel, défaut: "n8n-custom"
+     *   },
+     *   "lignes": [  // Peut aussi être "order_products" ou "line_items"
+     *     {
+     *       "sku": "PROD-001",  // Peut aussi être "ean" ou "product_sku"
+     *       "quantite": 2,      // Peut aussi être "quantity" ou "qty"
+     *       "prix_unitaire": 10.50  // optionnel, peut aussi être "price" ou "unit_price"
+     *     }
+     *   ]
+     * }
+     * 
+     * Note: Le champ "lignes" peut être un array JSON ou une string JSON à parser.
+     */
     if (path === '/commande' && method === 'POST') {
-      const body = await req.json();
-
-      const { data, error } = await supabase
+      const payload = await req.json();
+      
+      // Log debug du payload (masquer les emails)
+      console.log('[n8n-gateway] Payload reçu:', JSON.stringify({
+        ...payload,
+        commande: payload.commande ? {
+          ...payload.commande,
+          email_client: payload.commande.email_client ? '***@***.***' : undefined
+        } : undefined
+      }).substring(0, 500));
+      
+      // Validation du format
+      if (!payload.commande) {
+        console.error('[n8n-gateway] Format invalide: champ "commande" requis');
+        return new Response(
+          JSON.stringify({ 
+            error: 'Format invalide: champ "commande" requis',
+            received: Object.keys(payload)
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const commandeData = payload.commande;
+      
+      // Parser les lignes avec plusieurs formats acceptés
+      let lignesData = [];
+      
+      // 1. Essayer payload.lignes (peut être array ou string JSON)
+      if (payload.lignes) {
+        if (typeof payload.lignes === 'string') {
+          try {
+            lignesData = JSON.parse(payload.lignes);
+            console.log('[n8n-gateway] Lignes parsées depuis string JSON');
+          } catch (e) {
+            console.error('[n8n-gateway] Erreur parsing lignes:', e);
+            return new Response(
+              JSON.stringify({ 
+                error: 'Le champ "lignes" doit être un tableau JSON valide',
+                received_type: 'string (invalide)',
+                received_value: payload.lignes.substring(0, 100)
+              }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        } else if (Array.isArray(payload.lignes)) {
+          lignesData = payload.lignes;
+        } else {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Le champ "lignes" doit être un tableau',
+              received_type: typeof payload.lignes
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+      // 2. Fallback sur order_products (format SendCloud)
+      else if (payload.order_products) {
+        lignesData = Array.isArray(payload.order_products) 
+          ? payload.order_products 
+          : [payload.order_products];
+        console.log('[n8n-gateway] Lignes extraites de order_products');
+      }
+      // 3. Fallback sur line_items (format e-commerce standard)
+      else if (payload.line_items) {
+        lignesData = Array.isArray(payload.line_items) 
+          ? payload.line_items 
+          : [payload.line_items];
+        console.log('[n8n-gateway] Lignes extraites de line_items');
+      }
+      
+      console.log(`[n8n-gateway] ${lignesData.length} ligne(s) détectée(s)`);
+      
+      // Validation des champs obligatoires de la commande
+      const requiredFields = ['numero_commande', 'nom_client', 'adresse_ligne_1', 'code_postal', 'ville', 'pays_code'];
+      const missingFields = requiredFields.filter(field => !commandeData[field]);
+      
+      if (missingFields.length > 0) {
+        console.error('[n8n-gateway] Champs obligatoires manquants:', missingFields);
+        return new Response(
+          JSON.stringify({ error: `Champs obligatoires manquants: ${missingFields.join(', ')}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // FALLBACK CRITIQUE: adresse_nom requis par DB mais souvent absent du payload
+      // Si absent, utiliser nom_client comme fallback
+      if (!commandeData.adresse_nom) {
+        commandeData.adresse_nom = commandeData.nom_client;
+        console.log(`[n8n-gateway] ✅ adresse_nom manquant, fallback sur nom_client: "${commandeData.adresse_nom}"`);
+      } else {
+        console.log(`[n8n-gateway] ✅ adresse_nom fourni: "${commandeData.adresse_nom}"`);
+      }
+      
+      // Récupérer la configuration expéditeur par défaut
+      let expediteurData = {};
+      const { data: expediteurConfig } = await supabase
+        .from('configuration_expediteur')
+        .select('*')
+        .eq('est_defaut', true)
+        .eq('actif', true)
+        .maybeSingle();
+      
+      if (expediteurConfig) {
+        console.log(`[n8n-gateway] ✅ Config expéditeur trouvée: ${expediteurConfig.entreprise}`);
+        expediteurData = {
+          expediteur_nom: expediteurConfig.nom,
+          expediteur_entreprise: expediteurConfig.entreprise,
+          expediteur_email: expediteurConfig.email,
+          expediteur_telephone: expediteurConfig.telephone,
+          expediteur_adresse_ligne_1: expediteurConfig.adresse_ligne_1,
+          expediteur_adresse_ligne_2: expediteurConfig.adresse_ligne_2,
+          expediteur_code_postal: expediteurConfig.code_postal,
+          expediteur_ville: expediteurConfig.ville,
+          expediteur_pays_code: expediteurConfig.pays_code,
+        };
+      } else {
+        console.log('[n8n-gateway] ⚠️ Pas de config expéditeur par défaut');
+      }
+      
+      // Déterminer incoterm et priorité
+      const paysCode = commandeData.pays_code || 'FR';
+      const incoterm = commandeData.incoterm || (paysCode === 'FR' ? 'DDP' : 'DAP');
+      const priorite = commandeData.priorite_expedition || 'standard';
+      const dateExpeditionDemandee = commandeData.date_expedition_demandee || 
+        new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0];
+      
+      // Définir les valeurs par défaut
+      const commande = {
+        ...commandeData,
+        ...expediteurData,
+        source: commandeData.source || 'n8n-custom',
+        statut_wms: 'En attente de réappro',
+        devise: commandeData.devise || 'EUR',
+        valeur_totale: 0,
+        date_creation: new Date().toISOString(),
+        incoterm: incoterm,
+        priorite_expedition: priorite,
+        date_expedition_demandee: dateExpeditionDemandee,
+        pays_origine_marchandise: expediteurConfig?.pays_code || 'FR',
+        reference_interne: commandeData.reference_interne || commandeData.numero_commande,
+      };
+      
+      console.log('[n8n-gateway] Création commande:', commande.numero_commande);
+      
+      // 1. Vérifier si commande existe déjà
+      const { data: existing } = await supabase
         .from('commande')
-        .insert(body)
-        .select()
+        .select('id')
+        .eq('numero_commande', commande.numero_commande)
         .single();
 
-      if (error) throw error;
+      if (existing) {
+        console.log('[n8n-gateway] Commande déjà existante:', commande.numero_commande);
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            commande_id: existing.id,
+            numero_commande: commande.numero_commande,
+            skipped: true,
+            reason: 'Déjà importée'
+          }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
 
-      return new Response(JSON.stringify({ commande: data }), {
+      // 1. Créer la commande
+      const { data: commandeCreee, error: commandeError } = await supabase
+        .from('commande')
+        .insert(commande)
+        .select()
+        .single();
+      
+      if (commandeError) {
+        console.error('[n8n-gateway] Erreur création commande:', commandeError);
+        return new Response(
+          JSON.stringify({ error: 'Erreur création commande', details: commandeError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log('[n8n-gateway] Commande créée:', commandeCreee.id);
+      
+      // Traiter les lignes de commande
+      const lignesResultats = [];
+      const lignesFormatees = []; // Pour reserver_stock_commande
+      let valeurTotale = 0;
+      
+      for (const ligne of lignesData) {
+        // Normaliser les champs (accepter plusieurs noms de champs)
+        const sku = ligne.sku || ligne.ean || ligne.product_sku;
+        const quantite = ligne.quantite || ligne.quantity || ligne.qty;
+        const prixLigne = ligne.prix_unitaire || ligne.price || ligne.unit_price;
+        
+        if (!sku || !quantite) {
+          console.warn('[n8n-gateway] Ligne invalide (sku/quantite manquant):', { 
+            received_fields: Object.keys(ligne),
+            sku, 
+            quantite 
+          });
+          lignesResultats.push({
+            sku: sku || 'N/A',
+            success: false,
+            error: 'SKU ou quantité manquant'
+          });
+          continue;
+        }
+
+        // Retrouver le produit par SKU (reference ou code_barre_ean)
+        const { data: produits, error: produitError } = await supabase
+          .from('produit')
+          .select('id, reference, nom, prix_unitaire')
+          .or(`reference.eq.${sku},code_barre_ean.eq.${sku}`)
+          .limit(1);
+        
+        if (produitError || !produits || produits.length === 0) {
+          console.warn(`[n8n-gateway] Produit non trouvé: ${sku}`);
+          lignesResultats.push({
+            sku: sku,
+            success: false,
+            error: 'Produit introuvable'
+          });
+          continue;
+        }
+
+        const produit = produits[0];
+        
+        // Créer la ligne de commande
+        const prixUnitaire = prixLigne || produit.prix_unitaire || 0;
+        const valeurLigne = prixUnitaire * quantite;
+        
+        const { data: ligneCreee, error: ligneError } = await supabase
+          .from('ligne_commande')
+          .insert({
+            commande_id: commandeCreee.id,
+            produit_id: produit.id,
+            produit_reference: produit.reference,
+            produit_nom: produit.nom,
+            quantite_commandee: quantite,
+            quantite_preparee: 0,
+            prix_unitaire: prixUnitaire,
+            valeur_totale: valeurLigne,
+            statut_ligne: 'en_attente',
+          })
+          .select()
+          .single();
+        
+        if (ligneError) {
+          console.error(`[n8n-gateway] Erreur création ligne:`, ligneError);
+          lignesResultats.push({
+            sku: sku,
+            success: false,
+            error: ligneError.message
+          });
+          continue;
+        }
+        
+        console.log(`[n8n-gateway] Ligne créée pour ${sku}`);
+        
+        lignesResultats.push({
+          sku: sku,
+          produit_id: produit.id,
+          ligne_id: ligneCreee.id,
+          success: true,
+        });
+        
+        // Ajouter au format pour réservation
+        lignesFormatees.push({
+          sku: sku,
+          quantite: quantite
+        });
+        
+        valeurTotale += valeurLigne;
+      }
+      
+      // Mettre à jour la valeur totale
+      await supabase
+        .from('commande')
+        .update({ valeur_totale: valeurTotale })
+        .eq('id', commandeCreee.id);
+      
+      console.log(`[n8n-gateway] ${lignesResultats.length} ligne(s) créée(s), valeur: ${valeurTotale.toFixed(2)}€`);
+      
+      // 3. RÉSERVATION ATOMIQUE DU STOCK avec rollback en cas d'échec
+      console.log('[n8n-gateway] ⚙️ Réservation atomique du stock...');
+      
+      const { data: reservationResult, error: reservationError } = await supabase
+        .rpc('reserver_stock_commande', {
+          p_commande_id: commandeCreee.id,
+          p_lignes: lignesFormatees
+        });
+      
+      if (reservationError || !reservationResult?.success) {
+        console.error('[n8n-gateway] ❌ ÉCHEC réservation stock:', reservationError || reservationResult);
+        
+        // 🔥 ROLLBACK CRITIQUE: Supprimer toute la commande créée
+        console.log('[n8n-gateway] 🔄 ROLLBACK: Suppression commande suite échec stock...');
+        
+        // Supprimer services logistiques
+        await supabase
+          .from('ligne_service_commande')
+          .delete()
+          .eq('commande_id', commandeCreee.id);
+        
+        // Supprimer lignes de commande
+        await supabase
+          .from('ligne_commande')
+          .delete()
+          .eq('commande_id', commandeCreee.id);
+        
+        // Supprimer la commande
+        await supabase
+          .from('commande')
+          .delete()
+          .eq('id', commandeCreee.id);
+        
+        console.log('[n8n-gateway] ✅ ROLLBACK terminé, commande supprimée');
+        
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Stock insuffisant',
+            details: reservationError?.message || reservationResult,
+            commande_id: commandeCreee.id,
+            rollback: true,
+            message: 'Commande annulée: stock insuffisant pour un ou plusieurs produits'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log('[n8n-gateway] ✅ Stock réservé avec succès:', reservationResult);
+      
+      // Mettre à jour le statut de la commande
+      await supabase
+        .from('commande')
+        .update({ statut_wms: 'Prêt à préparer' })
+        .eq('id', commandeCreee.id);
+      
+      // 4. Traiter les services logistiques si fournis
+      let servicesCreated = 0;
+      let servicesTotal = 0;
+      const servicesData = payload.services;
+
+      if (servicesData && Array.isArray(servicesData) && servicesData.length > 0) {
+        console.log(`[n8n-gateway] Traitement de ${servicesData.length} service(s)...`);
+        
+        const { data: servicesResult, error: servicesError } = await supabase
+          .rpc('process_commande_services', {
+            p_commande_id: commandeCreee.id,
+            p_services: servicesData
+          });
+        
+        if (servicesError) {
+          console.error('[n8n-gateway] ❌ Erreur traitement services:', servicesError);
+        } else {
+          servicesCreated = servicesResult?.created || 0;
+          servicesTotal = servicesData.reduce((sum, s) => sum + (s.prix_total || 0), 0);
+          console.log(`[n8n-gateway] ✅ Services créés: ${servicesCreated}/${servicesData.length}, total: ${servicesTotal.toFixed(2)}€`);
+        }
+      } else {
+        console.log('[n8n-gateway] Aucun service à traiter');
+      }
+      
+      // 5. RÉSERVER LE STOCK (CRITIQUE - Transaction atomique)
+      if (lignesFormatees.length > 0) {
+        console.log('[n8n-gateway] 🔒 Réservation stock pour', lignesFormatees.length, 'produit(s)...');
+        
+        const { data: reservationResult, error: reservationError } = await supabase
+          .rpc('reserver_stock_commande', {
+            p_commande_id: commandeCreee.id,
+            p_lignes: lignesFormatees
+          });
+
+        if (reservationError) {
+          console.error('[n8n-gateway] ❌ ERREUR RÉSERVATION STOCK:', reservationError);
+          
+          // CRITIQUE: Stock insuffisant = commande invalide
+          // On DOIT supprimer la commande créée (rollback)
+          console.log('[n8n-gateway] 🔄 Rollback: suppression commande', commandeCreee.id);
+          
+          await supabase
+            .from('ligne_service_commande')
+            .delete()
+            .eq('commande_id', commandeCreee.id);
+          
+          await supabase
+            .from('ligne_commande')
+            .delete()
+            .eq('commande_id', commandeCreee.id);
+          
+          await supabase
+            .from('commande')
+            .delete()
+            .eq('id', commandeCreee.id);
+          
+          return new Response(
+            JSON.stringify({ 
+              error: 'Stock insuffisant',
+              details: reservationError.message,
+              commande_numero: commandeCreee.numero_commande
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        console.log('[n8n-gateway] ✅ Stock réservé:', reservationResult);
+        
+        // Mettre à jour le statut à "Prêt à préparer"
+        await supabase
+          .from('commande')
+          .update({ statut_wms: 'Prêt à préparer' })
+          .eq('id', commandeCreee.id);
+      }
+      
+      return new Response(JSON.stringify({
+        success: true,
+        commande: {
+          id: commandeCreee.id,
+          numero_commande: commandeCreee.numero_commande,
+          statut_wms: lignesFormatees.length > 0 ? 'Prêt à préparer' : 'En attente de réappro',
+          valeur_totale: valeurTotale,
+        },
+        lignes: lignesResultats,
+        total_lignes: lignesResultats.length,
+        lignes_ok: lignesResultats.filter(l => l.success).length,
+        lignes_erreur: lignesResultats.filter(l => !l.success).length,
+        // Nouveaux champs pour les services
+        services_count: servicesCreated,
+        services_total: servicesTotal > 0 ? `${servicesTotal.toFixed(2)}€` : '0.00€',
+        // Nouveaux champs pour la réservation stock
+        stock_reserved: lignesFormatees.length > 0,
+        reservations_count: lignesFormatees.length,
+      }), {
         status: 201,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

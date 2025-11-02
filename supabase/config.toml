@@ -1,5 +1,8 @@
 project_id = "tggdjeoxvpzbigbikpfy"
 
+[functions.n8n-import-sendcloud-orders]
+verify_jwt = false
+
 [functions.recherche-entreprise]
 verify_jwt = true
 
@@ -41,3 +44,24 @@ verify_jwt = true
 
 [functions.sendcloud-sync-orders]
 verify_jwt = false
+
+[functions.update-user-tabs-access]
+verify_jwt = false
+
+[functions.sendcloud-backfill-products]
+verify_jwt = true
+
+[functions.sendcloud-refresh-tracking]
+verify_jwt = true
+
+[functions.sendcloud-update-shipped-orders]
+verify_jwt = true
+
+[functions.admin-sql]
+verify_jwt = false
+
+[functions.chatbot-service-client]
+verify_jwt = true
+
+[functions.apply-expediteur-rules]
+verify_jwt = true

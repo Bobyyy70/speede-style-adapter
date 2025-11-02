@@ -48,7 +48,7 @@ export function AjouterStockDialog({ open, onOpenChange, emplacement, onSuccess 
     try {
       const { data, error } = await supabase
         .from('produit')
-        .select('id, reference, nom, stock_actuel')
+        .select('id, reference, nom, stock_actuel, poids_unitaire')
         .eq('statut_actif', true)
         .order('reference');
 
@@ -66,6 +66,15 @@ export function AjouterStockDialog({ open, onOpenChange, emplacement, onSuccess 
     if (!emplacement || !selectedProduit || !quantite || parseInt(quantite) <= 0) {
       toast.error("Veuillez remplir tous les champs requis");
       return;
+    }
+
+    // Vérification capacité poids si disponible
+    if (selectedProduit?.poids_unitaire && (emplacement as any).capacite_max_kg) {
+      const poidsTotal = selectedProduit.poids_unitaire * parseInt(quantite);
+      if (poidsTotal > (emplacement as any).capacite_max_kg) {
+        toast.error(`Capacité dépassée: ${poidsTotal.toFixed(1)} kg > ${(emplacement as any).capacite_max_kg} kg`);
+        return;
+      }
     }
 
     setLoading(true);
@@ -97,8 +106,6 @@ export function AjouterStockDialog({ open, onOpenChange, emplacement, onSuccess 
 
   if (!emplacement) return null;
 
-  const capaciteRestante = (emplacement.capacite_max_unites || 0) - (emplacement.quantite_actuelle || 0);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -106,6 +113,11 @@ export function AjouterStockDialog({ open, onOpenChange, emplacement, onSuccess 
           <DialogTitle>Ajouter du stock</DialogTitle>
           <DialogDescription>
             Emplacement: <strong>{emplacement.code_emplacement}</strong> (Zone {emplacement.zone})
+            {(emplacement as any).capacite_max_kg && (
+              <span className="block mt-1 text-xs">
+                Capacité max: {(emplacement as any).capacite_max_kg} kg
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -148,7 +160,10 @@ export function AjouterStockDialog({ open, onOpenChange, emplacement, onSuccess 
                           <div className="flex flex-col">
                             <span className="font-medium">{produit.reference}</span>
                             <span className="text-sm text-muted-foreground">{produit.nom}</span>
-                            <span className="text-xs text-muted-foreground">Stock total: {produit.stock_actuel || 0}</span>
+                            <span className="text-xs text-muted-foreground">
+                              Stock: {produit.stock_actuel || 0} unités
+                              {produit.poids_unitaire && ` • ${produit.poids_unitaire} kg/unité`}
+                            </span>
                           </div>
                         </CommandItem>
                       ))}
@@ -167,12 +182,19 @@ export function AjouterStockDialog({ open, onOpenChange, emplacement, onSuccess 
               value={quantite}
               onChange={(e) => setQuantite(e.target.value)}
               min="1"
-              max={capaciteRestante}
               placeholder="Nombre d'unités"
             />
-            <p className="text-xs text-muted-foreground">
-              Capacité restante: {capaciteRestante} unités
-            </p>
+            {selectedProduit && quantite && (emplacement as any).capacite_max_kg && selectedProduit.poids_unitaire && (() => {
+              const poidsTotal = selectedProduit.poids_unitaire * parseInt(quantite || "0");
+              const capaciteMax = (emplacement as any).capacite_max_kg;
+              const depassement = poidsTotal > capaciteMax;
+              return (
+                <p className={`text-xs ${depassement ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                  Poids total: {poidsTotal.toFixed(1)} kg / {capaciteMax} kg
+                  {depassement && " ⚠️ Capacité dépassée !"}
+                </p>
+              );
+            })()}
           </div>
 
           <div className="grid gap-2">

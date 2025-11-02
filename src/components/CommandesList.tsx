@@ -4,12 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, AlertCircle } from "lucide-react";
+import { Search, Plus, AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSessionDialog } from "./CreateSessionDialog";
 import { CommandeDetailDialog } from "./CommandeDetailDialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ORDER_STATUSES, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, FILTER_STATUSES, OrderStatus } from "@/lib/orderStatuses";
 
 interface Commande {
   id: string;
@@ -31,15 +32,7 @@ interface StatsData {
   expedie: number;
 }
 
-const STATUTS = [
-  { value: "all", label: "Tous les statuts" },
-  { value: "En attente de réappro", label: "En attente de réappro" },
-  { value: "Prêt à préparer", label: "Prêt à préparer" },
-  { value: "En préparation", label: "En préparation" },
-  { value: "En attente d'expédition", label: "En attente d'expédition" },
-  { value: "En cours de livraison", label: "En cours de livraison" },
-  { value: "Livré", label: "Livré" },
-];
+const STATUTS = FILTER_STATUSES;
 
 const SOURCES = [
   { value: "all", label: "Toutes les sources" },
@@ -77,7 +70,7 @@ export function CommandesList({
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatut, setSelectedStatut] = useState(filter || "all");
+  const [selectedStatut, setSelectedStatut] = useState<string>(filter || "all");
   const [selectedSource, setSelectedSource] = useState("all");
   const [selectedCommandes, setSelectedCommandes] = useState<string[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -110,7 +103,6 @@ export function CommandesList({
           ville,
           pays_code
         `)
-        .neq("statut_wms", "Archivé")
         .order("date_creation", { ascending: false });
 
       if (clientFilter) {
@@ -130,9 +122,9 @@ export function CommandesList({
       }
 
       if (statusFilters && statusFilters.length > 0) {
-        query = query.in("statut_wms", statusFilters);
+        query = query.in("statut_wms", statusFilters as any);
       } else if (selectedStatut !== "all") {
-        query = query.eq("statut_wms", selectedStatut);
+        query = query.eq("statut_wms", selectedStatut as any);
       }
 
       if (selectedSource !== "all") {
@@ -145,11 +137,11 @@ export function CommandesList({
       const allCommandes = data || [];
       setStats({
         total: allCommandes.length,
-        en_attente: allCommandes.filter((c) => c.statut_wms === "En attente de réappro").length,
-        pret_a_preparer: allCommandes.filter((c) => c.statut_wms === "Prêt à préparer").length,
-        en_preparation: allCommandes.filter((c) => c.statut_wms === "En préparation").length,
+        en_attente: allCommandes.filter((c) => c.statut_wms === ORDER_STATUSES.EN_ATTENTE_REAPPRO).length,
+        pret_a_preparer: allCommandes.filter((c) => c.statut_wms === ORDER_STATUSES.STOCK_RESERVE).length,
+        en_preparation: allCommandes.filter((c) => c.statut_wms === ORDER_STATUSES.EN_PREPARATION).length,
         expedie: allCommandes.filter((c) =>
-          ["En attente d'expédition", "En cours de livraison", "Livré"].includes(c.statut_wms)
+          [ORDER_STATUSES.PRET_EXPEDITION, ORDER_STATUSES.EXPEDIE, ORDER_STATUSES.LIVRE].includes(c.statut_wms as any)
         ).length,
       });
       setCommandes(allCommandes);
@@ -185,6 +177,35 @@ export function CommandesList({
     setCreateDialogOpen(true);
   };
 
+  const handleDeleteCommandes = async () => {
+    if (selectedCommandes.length === 0) {
+      toast.error("Veuillez sélectionner au moins une commande");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Êtes-vous sûr de vouloir supprimer ${selectedCommandes.length} commande(s) ?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from("commande")
+        .delete()
+        .in("id", selectedCommandes);
+
+      if (error) throw error;
+
+      toast.success(`${selectedCommandes.length} commande(s) supprimée(s)`);
+      setSelectedCommandes([]);
+      fetchCommandes();
+    } catch (error) {
+      console.error("Erreur lors de la suppression:", error);
+      toast.error("Erreur lors de la suppression des commandes");
+    }
+  };
+
   const handleDialogClose = (open: boolean) => {
     setCreateDialogOpen(open);
     if (!open) {
@@ -199,41 +220,31 @@ export function CommandesList({
   };
 
   const getStatutColor = (statut: string): string => {
-    switch (statut) {
-      case "En attente de réappro":
-        return "text-orange-600";
-      case "Prêt à préparer":
-        return "text-blue-600";
-      case "En préparation":
-        return "text-yellow-600";
-      case "En attente d'expédition":
-        return "text-purple-600";
-      case "En cours de livraison":
-        return "text-indigo-600";
-      case "Livré":
-        return "text-green-600";
-      case "Expédié":
-        return "text-green-600";
-      default:
-        return "text-muted-foreground";
-    }
+    return ORDER_STATUS_COLORS[statut as keyof typeof ORDER_STATUS_COLORS] || "text-muted-foreground";
+  };
+
+  const getStatutLabel = (statut: string): string => {
+    return ORDER_STATUS_LABELS[statut as keyof typeof ORDER_STATUS_LABELS] || statut;
   };
 
   const needsStockAlert = (statut: string): boolean => {
-    return statut === "En attente de réappro";
+    return statut === ORDER_STATUSES.EN_ATTENTE_REAPPRO;
   };
 
   // Tri intelligent: non expédiées en haut, expédiées en bas
   const sortedCommandes = [...filteredCommandes].sort((a, b) => {
     const statusOrder: Record<string, number> = {
-      "En attente de réappro": 1,
-      "Prêt à préparer": 2,
-      "En préparation": 3,
-      "En attente d'expédition": 4,
-      "Expédié": 5,
-      "En cours de livraison": 5,
-      "Livré": 6,
-      "Archivé": 7,
+      [ORDER_STATUSES.EN_ATTENTE_REAPPRO]: 1,
+      [ORDER_STATUSES.STOCK_RESERVE]: 2,
+      [ORDER_STATUSES.EN_PICKING]: 3,
+      [ORDER_STATUSES.PICKING_TERMINE]: 4,
+      [ORDER_STATUSES.EN_PREPARATION]: 5,
+      [ORDER_STATUSES.PRET_EXPEDITION]: 6,
+      [ORDER_STATUSES.ETIQUETTE_GENEREE]: 7,
+      [ORDER_STATUSES.EXPEDIE]: 8,
+      [ORDER_STATUSES.LIVRE]: 9,
+      [ORDER_STATUSES.ANNULE]: 10,
+      [ORDER_STATUSES.ERREUR]: 11,
     };
 
     const aOrder = statusOrder[a.statut_wms] || 999;
@@ -243,6 +254,19 @@ export function CommandesList({
 
     return new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime();
   });
+
+  const toggleSelectAll = () => {
+    if (selectedCommandes.length === sortedCommandes.length) {
+      // Tout désélectionner
+      setSelectedCommandes([]);
+    } else {
+      // Tout sélectionner
+      setSelectedCommandes(sortedCommandes.map((c) => c.id));
+    }
+  };
+
+  const allSelected = sortedCommandes.length > 0 && selectedCommandes.length === sortedCommandes.length;
+  const someSelected = selectedCommandes.length > 0 && selectedCommandes.length < sortedCommandes.length;
 
   if (loading) {
     return (
@@ -303,10 +327,20 @@ export function CommandesList({
 
             <div className="flex gap-2">
               {selectedCommandes.length > 0 && (
-                <Button onClick={handleCreateSession} className="w-full lg:w-auto">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Créer session ({selectedCommandes.length})
-                </Button>
+                <>
+                  <Button onClick={handleCreateSession} className="w-full lg:w-auto">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Créer session ({selectedCommandes.length})
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleDeleteCommandes} 
+                    className="w-full lg:w-auto"
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Supprimer ({selectedCommandes.length})
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -316,8 +350,25 @@ export function CommandesList({
           {sortedCommandes.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">Aucune commande trouvée</p>
           ) : (
-            <div className="space-y-2">
-              {sortedCommandes.map((commande) => (
+            <>
+              <div className="flex items-center gap-3 p-3 mb-2 border-b">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={toggleSelectAll}
+                  className="flex-shrink-0"
+                />
+                <span className="text-sm font-medium text-muted-foreground">
+                  {allSelected 
+                    ? `Tout désélectionner (${sortedCommandes.length})` 
+                    : someSelected 
+                    ? `Sélectionner tout (${selectedCommandes.length}/${sortedCommandes.length})` 
+                    : `Sélectionner tout (${sortedCommandes.length})`
+                  }
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {sortedCommandes.map((commande) => (
                 <div
                   key={commande.id}
                   className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
@@ -344,7 +395,7 @@ export function CommandesList({
                         
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`text-sm font-medium ${getStatutColor(commande.statut_wms)}`}>
-                            {commande.statut_wms}
+                            {getStatutLabel(commande.statut_wms)}
                           </span>
                           
                           {needsStockAlert(commande.statut_wms) && (
@@ -369,6 +420,7 @@ export function CommandesList({
                 </div>
               ))}
             </div>
+            </>
           )}
         </CardContent>
       </Card>

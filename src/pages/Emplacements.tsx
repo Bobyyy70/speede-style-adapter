@@ -9,8 +9,10 @@ import { MapPin, Grid3x3, Archive, AlertCircle, Plus, Minus, Warehouse, Loader2 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GenererEmplacementsDialog } from "@/components/GenererEmplacementsDialog";
-import { AjouterStockDialog } from "@/components/AjouterStockDialog";
-import { RetirerStockDialog } from "@/components/RetirerStockDialog";
+import { AjouterStockSimpleDialog } from "@/components/AjouterStockSimpleDialog";
+import { RetirerStockSimpleDialog } from "@/components/RetirerStockSimpleDialog";
+import { AssignerProduitDialog } from "@/components/AssignerProduitDialog";
+import { SupprimerEmplacementsDialog } from "@/components/SupprimerEmplacementsDialog";
 import { useAuth } from "@/hooks/useAuth";
 
 const Emplacements = () => {
@@ -18,8 +20,10 @@ const Emplacements = () => {
   const isAdmin = userRole === 'admin';
   
   const [genererOpen, setGenererOpen] = useState(false);
+  const [supprimerOpen, setSupprimerOpen] = useState(false);
   const [ajouterOpen, setAjouterOpen] = useState(false);
   const [retirerOpen, setRetirerOpen] = useState(false);
+  const [assignerOpen, setAssignerOpen] = useState(false);
   const [selectedEmplacement, setSelectedEmplacement] = useState<any>(null);
   
   const [filterZone, setFilterZone] = useState<string>("all");
@@ -87,6 +91,11 @@ const Emplacements = () => {
     setRetirerOpen(true);
   };
 
+  const handleAssignerProduit = (emplacement: any) => {
+    setSelectedEmplacement(emplacement);
+    setAssignerOpen(true);
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -98,10 +107,18 @@ const Emplacements = () => {
             </p>
           </div>
           {isAdmin && (
-            <Button onClick={() => setGenererOpen(true)}>
-              <Warehouse className="mr-2 h-4 w-4" />
-              Générer emplacements
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setGenererOpen(true)}>
+                <Warehouse className="mr-2 h-4 w-4" />
+                Générer emplacements
+              </Button>
+              {stats.total > 0 && (
+                <Button variant="destructive" onClick={() => setSupprimerOpen(true)}>
+                  <Minus className="mr-2 h-4 w-4" />
+                  Supprimer emplacements
+                </Button>
+              )}
+            </div>
           )}
         </div>
 
@@ -207,38 +224,48 @@ const Emplacements = () => {
                           {getStatutBadge(emplacement.statut_actuel)}
                           <span className="text-sm text-muted-foreground">Zone {emplacement.zone}</span>
                         </div>
-                        {emplacement.produit && (
-                          <div className="mt-1 text-sm text-muted-foreground">
-                            {emplacement.produit.reference} - {emplacement.produit.nom}
-                          </div>
+                        {emplacement.produit_actuel_id && emplacement.produit ? (
+                          <>
+                            <div className="mt-1 text-sm text-muted-foreground">
+                              {emplacement.produit.reference} - {emplacement.produit.nom}
+                            </div>
+                            <div className="mt-1 text-sm">
+                              <span className="font-medium">{emplacement.quantite_actuelle || 0} unités</span>
+                              {(emplacement as any).capacite_max_kg && (
+                                <span className="text-muted-foreground ml-2">• Max: {(emplacement as any).capacite_max_kg} kg</span>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="mt-1 text-sm text-muted-foreground">Emplacement vide</div>
                         )}
-                        <div className="mt-1 text-sm">
-                          <span className="font-medium">{emplacement.quantite_actuelle || 0}</span>
-                          {(emplacement as any).capacite_max_unites && (
-                            <span className="text-muted-foreground"> / {(emplacement as any).capacite_max_unites} unités</span>
-                          )}
-                          {(emplacement as any).capacite_max_kg && (
-                            <span className="text-muted-foreground ml-2">({(emplacement as any).capacite_max_kg} kg max)</span>
-                          )}
-                        </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleAjouterStock(emplacement)}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Ajouter
-                        </Button>
-                        {emplacement.quantite_actuelle > 0 && (
+                        {emplacement.produit_actuel_id ? (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleAjouterStock(emplacement)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRetirerStock(emplacement)}
+                              disabled={!emplacement.quantite_actuelle}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleRetirerStock(emplacement)}
+                            onClick={() => handleAssignerProduit(emplacement)}
                           >
-                            <Minus className="h-4 w-4 mr-1" />
-                            Retirer
+                            Assigner un produit
                           </Button>
                         )}
                       </div>
@@ -270,20 +297,37 @@ const Emplacements = () => {
         onSuccess={refetch}
       />
 
-      <AjouterStockDialog
-        open={ajouterOpen}
-        onOpenChange={setAjouterOpen}
-        emplacement={selectedEmplacement}
+      <SupprimerEmplacementsDialog
+        open={supprimerOpen}
+        onOpenChange={setSupprimerOpen}
+        zones={zones}
         onSuccess={refetch}
       />
 
-      <RetirerStockDialog
-        open={retirerOpen}
-        onOpenChange={setRetirerOpen}
-        emplacement={selectedEmplacement}
-        produitNom={selectedEmplacement?.produit?.nom}
-        onSuccess={refetch}
-      />
+      {selectedEmplacement && (
+        <>
+          <AjouterStockSimpleDialog
+            open={ajouterOpen}
+            onOpenChange={setAjouterOpen}
+            emplacement={selectedEmplacement}
+            onSuccess={refetch}
+          />
+
+          <RetirerStockSimpleDialog
+            open={retirerOpen}
+            onOpenChange={setRetirerOpen}
+            emplacement={selectedEmplacement}
+            onSuccess={refetch}
+          />
+
+          <AssignerProduitDialog
+            open={assignerOpen}
+            onOpenChange={setAssignerOpen}
+            emplacement={selectedEmplacement}
+            onSuccess={refetch}
+          />
+        </>
+      )}
     </DashboardLayout>
   );
 };

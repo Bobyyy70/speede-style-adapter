@@ -83,6 +83,54 @@ export type Database = {
             referencedRelation: "client"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "attendu_reception_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      attendu_transition_log: {
+        Row: {
+          attendu_id: string
+          date_transition: string
+          id: string
+          metadata: Json | null
+          raison: string | null
+          statut_nouveau: string
+          statut_precedent: string
+          utilisateur_id: string | null
+        }
+        Insert: {
+          attendu_id: string
+          date_transition?: string
+          id?: string
+          metadata?: Json | null
+          raison?: string | null
+          statut_nouveau: string
+          statut_precedent: string
+          utilisateur_id?: string | null
+        }
+        Update: {
+          attendu_id?: string
+          date_transition?: string
+          id?: string
+          metadata?: Json | null
+          raison?: string | null
+          statut_nouveau?: string
+          statut_precedent?: string
+          utilisateur_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendu_transition_log_attendu_id_fkey"
+            columns: ["attendu_id"]
+            isOneToOne: false
+            referencedRelation: "attendu_reception"
+            referencedColumns: ["id"]
+          },
         ]
       }
       audit_log: {
@@ -245,6 +293,13 @@ export type Database = {
             referencedRelation: "commande_gestionnaire_secure"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "calculateur_volumetrique_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
         ]
       }
       client: {
@@ -286,42 +341,112 @@ export type Database = {
         }
         Relationships: []
       }
+      client_user_limits: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          max_users: number
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          max_users?: number
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          max_users?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_user_limits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_user_limits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
       commande: {
         Row: {
           adresse_ligne_1: string
           adresse_ligne_2: string | null
           adresse_nom: string
+          assurance_demandee: boolean | null
           client_id: string | null
+          code_hs: string | null
           code_postal: string
+          conditions_paiement: string | null
           date_creation: string
+          date_expedition: string | null
+          date_expedition_demandee: string | null
+          date_expiration_commande: string | null
+          date_livraison_estimee: string | null
+          date_livraison_reelle: string | null
           date_modification: string
+          date_packing: string | null
+          date_picking: string | null
           devise: string | null
+          documents_douane_requis: string[] | null
           email_client: string | null
+          expediteur_adresse_ligne_1: string | null
+          expediteur_adresse_ligne_2: string | null
+          expediteur_code_postal: string | null
+          expediteur_email: string | null
+          expediteur_entreprise: string | null
+          expediteur_nom: string | null
+          expediteur_pays_code: string | null
+          expediteur_telephone: string | null
+          expediteur_ville: string | null
           facturation_code_postal: string | null
           facturation_ligne_1: string | null
           facturation_ligne_2: string | null
           facturation_nom: string | null
           facturation_pays_code: string | null
+          facturation_siret: string | null
+          facturation_tva_numero: string | null
           facturation_ville: string | null
           id: string
+          incoterm: string | null
+          instructions_livraison: string | null
           label_pregenere: boolean | null
           label_source: string | null
           label_url: string | null
           methode_expedition: string | null
+          nature_marchandise: string | null
           nom_client: string
           notes_expedition: string | null
           numero_commande: string
           numero_facture_commerciale: string | null
           pays_code: string
+          pays_origine_marchandise: string | null
           poids_reel_kg: number | null
           poids_total: number | null
           poids_volumetrique_kg: number | null
+          point_relais_id: string | null
+          priorite_expedition: string | null
+          reference_client: string | null
+          reference_interne: string | null
           remarques: string | null
           sendcloud_id: string | null
           sendcloud_shipment_id: string | null
           source: string
           sous_client: string | null
-          statut_wms: string
+          statut_wms: Database["public"]["Enums"]["statut_commande_enum"]
+          statut_wms_old: string
           tags: string[] | null
           telephone_client: string | null
           tracking_number: string | null
@@ -329,6 +454,8 @@ export type Database = {
           transporteur: string | null
           transporteur_choisi: string | null
           type_carton_id: string | null
+          valeur_assuree: number | null
+          valeur_declaree_douane: number | null
           valeur_totale: number
           ville: string
           zone_livraison: string | null
@@ -337,37 +464,68 @@ export type Database = {
           adresse_ligne_1: string
           adresse_ligne_2?: string | null
           adresse_nom: string
+          assurance_demandee?: boolean | null
           client_id?: string | null
+          code_hs?: string | null
           code_postal: string
+          conditions_paiement?: string | null
           date_creation?: string
+          date_expedition?: string | null
+          date_expedition_demandee?: string | null
+          date_expiration_commande?: string | null
+          date_livraison_estimee?: string | null
+          date_livraison_reelle?: string | null
           date_modification?: string
+          date_packing?: string | null
+          date_picking?: string | null
           devise?: string | null
+          documents_douane_requis?: string[] | null
           email_client?: string | null
+          expediteur_adresse_ligne_1?: string | null
+          expediteur_adresse_ligne_2?: string | null
+          expediteur_code_postal?: string | null
+          expediteur_email?: string | null
+          expediteur_entreprise?: string | null
+          expediteur_nom?: string | null
+          expediteur_pays_code?: string | null
+          expediteur_telephone?: string | null
+          expediteur_ville?: string | null
           facturation_code_postal?: string | null
           facturation_ligne_1?: string | null
           facturation_ligne_2?: string | null
           facturation_nom?: string | null
           facturation_pays_code?: string | null
+          facturation_siret?: string | null
+          facturation_tva_numero?: string | null
           facturation_ville?: string | null
           id?: string
+          incoterm?: string | null
+          instructions_livraison?: string | null
           label_pregenere?: boolean | null
           label_source?: string | null
           label_url?: string | null
           methode_expedition?: string | null
+          nature_marchandise?: string | null
           nom_client: string
           notes_expedition?: string | null
           numero_commande: string
           numero_facture_commerciale?: string | null
           pays_code: string
+          pays_origine_marchandise?: string | null
           poids_reel_kg?: number | null
           poids_total?: number | null
           poids_volumetrique_kg?: number | null
+          point_relais_id?: string | null
+          priorite_expedition?: string | null
+          reference_client?: string | null
+          reference_interne?: string | null
           remarques?: string | null
           sendcloud_id?: string | null
           sendcloud_shipment_id?: string | null
           source: string
           sous_client?: string | null
-          statut_wms?: string
+          statut_wms?: Database["public"]["Enums"]["statut_commande_enum"]
+          statut_wms_old?: string
           tags?: string[] | null
           telephone_client?: string | null
           tracking_number?: string | null
@@ -375,6 +533,8 @@ export type Database = {
           transporteur?: string | null
           transporteur_choisi?: string | null
           type_carton_id?: string | null
+          valeur_assuree?: number | null
+          valeur_declaree_douane?: number | null
           valeur_totale?: number
           ville: string
           zone_livraison?: string | null
@@ -383,37 +543,68 @@ export type Database = {
           adresse_ligne_1?: string
           adresse_ligne_2?: string | null
           adresse_nom?: string
+          assurance_demandee?: boolean | null
           client_id?: string | null
+          code_hs?: string | null
           code_postal?: string
+          conditions_paiement?: string | null
           date_creation?: string
+          date_expedition?: string | null
+          date_expedition_demandee?: string | null
+          date_expiration_commande?: string | null
+          date_livraison_estimee?: string | null
+          date_livraison_reelle?: string | null
           date_modification?: string
+          date_packing?: string | null
+          date_picking?: string | null
           devise?: string | null
+          documents_douane_requis?: string[] | null
           email_client?: string | null
+          expediteur_adresse_ligne_1?: string | null
+          expediteur_adresse_ligne_2?: string | null
+          expediteur_code_postal?: string | null
+          expediteur_email?: string | null
+          expediteur_entreprise?: string | null
+          expediteur_nom?: string | null
+          expediteur_pays_code?: string | null
+          expediteur_telephone?: string | null
+          expediteur_ville?: string | null
           facturation_code_postal?: string | null
           facturation_ligne_1?: string | null
           facturation_ligne_2?: string | null
           facturation_nom?: string | null
           facturation_pays_code?: string | null
+          facturation_siret?: string | null
+          facturation_tva_numero?: string | null
           facturation_ville?: string | null
           id?: string
+          incoterm?: string | null
+          instructions_livraison?: string | null
           label_pregenere?: boolean | null
           label_source?: string | null
           label_url?: string | null
           methode_expedition?: string | null
+          nature_marchandise?: string | null
           nom_client?: string
           notes_expedition?: string | null
           numero_commande?: string
           numero_facture_commerciale?: string | null
           pays_code?: string
+          pays_origine_marchandise?: string | null
           poids_reel_kg?: number | null
           poids_total?: number | null
           poids_volumetrique_kg?: number | null
+          point_relais_id?: string | null
+          priorite_expedition?: string | null
+          reference_client?: string | null
+          reference_interne?: string | null
           remarques?: string | null
           sendcloud_id?: string | null
           sendcloud_shipment_id?: string | null
           source?: string
           sous_client?: string | null
-          statut_wms?: string
+          statut_wms?: Database["public"]["Enums"]["statut_commande_enum"]
+          statut_wms_old?: string
           tags?: string[] | null
           telephone_client?: string | null
           tracking_number?: string | null
@@ -421,6 +612,8 @@ export type Database = {
           transporteur?: string | null
           transporteur_choisi?: string | null
           type_carton_id?: string | null
+          valeur_assuree?: number | null
+          valeur_declaree_douane?: number | null
           valeur_totale?: number
           ville?: string
           zone_livraison?: string | null
@@ -434,10 +627,411 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "commande_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "commande_type_carton_id_fkey"
             columns: ["type_carton_id"]
             isOneToOne: false
             referencedRelation: "type_carton"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commande_transition_log: {
+        Row: {
+          commande_id: string
+          date_transition: string | null
+          id: string
+          metadata: Json | null
+          raison: string | null
+          statut_nouveau: Database["public"]["Enums"]["statut_commande_enum"]
+          statut_precedent:
+            | Database["public"]["Enums"]["statut_commande_enum"]
+            | null
+          utilisateur_id: string | null
+        }
+        Insert: {
+          commande_id: string
+          date_transition?: string | null
+          id?: string
+          metadata?: Json | null
+          raison?: string | null
+          statut_nouveau: Database["public"]["Enums"]["statut_commande_enum"]
+          statut_precedent?:
+            | Database["public"]["Enums"]["statut_commande_enum"]
+            | null
+          utilisateur_id?: string | null
+        }
+        Update: {
+          commande_id?: string
+          date_transition?: string | null
+          id?: string
+          metadata?: Json | null
+          raison?: string | null
+          statut_nouveau?: Database["public"]["Enums"]["statut_commande_enum"]
+          statut_precedent?:
+            | Database["public"]["Enums"]["statut_commande_enum"]
+            | null
+          utilisateur_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commande_transition_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commande_transition_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commande_transition_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      configuration_expediteur: {
+        Row: {
+          actif: boolean | null
+          adresse_ligne_1: string
+          adresse_ligne_2: string | null
+          client_id: string | null
+          code_postal: string
+          date_creation: string | null
+          date_modification: string | null
+          email: string
+          entreprise: string
+          eori_number: string | null
+          est_defaut: boolean | null
+          id: string
+          nom: string
+          pays_code: string
+          telephone: string
+          vat_number: string | null
+          ville: string
+        }
+        Insert: {
+          actif?: boolean | null
+          adresse_ligne_1: string
+          adresse_ligne_2?: string | null
+          client_id?: string | null
+          code_postal: string
+          date_creation?: string | null
+          date_modification?: string | null
+          email: string
+          entreprise: string
+          eori_number?: string | null
+          est_defaut?: boolean | null
+          id?: string
+          nom: string
+          pays_code?: string
+          telephone: string
+          vat_number?: string | null
+          ville: string
+        }
+        Update: {
+          actif?: boolean | null
+          adresse_ligne_1?: string
+          adresse_ligne_2?: string | null
+          client_id?: string | null
+          code_postal?: string
+          date_creation?: string | null
+          date_modification?: string | null
+          email?: string
+          entreprise?: string
+          eori_number?: string | null
+          est_defaut?: boolean | null
+          id?: string
+          nom?: string
+          pays_code?: string
+          telephone?: string
+          vat_number?: string | null
+          ville?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configuration_expediteur_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "configuration_expediteur_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      contact_destinataire: {
+        Row: {
+          adresse_ligne_1: string
+          adresse_ligne_2: string | null
+          adresse_ligne_3: string | null
+          client_id: string
+          code_postal: string
+          date_creation: string
+          date_modification: string
+          derniere_utilisation: string | null
+          digicode: string | null
+          email: string | null
+          entreprise: string | null
+          est_archive: boolean | null
+          est_favori: boolean | null
+          id: string
+          instructions_acces: string | null
+          instructions_livraison: string | null
+          interphone: string | null
+          label_contact: string | null
+          nom: string
+          pays_code: string
+          prenom: string | null
+          telephone: string | null
+          telephone_mobile: string | null
+          utilisation_count: number | null
+          ville: string
+        }
+        Insert: {
+          adresse_ligne_1: string
+          adresse_ligne_2?: string | null
+          adresse_ligne_3?: string | null
+          client_id: string
+          code_postal: string
+          date_creation?: string
+          date_modification?: string
+          derniere_utilisation?: string | null
+          digicode?: string | null
+          email?: string | null
+          entreprise?: string | null
+          est_archive?: boolean | null
+          est_favori?: boolean | null
+          id?: string
+          instructions_acces?: string | null
+          instructions_livraison?: string | null
+          interphone?: string | null
+          label_contact?: string | null
+          nom: string
+          pays_code: string
+          prenom?: string | null
+          telephone?: string | null
+          telephone_mobile?: string | null
+          utilisation_count?: number | null
+          ville: string
+        }
+        Update: {
+          adresse_ligne_1?: string
+          adresse_ligne_2?: string | null
+          adresse_ligne_3?: string | null
+          client_id?: string
+          code_postal?: string
+          date_creation?: string
+          date_modification?: string
+          derniere_utilisation?: string | null
+          digicode?: string | null
+          email?: string | null
+          entreprise?: string | null
+          est_archive?: boolean | null
+          est_favori?: boolean | null
+          id?: string
+          instructions_acces?: string | null
+          instructions_livraison?: string | null
+          interphone?: string | null
+          label_contact?: string | null
+          nom?: string
+          pays_code?: string
+          prenom?: string | null
+          telephone?: string | null
+          telephone_mobile?: string | null
+          utilisation_count?: number | null
+          ville?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_destinataire_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_destinataire_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      dashboard_widget_config: {
+        Row: {
+          date_creation: string | null
+          height: number | null
+          id: string
+          position_x: number
+          position_y: number
+          user_id: string
+          visible: boolean | null
+          widget_config: Json
+          widget_library_id: string | null
+          widget_type: string
+          width: number | null
+        }
+        Insert: {
+          date_creation?: string | null
+          height?: number | null
+          id?: string
+          position_x?: number
+          position_y?: number
+          user_id: string
+          visible?: boolean | null
+          widget_config: Json
+          widget_library_id?: string | null
+          widget_type: string
+          width?: number | null
+        }
+        Update: {
+          date_creation?: string | null
+          height?: number | null
+          id?: string
+          position_x?: number
+          position_y?: number
+          user_id?: string
+          visible?: boolean | null
+          widget_config?: Json
+          widget_library_id?: string | null
+          widget_type?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_widget_config_widget_library_id_fkey"
+            columns: ["widget_library_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_widget_library"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_widget_library: {
+        Row: {
+          actif: boolean | null
+          categorie: string | null
+          date_ajout: string | null
+          default_config: Json
+          description: string | null
+          id: string
+          nom: string
+          preview_image: string | null
+          version: number | null
+          widget_type: string
+        }
+        Insert: {
+          actif?: boolean | null
+          categorie?: string | null
+          date_ajout?: string | null
+          default_config: Json
+          description?: string | null
+          id?: string
+          nom: string
+          preview_image?: string | null
+          version?: number | null
+          widget_type: string
+        }
+        Update: {
+          actif?: boolean | null
+          categorie?: string | null
+          date_ajout?: string | null
+          default_config?: Json
+          description?: string | null
+          id?: string
+          nom?: string
+          preview_image?: string | null
+          version?: number | null
+          widget_type?: string
+        }
+        Relationships: []
+      }
+      demande_service_personnalise: {
+        Row: {
+          client_id: string
+          created_by: string | null
+          date_creation: string | null
+          date_modification: string | null
+          date_rdv: string | null
+          formulaire_data: Json
+          hubspot_ticket_id: string | null
+          id: string
+          prix_estime: number | null
+          prix_final: number | null
+          remarques_admin: string | null
+          service_id: string
+          statut: string | null
+        }
+        Insert: {
+          client_id: string
+          created_by?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          date_rdv?: string | null
+          formulaire_data: Json
+          hubspot_ticket_id?: string | null
+          id?: string
+          prix_estime?: number | null
+          prix_final?: number | null
+          remarques_admin?: string | null
+          service_id: string
+          statut?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_by?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          date_rdv?: string | null
+          formulaire_data?: Json
+          hubspot_ticket_id?: string | null
+          id?: string
+          prix_estime?: number | null
+          prix_final?: number | null
+          remarques_admin?: string | null
+          service_id?: string
+          statut?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demande_service_personnalise_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demande_service_personnalise_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "demande_service_personnalise_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_logistique"
             referencedColumns: ["id"]
           },
         ]
@@ -494,10 +1088,18 @@ export type Database = {
             referencedRelation: "commande_gestionnaire_secure"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "document_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
         ]
       }
       emplacement: {
         Row: {
+          capacite_max_kg: number | null
           capacite_maximale: number | null
           code_emplacement: string
           date_creation: string | null
@@ -509,6 +1111,7 @@ export type Database = {
           zone: string
         }
         Insert: {
+          capacite_max_kg?: number | null
           capacite_maximale?: number | null
           code_emplacement: string
           date_creation?: string | null
@@ -520,6 +1123,7 @@ export type Database = {
           zone: string
         }
         Update: {
+          capacite_max_kg?: number | null
           capacite_maximale?: number | null
           code_emplacement?: string
           date_creation?: string | null
@@ -819,6 +1423,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ligne_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ligne_commande_emplacement_picking_id_fkey"
             columns: ["emplacement_picking_id"]
             isOneToOne: false
@@ -905,64 +1516,6 @@ export type Database = {
           },
         ]
       }
-      ligne_service_commande: {
-        Row: {
-          commande_id: string | null
-          date_creation: string | null
-          genere_automatiquement: boolean | null
-          id: string
-          prix_total: number | null
-          prix_unitaire: number
-          quantite: number
-          remarques: string | null
-          service_id: string | null
-        }
-        Insert: {
-          commande_id?: string | null
-          date_creation?: string | null
-          genere_automatiquement?: boolean | null
-          id?: string
-          prix_total?: number | null
-          prix_unitaire: number
-          quantite?: number
-          remarques?: string | null
-          service_id?: string | null
-        }
-        Update: {
-          commande_id?: string | null
-          date_creation?: string | null
-          genere_automatiquement?: boolean | null
-          id?: string
-          prix_total?: number | null
-          prix_unitaire?: number
-          quantite?: number
-          remarques?: string | null
-          service_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ligne_service_commande_commande_id_fkey"
-            columns: ["commande_id"]
-            isOneToOne: false
-            referencedRelation: "commande"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ligne_service_commande_commande_id_fkey"
-            columns: ["commande_id"]
-            isOneToOne: false
-            referencedRelation: "commande_gestionnaire_secure"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ligne_service_commande_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "service_logistique"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       mouvement_stock: {
         Row: {
           commande_id: string | null
@@ -974,9 +1527,11 @@ export type Database = {
           numero_mouvement: string
           produit_id: string
           quantite: number
+          raison: string | null
           reference_origine: string | null
           remarques: string | null
           statut_mouvement: string | null
+          stock_apres_mouvement: number | null
           type_contenant: string | null
           type_mouvement: string
           type_origine: string | null
@@ -991,9 +1546,11 @@ export type Database = {
           numero_mouvement: string
           produit_id: string
           quantite: number
+          raison?: string | null
           reference_origine?: string | null
           remarques?: string | null
           statut_mouvement?: string | null
+          stock_apres_mouvement?: number | null
           type_contenant?: string | null
           type_mouvement: string
           type_origine?: string | null
@@ -1008,9 +1565,11 @@ export type Database = {
           numero_mouvement?: string
           produit_id?: string
           quantite?: number
+          raison?: string | null
           reference_origine?: string | null
           remarques?: string | null
           statut_mouvement?: string | null
+          stock_apres_mouvement?: number | null
           type_contenant?: string | null
           type_mouvement?: string
           type_origine?: string | null
@@ -1028,6 +1587,13 @@ export type Database = {
             columns: ["commande_id"]
             isOneToOne: false
             referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvement_stock_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
             referencedColumns: ["id"]
           },
           {
@@ -1190,6 +1756,7 @@ export type Database = {
           prix_unitaire: number | null
           protection_individuelle: boolean | null
           reference: string
+          rotation_stock: string | null
           statut_actif: boolean | null
           stock_actuel: number | null
           stock_maximum: number | null
@@ -1230,6 +1797,7 @@ export type Database = {
           prix_unitaire?: number | null
           protection_individuelle?: boolean | null
           reference: string
+          rotation_stock?: string | null
           statut_actif?: boolean | null
           stock_actuel?: number | null
           stock_maximum?: number | null
@@ -1270,6 +1838,7 @@ export type Database = {
           prix_unitaire?: number | null
           protection_individuelle?: boolean | null
           reference?: string
+          rotation_stock?: string | null
           statut_actif?: boolean | null
           stock_actuel?: number | null
           stock_maximum?: number | null
@@ -1286,6 +1855,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "client"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produit_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -1367,6 +1943,222 @@ export type Database = {
         }
         Relationships: []
       }
+      regle_attribution_emballage: {
+        Row: {
+          actif: boolean | null
+          code_emballage: string | null
+          conditions: Json
+          date_creation: string | null
+          description: string | null
+          id: string
+          nom_regle: string
+          priorite: number | null
+          type_carton_id: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          code_emballage?: string | null
+          conditions: Json
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle: string
+          priorite?: number | null
+          type_carton_id?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          code_emballage?: string | null
+          conditions?: Json
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle?: string
+          priorite?: number | null
+          type_carton_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regle_attribution_emballage_type_carton_id_fkey"
+            columns: ["type_carton_id"]
+            isOneToOne: false
+            referencedRelation: "type_carton"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      regle_attribution_emplacement: {
+        Row: {
+          actif: boolean | null
+          conditions: Json
+          date_creation: string | null
+          description: string | null
+          id: string
+          nom_regle: string
+          priorite: number | null
+          type_emplacement_cible: string | null
+          zone_cible: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          conditions: Json
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle: string
+          priorite?: number | null
+          type_emplacement_cible?: string | null
+          zone_cible?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          conditions?: Json
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle?: string
+          priorite?: number | null
+          type_emplacement_cible?: string | null
+          zone_cible?: string | null
+        }
+        Relationships: []
+      }
+      regle_expediteur_automatique: {
+        Row: {
+          actif: boolean | null
+          client_id: string
+          condition_type: string
+          condition_value: string
+          configuration_expediteur_id: string
+          date_creation: string | null
+          date_modification: string | null
+          id: string
+          nom_regle: string
+          priorite: number | null
+        }
+        Insert: {
+          actif?: boolean | null
+          client_id: string
+          condition_type: string
+          condition_value: string
+          configuration_expediteur_id: string
+          date_creation?: string | null
+          date_modification?: string | null
+          id?: string
+          nom_regle: string
+          priorite?: number | null
+        }
+        Update: {
+          actif?: boolean | null
+          client_id?: string
+          condition_type?: string
+          condition_value?: string
+          configuration_expediteur_id?: string
+          date_creation?: string | null
+          date_modification?: string | null
+          id?: string
+          nom_regle?: string
+          priorite?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regle_expediteur_automatique_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regle_expediteur_automatique_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "regle_expediteur_automatique_configuration_expediteur_id_fkey"
+            columns: ["configuration_expediteur_id"]
+            isOneToOne: false
+            referencedRelation: "configuration_expediteur"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      regle_picking_optimal: {
+        Row: {
+          actif: boolean | null
+          conditions: Json | null
+          date_creation: string | null
+          description: string | null
+          id: string
+          nom_regle: string
+          parametres: Json | null
+          priorite: number | null
+          strategie: string
+        }
+        Insert: {
+          actif?: boolean | null
+          conditions?: Json | null
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle: string
+          parametres?: Json | null
+          priorite?: number | null
+          strategie: string
+        }
+        Update: {
+          actif?: boolean | null
+          conditions?: Json | null
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle?: string
+          parametres?: Json | null
+          priorite?: number | null
+          strategie?: string
+        }
+        Relationships: []
+      }
+      regle_session_preparation: {
+        Row: {
+          actif: boolean | null
+          auto_assignation_operateur: string | null
+          conditions: Json
+          date_creation: string | null
+          date_modification: string | null
+          description: string | null
+          id: string
+          nom_regle: string
+          priorite: number | null
+          type_session: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          auto_assignation_operateur?: string | null
+          conditions: Json
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          id?: string
+          nom_regle: string
+          priorite?: number | null
+          type_session?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          auto_assignation_operateur?: string | null
+          conditions?: Json
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          id?: string
+          nom_regle?: string
+          priorite?: number | null
+          type_session?: string | null
+        }
+        Relationships: []
+      }
       regle_tag_automatique: {
         Row: {
           actif: boolean | null
@@ -1403,6 +2195,42 @@ export type Database = {
           nom_regle?: string
           priorite?: number
           tag?: string
+        }
+        Relationships: []
+      }
+      regle_traitement_retour: {
+        Row: {
+          actif: boolean | null
+          actions_automatiques: Json
+          conditions: Json
+          date_creation: string | null
+          description: string | null
+          id: string
+          nom_regle: string
+          priorite: number | null
+          validation_manuelle_requise: boolean | null
+        }
+        Insert: {
+          actif?: boolean | null
+          actions_automatiques: Json
+          conditions: Json
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle: string
+          priorite?: number | null
+          validation_manuelle_requise?: boolean | null
+        }
+        Update: {
+          actif?: boolean | null
+          actions_automatiques?: Json
+          conditions?: Json
+          date_creation?: string | null
+          description?: string | null
+          id?: string
+          nom_regle?: string
+          priorite?: number | null
+          validation_manuelle_requise?: boolean | null
         }
         Relationships: []
       }
@@ -1497,6 +2325,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "retour_produit_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "retour_produit_commande_origine_id_fkey"
             columns: ["commande_origine_id"]
             isOneToOne: false
@@ -1508,6 +2343,54 @@ export type Database = {
             columns: ["commande_origine_id"]
             isOneToOne: false
             referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retour_produit_commande_origine_id_fkey"
+            columns: ["commande_origine_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retour_transition_log: {
+        Row: {
+          date_transition: string
+          id: string
+          metadata: Json | null
+          raison: string | null
+          retour_id: string
+          statut_nouveau: string
+          statut_precedent: string
+          utilisateur_id: string | null
+        }
+        Insert: {
+          date_transition?: string
+          id?: string
+          metadata?: Json | null
+          raison?: string | null
+          retour_id: string
+          statut_nouveau: string
+          statut_precedent: string
+          utilisateur_id?: string | null
+        }
+        Update: {
+          date_transition?: string
+          id?: string
+          metadata?: Json | null
+          raison?: string | null
+          retour_id?: string
+          statut_nouveau?: string
+          statut_precedent?: string
+          utilisateur_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retour_transition_log_retour_id_fkey"
+            columns: ["retour_id"]
+            isOneToOne: false
+            referencedRelation: "retour_produit"
             referencedColumns: ["id"]
           },
         ]
@@ -1565,6 +2448,13 @@ export type Database = {
             columns: ["commande_id"]
             isOneToOne: false
             referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scan_picking_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
             referencedColumns: ["id"]
           },
           {
@@ -1652,6 +2542,13 @@ export type Database = {
             referencedRelation: "commande_gestionnaire_secure"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sendcloud_api_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
         ]
       }
       sendcloud_sync_log: {
@@ -1710,9 +2607,10 @@ export type Database = {
           date_creation: string | null
           date_modification: string | null
           description: string | null
+          formulaire_hubspot_url: string | null
           id: string
           nom_service: string
-          prix_unitaire: number
+          prix_unitaire: number | null
           type_facturation: string
         }
         Insert: {
@@ -1722,9 +2620,10 @@ export type Database = {
           date_creation?: string | null
           date_modification?: string | null
           description?: string | null
+          formulaire_hubspot_url?: string | null
           id?: string
           nom_service: string
-          prix_unitaire: number
+          prix_unitaire?: number | null
           type_facturation: string
         }
         Update: {
@@ -1734,9 +2633,10 @@ export type Database = {
           date_creation?: string | null
           date_modification?: string | null
           description?: string | null
+          formulaire_hubspot_url?: string | null
           id?: string
           nom_service?: string
-          prix_unitaire?: number
+          prix_unitaire?: number | null
           type_facturation?: string
         }
         Relationships: []
@@ -1782,6 +2682,13 @@ export type Database = {
             columns: ["commande_id"]
             isOneToOne: false
             referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_commande_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
             referencedColumns: ["id"]
           },
           {
@@ -1866,6 +2773,7 @@ export type Database = {
           nom_session: string
           ordre_priorite: number
           statut: string | null
+          strategie_picking: string | null
         }
         Insert: {
           created_by?: string | null
@@ -1881,6 +2789,7 @@ export type Database = {
           nom_session: string
           ordre_priorite?: number
           statut?: string | null
+          strategie_picking?: string | null
         }
         Update: {
           created_by?: string | null
@@ -1896,6 +2805,7 @@ export type Database = {
           nom_session?: string
           ordre_priorite?: number
           statut?: string | null
+          strategie_picking?: string | null
         }
         Relationships: []
       }
@@ -1944,6 +2854,128 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "stock_disponible"
             referencedColumns: ["produit_id"]
+          },
+        ]
+      }
+      statut_migration_map: {
+        Row: {
+          ancien_statut: string
+          date_migration: string | null
+          nouveau_statut: Database["public"]["Enums"]["statut_commande_enum"]
+        }
+        Insert: {
+          ancien_statut: string
+          date_migration?: string | null
+          nouveau_statut: Database["public"]["Enums"]["statut_commande_enum"]
+        }
+        Update: {
+          ancien_statut?: string
+          date_migration?: string | null
+          nouveau_statut?: Database["public"]["Enums"]["statut_commande_enum"]
+        }
+        Relationships: []
+      }
+      transporteur_configuration: {
+        Row: {
+          actif: boolean | null
+          api_credentials_encrypted: string | null
+          api_endpoint: string | null
+          code_transporteur: string
+          date_creation: string | null
+          date_modification: string | null
+          delais_moyens: Json | null
+          id: string
+          logo_url: string | null
+          nom_complet: string
+          services_disponibles: Json | null
+          zones_couverture: Json | null
+        }
+        Insert: {
+          actif?: boolean | null
+          api_credentials_encrypted?: string | null
+          api_endpoint?: string | null
+          code_transporteur: string
+          date_creation?: string | null
+          date_modification?: string | null
+          delais_moyens?: Json | null
+          id?: string
+          logo_url?: string | null
+          nom_complet: string
+          services_disponibles?: Json | null
+          zones_couverture?: Json | null
+        }
+        Update: {
+          actif?: boolean | null
+          api_credentials_encrypted?: string | null
+          api_endpoint?: string | null
+          code_transporteur?: string
+          date_creation?: string | null
+          date_modification?: string | null
+          delais_moyens?: Json | null
+          id?: string
+          logo_url?: string | null
+          nom_complet?: string
+          services_disponibles?: Json | null
+          zones_couverture?: Json | null
+        }
+        Relationships: []
+      }
+      transporteur_service: {
+        Row: {
+          actif: boolean | null
+          assurance_incluse: boolean | null
+          code_service: string
+          date_creation: string | null
+          delai_max_jours: number | null
+          delai_min_jours: number | null
+          description: string | null
+          dimensions_max_cm: Json | null
+          id: string
+          nom_affichage: string
+          poids_max_kg: number | null
+          poids_min_kg: number | null
+          suivi_disponible: boolean | null
+          transporteur_id: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          assurance_incluse?: boolean | null
+          code_service: string
+          date_creation?: string | null
+          delai_max_jours?: number | null
+          delai_min_jours?: number | null
+          description?: string | null
+          dimensions_max_cm?: Json | null
+          id?: string
+          nom_affichage: string
+          poids_max_kg?: number | null
+          poids_min_kg?: number | null
+          suivi_disponible?: boolean | null
+          transporteur_id?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          assurance_incluse?: boolean | null
+          code_service?: string
+          date_creation?: string | null
+          delai_max_jours?: number | null
+          delai_min_jours?: number | null
+          description?: string | null
+          dimensions_max_cm?: Json | null
+          id?: string
+          nom_affichage?: string
+          poids_max_kg?: number | null
+          poids_min_kg?: number | null
+          suivi_disponible?: boolean | null
+          transporteur_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transporteur_service_transporteur_id_fkey"
+            columns: ["transporteur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteur_configuration"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2047,10 +3079,27 @@ export type Database = {
             referencedRelation: "commande_gestionnaire_secure"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "webhook_sendcloud_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
+      client_user_stats: {
+        Row: {
+          client_id: string | null
+          current_users: number | null
+          max_users: number | null
+          nom_entreprise: string | null
+          remaining_slots: number | null
+        }
+        Relationships: []
+      }
       commande_gestionnaire_secure: {
         Row: {
           adresse_ligne_1: string | null
@@ -2156,6 +3205,13 @@ export type Database = {
             referencedRelation: "client"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "commande_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       stock_disponible: {
@@ -2180,21 +3236,323 @@ export type Database = {
         }
         Relationships: []
       }
+      v_commandes_avec_statut: {
+        Row: {
+          adresse_ligne_1: string | null
+          adresse_ligne_2: string | null
+          adresse_nom: string | null
+          assurance_demandee: boolean | null
+          client_id: string | null
+          code_hs: string | null
+          code_postal: string | null
+          conditions_paiement: string | null
+          date_creation: string | null
+          date_expedition: string | null
+          date_expedition_demandee: string | null
+          date_expiration_commande: string | null
+          date_livraison_estimee: string | null
+          date_livraison_reelle: string | null
+          date_modification: string | null
+          date_packing: string | null
+          date_picking: string | null
+          devise: string | null
+          documents_douane_requis: string[] | null
+          email_client: string | null
+          expediteur_adresse_ligne_1: string | null
+          expediteur_adresse_ligne_2: string | null
+          expediteur_code_postal: string | null
+          expediteur_email: string | null
+          expediteur_entreprise: string | null
+          expediteur_nom: string | null
+          expediteur_pays_code: string | null
+          expediteur_telephone: string | null
+          expediteur_ville: string | null
+          facturation_code_postal: string | null
+          facturation_ligne_1: string | null
+          facturation_ligne_2: string | null
+          facturation_nom: string | null
+          facturation_pays_code: string | null
+          facturation_siret: string | null
+          facturation_tva_numero: string | null
+          facturation_ville: string | null
+          id: string | null
+          incoterm: string | null
+          instructions_livraison: string | null
+          label_pregenere: boolean | null
+          label_source: string | null
+          label_url: string | null
+          methode_expedition: string | null
+          nature_marchandise: string | null
+          nb_transitions: number | null
+          nom_client: string | null
+          notes_expedition: string | null
+          numero_commande: string | null
+          numero_facture_commerciale: string | null
+          pays_code: string | null
+          pays_origine_marchandise: string | null
+          poids_reel_kg: number | null
+          poids_total: number | null
+          poids_volumetrique_kg: number | null
+          point_relais_id: string | null
+          priorite_expedition: string | null
+          reference_client: string | null
+          reference_interne: string | null
+          remarques: string | null
+          sendcloud_id: string | null
+          sendcloud_shipment_id: string | null
+          source: string | null
+          sous_client: string | null
+          statut_affichage_fr: string | null
+          statut_libelle: string | null
+          statut_wms: Database["public"]["Enums"]["statut_commande_enum"] | null
+          statut_wms_old: string | null
+          tags: string[] | null
+          telephone_client: string | null
+          tracking_number: string | null
+          tracking_url: string | null
+          transporteur: string | null
+          transporteur_choisi: string | null
+          type_carton_id: string | null
+          valeur_assuree: number | null
+          valeur_declaree_douane: number | null
+          valeur_totale: number | null
+          ville: string | null
+          zone_livraison: string | null
+        }
+        Insert: {
+          adresse_ligne_1?: string | null
+          adresse_ligne_2?: string | null
+          adresse_nom?: string | null
+          assurance_demandee?: boolean | null
+          client_id?: string | null
+          code_hs?: string | null
+          code_postal?: string | null
+          conditions_paiement?: string | null
+          date_creation?: string | null
+          date_expedition?: string | null
+          date_expedition_demandee?: string | null
+          date_expiration_commande?: string | null
+          date_livraison_estimee?: string | null
+          date_livraison_reelle?: string | null
+          date_modification?: string | null
+          date_packing?: string | null
+          date_picking?: string | null
+          devise?: string | null
+          documents_douane_requis?: string[] | null
+          email_client?: string | null
+          expediteur_adresse_ligne_1?: string | null
+          expediteur_adresse_ligne_2?: string | null
+          expediteur_code_postal?: string | null
+          expediteur_email?: string | null
+          expediteur_entreprise?: string | null
+          expediteur_nom?: string | null
+          expediteur_pays_code?: string | null
+          expediteur_telephone?: string | null
+          expediteur_ville?: string | null
+          facturation_code_postal?: string | null
+          facturation_ligne_1?: string | null
+          facturation_ligne_2?: string | null
+          facturation_nom?: string | null
+          facturation_pays_code?: string | null
+          facturation_siret?: string | null
+          facturation_tva_numero?: string | null
+          facturation_ville?: string | null
+          id?: string | null
+          incoterm?: string | null
+          instructions_livraison?: string | null
+          label_pregenere?: boolean | null
+          label_source?: string | null
+          label_url?: string | null
+          methode_expedition?: string | null
+          nature_marchandise?: string | null
+          nb_transitions?: never
+          nom_client?: string | null
+          notes_expedition?: string | null
+          numero_commande?: string | null
+          numero_facture_commerciale?: string | null
+          pays_code?: string | null
+          pays_origine_marchandise?: string | null
+          poids_reel_kg?: number | null
+          poids_total?: number | null
+          poids_volumetrique_kg?: number | null
+          point_relais_id?: string | null
+          priorite_expedition?: string | null
+          reference_client?: string | null
+          reference_interne?: string | null
+          remarques?: string | null
+          sendcloud_id?: string | null
+          sendcloud_shipment_id?: string | null
+          source?: string | null
+          sous_client?: string | null
+          statut_affichage_fr?: never
+          statut_libelle?: never
+          statut_wms?:
+            | Database["public"]["Enums"]["statut_commande_enum"]
+            | null
+          statut_wms_old?: string | null
+          tags?: string[] | null
+          telephone_client?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          transporteur?: string | null
+          transporteur_choisi?: string | null
+          type_carton_id?: string | null
+          valeur_assuree?: number | null
+          valeur_declaree_douane?: number | null
+          valeur_totale?: number | null
+          ville?: string | null
+          zone_livraison?: string | null
+        }
+        Update: {
+          adresse_ligne_1?: string | null
+          adresse_ligne_2?: string | null
+          adresse_nom?: string | null
+          assurance_demandee?: boolean | null
+          client_id?: string | null
+          code_hs?: string | null
+          code_postal?: string | null
+          conditions_paiement?: string | null
+          date_creation?: string | null
+          date_expedition?: string | null
+          date_expedition_demandee?: string | null
+          date_expiration_commande?: string | null
+          date_livraison_estimee?: string | null
+          date_livraison_reelle?: string | null
+          date_modification?: string | null
+          date_packing?: string | null
+          date_picking?: string | null
+          devise?: string | null
+          documents_douane_requis?: string[] | null
+          email_client?: string | null
+          expediteur_adresse_ligne_1?: string | null
+          expediteur_adresse_ligne_2?: string | null
+          expediteur_code_postal?: string | null
+          expediteur_email?: string | null
+          expediteur_entreprise?: string | null
+          expediteur_nom?: string | null
+          expediteur_pays_code?: string | null
+          expediteur_telephone?: string | null
+          expediteur_ville?: string | null
+          facturation_code_postal?: string | null
+          facturation_ligne_1?: string | null
+          facturation_ligne_2?: string | null
+          facturation_nom?: string | null
+          facturation_pays_code?: string | null
+          facturation_siret?: string | null
+          facturation_tva_numero?: string | null
+          facturation_ville?: string | null
+          id?: string | null
+          incoterm?: string | null
+          instructions_livraison?: string | null
+          label_pregenere?: boolean | null
+          label_source?: string | null
+          label_url?: string | null
+          methode_expedition?: string | null
+          nature_marchandise?: string | null
+          nb_transitions?: never
+          nom_client?: string | null
+          notes_expedition?: string | null
+          numero_commande?: string | null
+          numero_facture_commerciale?: string | null
+          pays_code?: string | null
+          pays_origine_marchandise?: string | null
+          poids_reel_kg?: number | null
+          poids_total?: number | null
+          poids_volumetrique_kg?: number | null
+          point_relais_id?: string | null
+          priorite_expedition?: string | null
+          reference_client?: string | null
+          reference_interne?: string | null
+          remarques?: string | null
+          sendcloud_id?: string | null
+          sendcloud_shipment_id?: string | null
+          source?: string | null
+          sous_client?: string | null
+          statut_affichage_fr?: never
+          statut_libelle?: never
+          statut_wms?:
+            | Database["public"]["Enums"]["statut_commande_enum"]
+            | null
+          statut_wms_old?: string | null
+          tags?: string[] | null
+          telephone_client?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          transporteur?: string | null
+          transporteur_choisi?: string | null
+          type_carton_id?: string | null
+          valeur_assuree?: number | null
+          valeur_declaree_douane?: number | null
+          valeur_totale?: number | null
+          ville?: string | null
+          zone_livraison?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commande_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commande_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "commande_type_carton_id_fkey"
+            columns: ["type_carton_id"]
+            isOneToOne: false
+            referencedRelation: "type_carton"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      backfill_missing_profiles: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
+      ajouter_stock_manuel: {
+        Args: {
+          p_emplacement_id: string
+          p_produit_id: string
+          p_quantite: number
+          p_raison?: string
+          p_remarques?: string
+        }
+        Returns: Json
+      }
+      backfill_missing_profiles: { Args: never; Returns: undefined }
+      can_client_create_user: { Args: { _client_id: string }; Returns: boolean }
+      execute_sql_admin: { Args: { statements: string[] }; Returns: Json }
+      expedier_commande_stock: {
+        Args: { p_commande_id: string }
+        Returns: Json
       }
       generer_emplacements_auto: {
         Args: {
           p_allees?: string
           p_capacite_kg?: number
-          p_capacite_unites?: number
           p_nb_racks?: number
           p_positions?: string
         }
         Returns: number
+      }
+      get_commande_historique: {
+        Args: { p_commande_id: string }
+        Returns: {
+          date_transition: string
+          metadata: Json
+          raison: string
+          statut_nouveau: string
+          statut_precedent: string
+          utilisateur_nom: string
+        }[]
+      }
+      get_statut_label: {
+        Args: { statut: Database["public"]["Enums"]["statut_commande_enum"] }
+        Returns: string
       }
       get_user_role: {
         Args: { user_id: string }
@@ -2207,9 +3565,25 @@ export type Database = {
         }
         Returns: boolean
       }
+      liberer_stock_commande: { Args: { p_commande_id: string }; Returns: Json }
+      peut_transitionner: {
+        Args: {
+          p_statut_actuel: Database["public"]["Enums"]["statut_commande_enum"]
+          p_statut_cible: Database["public"]["Enums"]["statut_commande_enum"]
+        }
+        Returns: boolean
+      }
+      process_commande_services: {
+        Args: { p_commande_id: string; p_services: Json }
+        Returns: Json
+      }
       promote_user_to_admin: {
         Args: { user_email: string }
         Returns: undefined
+      }
+      reintegrer_produits_retour: {
+        Args: { p_retour_id: string }
+        Returns: Json
       }
       reserver_stock: {
         Args: {
@@ -2217,6 +3591,59 @@ export type Database = {
           p_produit_id: string
           p_quantite: number
           p_reference_origine: string
+        }
+        Returns: Json
+      }
+      reserver_stock_commande: {
+        Args: { p_commande_id: string; p_lignes: Json }
+        Returns: Json
+      }
+      retirer_stock_manuel: {
+        Args: {
+          p_emplacement_id: string
+          p_quantite: number
+          p_raison?: string
+          p_remarques?: string
+        }
+        Returns: Json
+      }
+      supprimer_emplacements_zone: { Args: { p_zone?: string }; Returns: Json }
+      transition_statut_attendu: {
+        Args: {
+          p_attendu_id: string
+          p_metadata?: Json
+          p_nouveau_statut: Database["public"]["Enums"]["statut_attendu_reception"]
+          p_raison?: string
+          p_utilisateur_id?: string
+        }
+        Returns: Json
+      }
+      transition_statut_commande:
+        | {
+            Args: {
+              p_commande_id: string
+              p_nouveau_statut: string
+              p_remarques?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_commande_id: string
+              p_metadata?: Json
+              p_nouveau_statut: Database["public"]["Enums"]["statut_commande_enum"]
+              p_raison?: string
+              p_utilisateur_id?: string
+            }
+            Returns: Json
+          }
+      transition_statut_retour: {
+        Args: {
+          p_metadata?: Json
+          p_nouveau_statut: string
+          p_raison?: string
+          p_retour_id: string
+          p_utilisateur_id?: string
         }
         Returns: Json
       }
@@ -2232,6 +3659,18 @@ export type Database = {
         | "réceptionné_totalement"
         | "anomalie"
         | "annulé"
+      statut_commande_enum:
+        | "en_attente_reappro"
+        | "stock_reserve"
+        | "en_picking"
+        | "picking_termine"
+        | "en_preparation"
+        | "pret_expedition"
+        | "etiquette_generee"
+        | "expedie"
+        | "livre"
+        | "annule"
+        | "erreur"
       statut_ligne_attendu:
         | "attendu"
         | "réceptionné"
@@ -2375,6 +3814,19 @@ export const Constants = {
         "réceptionné_totalement",
         "anomalie",
         "annulé",
+      ],
+      statut_commande_enum: [
+        "en_attente_reappro",
+        "stock_reserve",
+        "en_picking",
+        "picking_termine",
+        "en_preparation",
+        "pret_expedition",
+        "etiquette_generee",
+        "expedie",
+        "livre",
+        "annule",
+        "erreur",
       ],
       statut_ligne_attendu: [
         "attendu",

@@ -180,10 +180,44 @@ Deno.serve(async (req) => {
         
         console.log(`📍 Adresse: ${city}, ${postalCode}, Pays: ${paysCode}`);
 
-        // Utiliser UPSERT pour éviter les doublons (conflit sur sendcloud_id ou (source, numero_commande))
+        // ⚠️ VÉRIFIER SI DOUBLON AVANT INSERTION
+        const { data: existingOrder } = await supabase
+          .from('commande')
+          .select('id, numero_commande, statut_wms, date_creation')
+          .or(`sendcloud_id.eq.${String(sendcloudData.id)},numero_commande.eq.${orderNumber}`)
+          .maybeSingle();
+
+        if (existingOrder) {
+          console.log(`⚠️ DOUBLON DÉTECTÉ: ${orderNumber} existe déjà (ID: ${existingOrder.id}, statut: ${existingOrder.statut_wms})`);
+          
+          results.push({
+            order_number: orderNumber,
+            success: false,
+            already_exists: true,
+            commande_id: existingOrder.id,
+            error: 'Commande déjà existante',
+            details: `Créée le ${existingOrder.date_creation}, statut: ${existingOrder.statut_wms}`
+          });
+          existingCount++;
+          continue; // ❌ REJETER LE DOUBLON
+        }
+
+        // Récupérer config expéditeur par défaut (depuis HEFAGROUP par défaut)
+        const { data: expediteurDefault } = await supabase
+          .from('configuration_expediteur')
+          .select('*')
+          .eq('est_defaut', true)
+          .eq('actif', true)
+          .maybeSingle();
+
+        // Déterminer priorité et incoterm
+        const priorite = (sendcloudData as any).shipment?.method === 'express' ? 'express' : 'standard';
+        const incoterm = paysCode === 'FR' ? 'DDP' : 'DAP'; // DDP pour France, DAP pour international
+
+        // ✅ PAS DE DOUBLON, INSERTION NORMALE avec données expéditeur
         const { data: commande, error: commandeError } = await supabase
           .from('commande')
-          .upsert({
+          .insert({
             sendcloud_id: String(sendcloudData.id),
             numero_commande: orderNumber,
             nom_client: clientName,
@@ -198,10 +232,22 @@ Deno.serve(async (req) => {
             valeur_totale: sendcloudData.total_order_value || 0,
             devise: sendcloudData.currency || 'EUR',
             statut_wms: 'En attente de réappro',
-            source: 'sendcloud'
-          }, {
-            onConflict: 'sendcloud_id',
-            ignoreDuplicates: false
+            source: 'sendcloud',
+            // Données expéditeur depuis config
+            expediteur_nom: expediteurDefault?.nom || null,
+            expediteur_entreprise: expediteurDefault?.entreprise || null,
+            expediteur_email: expediteurDefault?.email || null,
+            expediteur_telephone: expediteurDefault?.telephone || null,
+            expediteur_adresse_ligne_1: expediteurDefault?.adresse_ligne_1 || null,
+            expediteur_adresse_ligne_2: expediteurDefault?.adresse_ligne_2 || null,
+            expediteur_code_postal: expediteurDefault?.code_postal || null,
+            expediteur_ville: expediteurDefault?.ville || null,
+            expediteur_pays_code: expediteurDefault?.pays_code || 'FR',
+            // Valeurs par défaut intelligentes
+            incoterm: incoterm,
+            priorite_expedition: priorite,
+            date_expedition_demandee: new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0],
+            pays_origine_marchandise: expediteurDefault?.pays_code || 'FR'
           })
           .select()
           .single();

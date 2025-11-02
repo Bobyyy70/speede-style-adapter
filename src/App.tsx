@@ -18,6 +18,7 @@ import Transporteurs from "./pages/Transporteurs";
 import Facturation from "./pages/Facturation";
 import Retours from "./pages/Retours";
 import Parametres from "./pages/Parametres";
+import ConfigurationExpediteur from "./pages/ConfigurationExpediteur";
 import Preparation from "./pages/Preparation";
 import PreparationDetails from "./pages/PreparationDetails";
 import PickingMobile from "./pages/PickingMobile";
@@ -34,13 +35,20 @@ import SendCloudSync from "./pages/SendCloudSync";
 import NotFound from "./pages/NotFound";
 import ClientProduits from "./pages/client/MesProduits";
 import ClientRetours from "./pages/client/MesRetours";
+import CreerRetour from "./pages/client/CreerRetour";
+import ClientCommandes from "./pages/client/MesCommandes";
+import ClientMouvements from "./pages/client/MesMouvements";
 import ClientFacturation from "./pages/client/MaFacturation";
 import ClientAttenduReception from "./pages/client/AttenduReception";
 import ClientCreerCommande from "./pages/client/CreerCommande";
 import AdminBootstrap from "./pages/AdminBootstrap";
+import ServiceClient from "./pages/ServiceClient";
+import ReglesExpediteur from "./pages/ReglesExpediteur";
+import MonDashboard from "./pages/MonDashboard";
 
 const queryClient = new QueryClient();
 
+// Client routes implementation
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -157,6 +165,14 @@ const App = () => (
               }
             />
             <Route
+              path="/parametres/expediteur"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <ConfigurationExpediteur />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/integrations/connecteurs"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'client']}>
@@ -197,6 +213,14 @@ const App = () => (
               }
             />
             <Route
+              path="/service-client"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ServiceClient />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/gestion-donnees/import-export"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'client']}>
@@ -233,6 +257,38 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <SendCloudSync />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parametres/expediteur"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ConfigurationExpediteur />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parametres/regles-expediteur"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ReglesExpediteur />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parametres/mon-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'operateur', 'client']}>
+                  <MonDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/administratif/services"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ServicesLogistiques />
                 </ProtectedRoute>
               }
             />
@@ -285,10 +341,10 @@ const App = () => (
             <Route path="/produits" element={<Navigate to="/stock/produits" replace />} />
             <Route path="/retours" element={<Navigate to="/commandes/retours" replace />} />
             <Route path="/client/attendu-reception" element={<Navigate to="/client/reception" replace />} />
-            <Route path="/client/commandes" element={<Navigate to="/commandes" replace />} />
-            <Route path="/client/retours" element={<Navigate to="/commandes/retours" replace />} />
-            <Route path="/client/produits" element={<Navigate to="/stock/produits" replace />} />
-            <Route path="/client/mouvements" element={<Navigate to="/stock/mouvements" replace />} />
+            <Route path="/client/commandes" element={<ClientCommandes />} />
+            <Route path="/client/retours" element={<ClientRetours />} />
+            <Route path="/client/produits" element={<ClientProduits />} />
+            <Route path="/client/mouvements" element={<ClientMouvements />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

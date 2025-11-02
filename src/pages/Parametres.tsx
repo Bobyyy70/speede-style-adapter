@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import { ClientUserManagement } from "@/components/ClientUserManagement";
 interface ValidationResult {
   valid: any[];
   duplicates: any[];
@@ -49,7 +50,8 @@ const Parametres = () => {
     user
   } = useAuth();
   const [activeTab, setActiveTab] = useState<"general" | "users" | "notifications" | "import-export" | "data" | "statistics" | "client-view">("general");
-  const [importType, setImportType] = useState<"produits" | "commandes" | "emplacements">("produits");
+  const [importType, setImportType] = useState<"produits" | "commandes" | "emplacements" | "clients" | "retours">("produits");
+  const [exportType, setExportType] = useState<"produits" | "commandes" | "stock" | "mouvements" | "clients" | "emplacements" | "retours">("produits");
   const [csvData, setCsvData] = useState<any[]>([]);
   const [validatedData, setValidatedData] = useState<ValidationResult | null>(null);
   const [importing, setImporting] = useState(false);
@@ -62,11 +64,11 @@ const Parametres = () => {
     id: "general" as const,
     label: "Général",
     icon: Settings
-  }, ...(userRole === 'admin' ? [{
+  }, {
     id: "users" as const,
     label: "Utilisateurs",
     icon: Users
-  }, {
+  }, ...(userRole === 'admin' ? [{
     id: "notifications" as const,
     label: "Notifications",
     icon: BellDot
@@ -384,7 +386,8 @@ const Parametres = () => {
       description: `${importReport.errorRows.length} erreurs exportées`
     });
   };
-  const handleExport = async (type: "stock" | "commandes" | "mouvements") => {
+  const handleExport = async (type?: "produits" | "commandes" | "stock" | "mouvements" | "clients" | "emplacements" | "retours") => {
+    const exportTypeToUse = type || exportType;
     setExporting(true);
     try {
       let data: any[] = [];
@@ -392,54 +395,78 @@ const Parametres = () => {
 
       // Get client_id if user is client
       const userClientId = userRole === 'client' && user ? (await supabase.from("profiles").select("client_id").eq("id", user.id).single()).data?.client_id : null;
-      if (type === "stock") {
-        let query = supabase.from("produit").select("reference, nom, stock_actuel, stock_minimum, prix_unitaire").order("reference");
+      
+      if (exportTypeToUse === "produits") {
+        let query = supabase.from("produit").select("reference, nom, prix_unitaire, stock_actuel, stock_minimum").order("reference");
         if (userClientId) {
           query = query.eq("client_id", userClientId);
         }
-        const {
-          data: produits,
-          error
-        } = await query;
+        const { data: produits, error } = await query;
+        if (error) throw error;
+        data = produits || [];
+        filename = "export_produits.csv";
+      } else if (exportTypeToUse === "stock") {
+        // Admin/gestionnaire only
+        if (userRole !== 'admin' && userRole !== 'gestionnaire') {
+          throw new Error("Accès non autorisé");
+        }
+        let query = supabase.from("produit").select("reference, nom, stock_actuel, stock_minimum, prix_unitaire").order("reference");
+        const { data: produits, error } = await query;
         if (error) throw error;
         data = produits || [];
         filename = "export_stock.csv";
-      } else if (type === "commandes") {
+      } else if (exportTypeToUse === "commandes") {
         let query = supabase.from("commande").select("numero_commande, nom_client, statut_wms, date_creation, valeur_totale").order("date_creation", {
           ascending: false
         }).limit(1000);
         if (userClientId) {
           query = query.eq("client_id", userClientId);
         }
-        const {
-          data: commandes,
-          error
-        } = await query;
+        const { data: commandes, error } = await query;
         if (error) throw error;
         data = commandes || [];
         filename = "export_commandes.csv";
-      } else if (type === "mouvements") {
+      } else if (exportTypeToUse === "retours") {
+        let query = supabase.from("retour_produit").select("numero_retour, statut_retour, date_creation").order("date_creation", {
+          ascending: false
+        }).limit(1000);
+        if (userClientId) {
+          query = query.eq("client_id", userClientId);
+        }
+        const { data: retours, error } = await query;
+        if (error) throw error;
+        data = retours || [];
+        filename = "export_retours.csv";
+      } else if (exportTypeToUse === "mouvements") {
+        // Admin/gestionnaire only
+        if (userRole !== 'admin' && userRole !== 'gestionnaire') {
+          throw new Error("Accès non autorisé");
+        }
         let query = supabase.from("mouvement_stock").select("numero_mouvement, type_mouvement, quantite, date_mouvement").order("date_mouvement", {
           ascending: false
         }).limit(1000);
-
-        // Filter mouvements by client's products
-        if (userClientId) {
-          const {
-            data: clientProducts
-          } = await supabase.from("produit").select("id").eq("client_id", userClientId);
-          const productIds = clientProducts?.map(p => p.id) || [];
-          if (productIds.length > 0) {
-            query = query.in("produit_id", productIds);
-          }
-        }
-        const {
-          data: mouvements,
-          error
-        } = await query;
+        const { data: mouvements, error } = await query;
         if (error) throw error;
         data = mouvements || [];
         filename = "export_mouvements.csv";
+      } else if (exportTypeToUse === "clients") {
+        // Admin/gestionnaire only
+        if (userRole !== 'admin' && userRole !== 'gestionnaire') {
+          throw new Error("Accès non autorisé");
+        }
+        const { data: clients, error } = await supabase.from("client").select("nom_entreprise, email_contact, telephone, actif").order("nom_entreprise");
+        if (error) throw error;
+        data = clients || [];
+        filename = "export_clients.csv";
+      } else if (exportTypeToUse === "emplacements") {
+        // Admin/gestionnaire only
+        if (userRole !== 'admin' && userRole !== 'gestionnaire') {
+          throw new Error("Accès non autorisé");
+        }
+        const { data: emplacements, error } = await supabase.from("emplacement").select("code_emplacement, zone, type_emplacement, statut_actuel, quantite_actuelle").order("code_emplacement");
+        if (error) throw error;
+        data = emplacements || [];
+        filename = "export_emplacements.csv";
       }
       const csv = Papa.unparse(data);
       const blob = new Blob([csv], {
@@ -463,18 +490,25 @@ const Parametres = () => {
       setExporting(false);
     }
   };
-  const downloadTemplate = (type: "produits" | "commandes" | "emplacements") => {
+  const downloadTemplate = (type?: "produits" | "commandes" | "emplacements" | "clients" | "retours") => {
+    const templateType = type || importType;
     let headers: string[] = [];
     let filename = "";
-    if (type === "produits") {
+    if (templateType === "produits") {
       headers = ["reference", "nom", "description", "code_barre_ean", "marque", "fournisseur", "protection_individuelle", "prix_unitaire", "stock_minimum", "stock_maximum", "image_url", "longueur_cm", "largeur_cm", "hauteur_cm", "poids_unitaire", "valeur_douaniere", "taux_tva", "code_sh", "pays_origine", "temperature_stockage", "matieres_dangereuses", "classe_danger", "numero_onu", "conditions_speciales", "gestion_lots", "gestion_serie", "duree_vie_jours", "delai_peremption_alerte_jours", "instructions_picking", "instructions_stockage", "statut_actif"];
       filename = "template_produits_complet.csv";
-    } else if (type === "emplacements") {
+    } else if (templateType === "emplacements") {
       headers = ["code_emplacement", "zone", "type_emplacement", "capacite_maximale", "statut_actuel"];
       filename = "template_emplacements.csv";
-    } else if (type === "commandes") {
+    } else if (templateType === "commandes") {
       headers = ["numero_commande", "nom_client", "email_client", "adresse_ligne_1", "ville", "code_postal", "pays_code"];
       filename = "template_commandes.csv";
+    } else if (templateType === "clients") {
+      headers = ["nom_entreprise", "email_contact", "telephone", "adresse", "siret"];
+      filename = "template_clients.csv";
+    } else if (templateType === "retours") {
+      headers = ["numero_retour", "numero_commande", "raison_retour", "quantite"];
+      filename = "template_retours.csv";
     }
     const csv = Papa.unparse([headers]);
     const blob = new Blob([csv], {
@@ -612,22 +646,10 @@ const Parametres = () => {
         <div className="flex gap-4 flex-1 min-h-0">
           {/* Navigation verticale */}
           <nav className="w-56 bg-card border rounded-lg p-3 flex flex-col gap-2">
-            {mainTabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-3 p-6 rounded-lg transition-all min-h-[120px]",
-                  "hover:bg-accent hover:text-accent-foreground",
-                  activeTab === tab.id
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-transparent"
-                )}
-              >
+            {mainTabs.map(tab => <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={cn("flex flex-col items-center justify-center gap-3 p-6 rounded-lg transition-all min-h-[120px]", "hover:bg-accent hover:text-accent-foreground", activeTab === tab.id ? "bg-primary text-primary-foreground shadow-sm" : "bg-transparent")}>
                 <tab.icon className="h-10 w-10" />
                 <span className="text-base font-semibold text-center">{tab.label}</span>
-              </button>
-            ))}
+              </button>)}
             
             {/* Séparateur visuel */}
             <div className="border-t my-2" />
@@ -659,46 +681,25 @@ const Parametres = () => {
                   <Label htmlFor="timezone">Fuseau horaire</Label>
                   <Input id="timezone" defaultValue="Europe/Paris" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Mode maintenance</Label>
-                    <p className="text-sm text-muted-foreground">Désactiver l'accès au système</p>
-                  </div>
-                  <Switch />
-                </div>
+                
                 <Button>Enregistrer</Button>
               </CardContent>
             </Card>
               </div>}
 
-            {activeTab === "users" && <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestion des utilisateurs</CardTitle>
-                <CardDescription>Administrer les comptes et rôles</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[{
-                    nom: "Admin Principal",
-                    email: "admin@speedelog.net",
-                    role: "Admin"
-                  }, {
-                    nom: "Opérateur 1",
-                    email: "operateur@speedelog.net",
-                    role: "Opérateur"
-                  }].map(user => <div key={user.email} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div>
-                        <div className="font-medium">{user.nom}</div>
-                        <div className="text-sm text-muted-foreground">{user.email}</div>
-                      </div>
-                      <div className="text-sm">{user.role}</div>
-                    </div>)}
-                  <Button className="w-full">Ajouter utilisateur</Button>
-                </div>
-              </CardContent>
-            </Card>
-              </div>}
+            {activeTab === "users" && (userRole === 'admin' ? <div className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Gestion des utilisateurs (Admin)</CardTitle>
+                      <CardDescription>Administrer tous les comptes et rôles</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button onClick={() => window.location.href = '/utilisateurs'} className="w-full">
+                        Ouvrir la gestion complète des utilisateurs
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div> : <ClientUserManagement />)}
 
             {activeTab === "notifications" && <div className="space-y-4">
             <Card>
@@ -714,19 +715,10 @@ const Parametres = () => {
                   </div>
                   <Switch defaultChecked />
                 </div>
+                
                 <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Anomalies réception</Label>
-                    <p className="text-sm text-muted-foreground">Alerte en cas de problème</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Picking urgent</Label>
-                    <p className="text-sm text-muted-foreground">Notification picking prioritaire</p>
-                  </div>
-                  <Switch defaultChecked />
+                  
+                  
                 </div>
                 <Button>Enregistrer</Button>
               </CardContent>
@@ -746,7 +738,7 @@ const Parametres = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Type de données</Label>
+                    <Label>Type de données à importer</Label>
                     <Select value={importType} onValueChange={(v: any) => setImportType(v)}>
                       <SelectTrigger>
                         <SelectValue />
@@ -754,10 +746,23 @@ const Parametres = () => {
                       <SelectContent>
                         <SelectItem value="produits">Produits</SelectItem>
                         <SelectItem value="commandes">Commandes</SelectItem>
-                        <SelectItem value="emplacements">Emplacements</SelectItem>
+                        <SelectItem value="retours">Retours</SelectItem>
+                        {(userRole === 'admin' || userRole === 'gestionnaire') && (
+                          <>
+                            <SelectItem value="clients">Clients</SelectItem>
+                            <SelectItem value="emplacements">Emplacements</SelectItem>
+                          </>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {['produits', 'commandes', 'clients', 'emplacements', 'retours'].includes(importType) && (
+                    <Button onClick={() => downloadTemplate()} variant="secondary" className="w-full">
+                      <Download className="h-4 w-4 mr-2" />
+                      Télécharger le template {importType}
+                    </Button>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="csv-upload">Fichier CSV</Label>
@@ -839,61 +844,40 @@ const Parametres = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Download className="h-5 w-5" />
-                    Export de rapports
+                    Export de données
                   </CardTitle>
-                  <CardDescription>Générer des rapports CSV</CardDescription>
+                  <CardDescription>Générer des exports CSV</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button onClick={() => handleExport("stock")} disabled={exporting} variant="outline" className="w-full justify-start">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Stock complet (référence, quantité, valeur)
-                  </Button>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Type de données à exporter</Label>
+                    <Select value={exportType} onValueChange={(v: any) => setExportType(v)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="produits">Produits</SelectItem>
+                        <SelectItem value="commandes">Commandes</SelectItem>
+                        <SelectItem value="retours">Retours</SelectItem>
+                        {(userRole === 'admin' || userRole === 'gestionnaire') && (
+                          <>
+                            <SelectItem value="clients">Clients</SelectItem>
+                            <SelectItem value="stock">Stock Global</SelectItem>
+                            <SelectItem value="mouvements">Mouvements de Stock</SelectItem>
+                            <SelectItem value="emplacements">Emplacements</SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                  <Button onClick={() => handleExport("commandes")} disabled={exporting} variant="outline" className="w-full justify-start">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Commandes (1000 dernières)
+                  <Button onClick={() => handleExport()} disabled={exporting} className="w-full">
+                    <Download className="h-4 w-4 mr-2" />
+                    {exporting ? "Export en cours..." : "Exporter les données"}
                   </Button>
-
-                  <Button onClick={() => handleExport("mouvements")} disabled={exporting} variant="outline" className="w-full justify-start">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Mouvements de stock (1000 derniers)
-                  </Button>
-
-                  {exporting && <p className="text-sm text-muted-foreground text-center">
-                      Export en cours...
-                    </p>}
                 </CardContent>
               </Card>
             </div>
-
-            {/* Section Templates */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Templates d'import
-                </CardTitle>
-                <CardDescription>
-                  Téléchargez des modèles CSV vierges avec les colonnes requises
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3 md:grid-cols-3">
-                <Button onClick={() => downloadTemplate("produits")} variant="secondary" className="w-full">
-                  <Download className="h-4 w-4 mr-2" />
-                  Template Produits
-                </Button>
-
-                <Button onClick={() => downloadTemplate("commandes")} variant="secondary" className="w-full">
-                  <Download className="h-4 w-4 mr-2" />
-                  Template Commandes
-                </Button>
-
-                <Button onClick={() => downloadTemplate("emplacements")} variant="secondary" className="w-full">
-                  <Download className="h-4 w-4 mr-2" />
-                  Template Emplacements
-                </Button>
-              </CardContent>
-            </Card>
               </div>}
 
             {activeTab === "data" && <div className="space-y-4">

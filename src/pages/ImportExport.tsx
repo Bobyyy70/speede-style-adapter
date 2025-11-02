@@ -17,6 +17,7 @@ import { fr } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast as sonnerToast } from "sonner";
+import { ORDER_STATUSES } from "@/lib/orderStatuses";
 
 interface SyncLog {
   id: string;
@@ -337,7 +338,7 @@ const ImportExport = () => {
                         methode_expedition: row['Offre de transport'] || null,
                         valeur_totale: parseFloat(row['Prix de la commande']) || 0,
                         devise: 'EUR',
-                        statut_wms: 'En attente de réappro',
+                        statut_wms: ORDER_STATUSES.EN_ATTENTE_REAPPRO,
                         date_creation: row['Date de la commande*'] || new Date().toISOString()
                       })
                       .select()
@@ -384,7 +385,7 @@ const ImportExport = () => {
                     }
 
                     // Mettre à jour le statut final
-                    const nouveauStatut = !tousProduitsOk ? 'Produits introuvables' : 'Prêt à préparer';
+                    const nouveauStatut = !tousProduitsOk ? ORDER_STATUSES.ERREUR : ORDER_STATUSES.STOCK_RESERVE;
                     await supabase
                       .from('commande')
                       .update({ statut_wms: nouveauStatut })
@@ -417,7 +418,7 @@ const ImportExport = () => {
                   pays_code: row.pays_code || "FR",
                   valeur_totale: parseFloat(row.valeur_totale) || 0,
                   devise: row.devise || "EUR",
-                  statut_wms: "En attente de réappro",
+                  statut_wms: ORDER_STATUSES.EN_ATTENTE_REAPPRO,
                   methode_expedition: row.methode_expedition || "",
                   transporteur: row.transporteur || ""
                 }));
