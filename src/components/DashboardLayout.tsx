@@ -100,6 +100,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/stock/emplacements",
         icon: MapPin
       }, {
+        name: "Bacs/Adresses",
+        href: "/stock/bacs",
+        icon: Boxes
+      }, {
         name: "Mouvements",
         href: "/stock/mouvements",
         icon: ArrowRightLeft
@@ -108,6 +112,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       name: "Service Client",
       href: "/service-client",
       icon: Headphones
+    }, {
+      name: "Services Logistiques",
+      href: "/administratif/services",
+      icon: Building2
     }, {
       name: "Intégrations",
       icon: Plug,
@@ -119,6 +127,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Connecteurs",
         href: "/integrations/connecteurs",
         icon: Cable
+      }, {
+        name: "SendCloud Sync",
+        href: "/integrations/sendcloud-sync",
+        icon: RefreshCw
       }]
     }, {
       name: "Gestion des Données",
@@ -190,6 +202,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/stock/emplacements",
         icon: MapPin
       }, {
+        name: "Bacs/Adresses",
+        href: "/stock/bacs",
+        icon: Boxes
+      }, {
         name: "Mouvements",
         href: "/stock/mouvements",
         icon: ArrowRightLeft
@@ -198,6 +214,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       name: "Service Client",
       href: "/service-client",
       icon: Headphones
+    }, {
+      name: "Services Logistiques",
+      href: "/administratif/services",
+      icon: Building2
     }, {
       name: "Intégrations",
       icon: Plug,
@@ -209,6 +229,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Connecteurs",
         href: "/integrations/connecteurs",
         icon: Cable
+      }, {
+        name: "SendCloud Sync",
+        href: "/integrations/sendcloud-sync",
+        icon: RefreshCw
       }]
     }, {
       name: "Gestion Données",
@@ -237,6 +261,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Facturation",
         href: "/administratif/facturation",
         icon: Receipt
+      }, {
+        name: "Configuration Expéditeur",
+        href: "/parametres/expediteur",
+        icon: Settings
       }]
     }];
   }
@@ -286,6 +314,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Emplacements",
         href: "/stock/emplacements",
         icon: MapPin
+      }, {
+        name: "Bacs/Adresses",
+        href: "/stock/bacs",
+        icon: Boxes
       }, {
         name: "Mouvements",
         href: "/stock/mouvements",
