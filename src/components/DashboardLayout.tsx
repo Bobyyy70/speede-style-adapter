@@ -45,18 +45,18 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       name: "Commandes",
       icon: ClipboardList,
       children: [{
-        name: "Gestion des commandes",
+        name: "Mes Commandes",
         href: "/client/commandes",
         icon: ClipboardList
       }, {
-        name: "Éditer une commande",
+        name: "Créer une commande",
         href: "/client/commandes/creer",
         icon: PlusCircle
+      }, {
+        name: "Mes Retours",
+        href: "/client/retours",
+        icon: Undo2
       }]
-    }, {
-      name: "Retours",
-      href: "/client/retours",
-      icon: Undo2
     }, {
       name: "Produits",
       href: "/client/produits",
@@ -100,34 +100,34 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/commandes",
         icon: ClipboardList
       }, {
-        name: "Éditer une commande",
+        name: "Créer une commande",
         href: "/client/commandes/creer",
         icon: PlusCircle
+      }, {
+        name: "Préparation",
+        href: "/commandes/preparation",
+        icon: PackagePlus
+      }, {
+        name: "Expédition",
+        href: "/expedition",
+        icon: TruckIcon
+      }, {
+        name: "Retours",
+        href: "/commandes/retours",
+        icon: Undo2
       }]
-    }, {
-      name: "Préparation",
-      href: "/commandes/preparation",
-      icon: PackagePlus
-    }, {
-      name: "Expédition",
-      href: "/expedition",
-      icon: TruckIcon
-    }, {
-      name: "Retours",
-      href: "/commandes/retours",
-      icon: Undo2
-    }, {
-      name: "Produits",
-      href: "/stock/produits",
-      icon: Boxes
-    }, {
-      name: "Réception",
-      href: "/stock/reception",
-      icon: PackageOpen
     }, {
       name: "Stock",
       icon: Warehouse,
       children: [{
+        name: "Produits",
+        href: "/stock/produits",
+        icon: Boxes
+      }, {
+        name: "Réception",
+        href: "/stock/reception",
+        icon: PackageOpen
+      }, {
         name: "Emplacements",
         href: "/stock/emplacements",
         icon: MapPin
@@ -191,30 +191,26 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/commandes",
         icon: ClipboardList
       }, {
-        name: "Éditer une commande",
-        href: "/client/commandes/creer",
-        icon: PlusCircle
+        name: "Préparation",
+        href: "/commandes/preparation",
+        icon: PackagePlus
+      }, {
+        name: "Expédition",
+        href: "/expedition",
+        icon: TruckIcon
       }]
-    }, {
-      name: "Préparation",
-      href: "/commandes/preparation",
-      icon: PackagePlus
-    }, {
-      name: "Expédition",
-      href: "/expedition",
-      icon: TruckIcon
-    }, {
-      name: "Produits",
-      href: "/stock/produits",
-      icon: Boxes
-    }, {
-      name: "Réception",
-      href: "/stock/reception",
-      icon: PackageOpen
     }, {
       name: "Stock",
       icon: Warehouse,
       children: [{
+        name: "Produits",
+        href: "/stock/produits",
+        icon: Boxes
+      }, {
+        name: "Réception",
+        href: "/stock/reception",
+        icon: PackageOpen
+      }, {
         name: "Emplacements",
         href: "/stock/emplacements",
         icon: MapPin
@@ -236,13 +232,17 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Commandes",
         icon: ClipboardList,
         children: [{
-          name: "Gestion des commandes",
+          name: "Mes Commandes",
           href: "/client/commandes",
           icon: ClipboardList
         }, {
-          name: "Éditer une commande",
+          name: "Créer une commande",
           href: "/client/commandes/creer",
           icon: PlusCircle
+        }, {
+          name: "Mes Retours",
+          href: "/client/retours",
+          icon: Undo2
         }]
       }],
       stock: [{
@@ -283,13 +283,8 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       });
     });
 
-    // Toujours ajouter Retours, Produits, Réception, Mouvements, Intégrations (tabs fixes)
+    // Toujours ajouter Produits, Réception, Mouvements, Intégrations (tabs fixes)
     const fixedItems: NavigationItem[] = [
-      {
-        name: "Retours",
-        href: "/client/retours",
-        icon: Undo2
-      },
       {
         name: "Produits",
         href: "/client/produits",
