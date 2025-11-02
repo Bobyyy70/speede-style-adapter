@@ -44,6 +44,7 @@ import ClientCreerCommande from "./pages/client/CreerCommande";
 import AdminBootstrap from "./pages/AdminBootstrap";
 import ServiceClient from "./pages/ServiceClient";
 import ReglesExpediteur from "./pages/ReglesExpediteur";
+import ReparationCommandes from "./pages/ReparationCommandes";
 import MonDashboard from "./pages/MonDashboard";
 
 const queryClient = new QueryClient();
@@ -281,6 +282,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'operateur', 'client']}>
                   <MonDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reparation-urgence"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ReparationCommandes />
                 </ProtectedRoute>
               }
             />
