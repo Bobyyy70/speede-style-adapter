@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import logo from "@/assets/logo.jpg";
 // Icons imports
-import { LayoutDashboard, Settings, LogOut, Search, Menu, X, Bell, ArrowRightLeft, ClipboardList, RefreshCw, MapPin, Undo2, TruckIcon, Plug, FolderTree, Boxes, Warehouse, PackageOpen, PackagePlus, UserCog, Receipt, ArrowDownUp, ShipWheel, Cable, Building2, Eye, ChevronDown, PlusCircle } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, Search, Menu, X, Bell, ArrowRightLeft, ClipboardList, RefreshCw, MapPin, Undo2, TruckIcon, Plug, FolderTree, Boxes, Warehouse, PackageOpen, PackagePlus, UserCog, Receipt, ArrowDownUp, ShipWheel, Cable, Building2, Eye, ChevronDown, PlusCircle, Headphones } from "lucide-react";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -45,30 +45,69 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       name: "Commandes",
       icon: ClipboardList,
       children: [{
-        name: "Mes Commandes",
-        href: "/client/commandes",
+        name: "Gestion des commandes",
+        href: "/commandes",
         icon: ClipboardList
       }, {
         name: "Créer une commande",
         href: "/client/commandes/creer",
         icon: PlusCircle
-      }, {
-        name: "Mes Retours",
-        href: "/client/retours",
-        icon: Undo2
       }]
     }, {
-      name: "Produits",
-      href: "/client/produits",
-      icon: Boxes
+      name: "Préparation",
+      href: "/commandes/preparation",
+      icon: PackagePlus,
+      children: [{
+        name: "Réappro",
+        href: "/commandes/reappro",
+        icon: RefreshCw
+      }]
     }, {
-      name: "Réception",
-      href: "/client/reception",
-      icon: PackageOpen
+      name: "Expédition",
+      href: "/expedition",
+      icon: TruckIcon,
+      children: [{
+        name: "Créer une étiquette",
+        href: "/expedition/create-label",
+        icon: PlusCircle
+      }, {
+        name: "Suivi",
+        href: "/expedition/tracking",
+        icon: Search
+      }]
     }, {
-      name: "Mouvements",
-      href: "/client/mouvements",
-      icon: ArrowRightLeft
+      name: "Retours",
+      href: "/commandes/retours",
+      icon: Undo2,
+      children: [{
+        name: "Créer un retour",
+        href: "/client/retours/creer",
+        icon: PlusCircle
+      }]
+    }, {
+      name: "Stock",
+      icon: Warehouse,
+      children: [{
+        name: "Produits",
+        href: "/stock/produits",
+        icon: Boxes
+      }, {
+        name: "Réception",
+        href: "/stock/reception",
+        icon: PackageOpen
+      }, {
+        name: "Emplacements",
+        href: "/stock/emplacements",
+        icon: MapPin
+      }, {
+        name: "Mouvements",
+        href: "/stock/mouvements",
+        icon: ArrowRightLeft
+      }]
+    }, {
+      name: "Service Client",
+      href: "/service-client",
+      icon: Headphones
     }, {
       name: "Intégrations",
       icon: Plug,
@@ -103,18 +142,37 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Créer une commande",
         href: "/client/commandes/creer",
         icon: PlusCircle
+      }]
+    }, {
+      name: "Préparation",
+      href: "/commandes/preparation",
+      icon: PackagePlus,
+      children: [{
+        name: "Réappro",
+        href: "/commandes/reappro",
+        icon: RefreshCw
+      }]
+    }, {
+      name: "Expédition",
+      href: "/expedition",
+      icon: TruckIcon,
+      children: [{
+        name: "Créer une étiquette",
+        href: "/expedition/create-label",
+        icon: PlusCircle
       }, {
-        name: "Préparation",
-        href: "/commandes/preparation",
-        icon: PackagePlus
-      }, {
-        name: "Expédition",
-        href: "/expedition",
-        icon: TruckIcon
-      }, {
-        name: "Retours",
-        href: "/commandes/retours",
-        icon: Undo2
+        name: "Suivi",
+        href: "/expedition/tracking",
+        icon: Search
+      }]
+    }, {
+      name: "Retours",
+      href: "/commandes/retours",
+      icon: Undo2,
+      children: [{
+        name: "Créer un retour",
+        href: "/client/retours/creer",
+        icon: PlusCircle
       }]
     }, {
       name: "Stock",
@@ -132,14 +190,14 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/stock/emplacements",
         icon: MapPin
       }, {
-        name: "Réappro",
-        href: "/commandes/reappro",
-        icon: RefreshCw
-      }, {
         name: "Mouvements",
         href: "/stock/mouvements",
         icon: ArrowRightLeft
       }]
+    }, {
+      name: "Service Client",
+      href: "/service-client",
+      icon: Headphones
     }, {
       name: "Intégrations",
       icon: Plug,
@@ -185,20 +243,34 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
   if (role === "operateur") {
     return [...baseNavigation, {
       name: "Commandes",
-      icon: ClipboardList,
+      href: "/commandes",
+      icon: ClipboardList
+    }, {
+      name: "Préparation",
+      href: "/commandes/preparation",
+      icon: PackagePlus,
       children: [{
-        name: "Gestion des commandes",
-        href: "/commandes",
-        icon: ClipboardList
-      }, {
-        name: "Préparation",
-        href: "/commandes/preparation",
-        icon: PackagePlus
-      }, {
-        name: "Expédition",
-        href: "/expedition",
-        icon: TruckIcon
+        name: "Réappro",
+        href: "/commandes/reappro",
+        icon: RefreshCw
       }]
+    }, {
+      name: "Expédition",
+      href: "/expedition",
+      icon: TruckIcon,
+      children: [{
+        name: "Créer une étiquette",
+        href: "/expedition/create-label",
+        icon: PlusCircle
+      }, {
+        name: "Suivi",
+        href: "/expedition/tracking",
+        icon: Search
+      }]
+    }, {
+      name: "Retours",
+      href: "/commandes/retours",
+      icon: Undo2
     }, {
       name: "Stock",
       icon: Warehouse,
@@ -219,6 +291,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/stock/mouvements",
         icon: ArrowRightLeft
       }]
+    }, {
+      name: "Service Client",
+      href: "/service-client",
+      icon: Headphones
     }];
   }
   if (role === "client") {
@@ -229,20 +305,22 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         icon: LayoutDashboard
       }],
       orders: [{
-        name: "Commandes",
+        name: "Mes Commandes",
+        href: "/client/commandes",
         icon: ClipboardList,
         children: [{
-          name: "Mes Commandes",
-          href: "/client/commandes",
-          icon: ClipboardList
-        }, {
           name: "Créer une commande",
           href: "/client/commandes/creer",
           icon: PlusCircle
-        }, {
-          name: "Mes Retours",
-          href: "/client/retours",
-          icon: Undo2
+        }]
+      }, {
+        name: "Mes Retours",
+        href: "/client/retours",
+        icon: Undo2,
+        children: [{
+          name: "Créer un retour",
+          href: "/client/retours/creer",
+          icon: PlusCircle
         }]
       }],
       stock: [{
