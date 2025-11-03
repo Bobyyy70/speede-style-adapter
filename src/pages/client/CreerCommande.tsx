@@ -411,14 +411,24 @@ const CreerCommande = () => {
 
       if (lignesError) throw lignesError;
 
-      // Réserver le stock
-      for (const ligne of lignes) {
-        await supabase.rpc("reserver_stock", {
-          p_produit_id: ligne.produit_id,
-          p_quantite: ligne.quantite,
+      // Réserver le stock avec la nouvelle fonction atomique
+      const lignesReservation = lignes.map(l => ({
+        produit_id: l.produit_id,
+        quantite: l.quantite
+      }));
+
+      const { data: reservationResult, error: reservationError } = await supabase.rpc(
+        "reserver_stock_commande", 
+        {
           p_commande_id: commande.id,
-          p_reference_origine: commande.numero_commande,
-        });
+          p_lignes: lignesReservation
+        }
+      );
+
+      if (reservationError) {
+        // Supprimer la commande créée si réservation échoue
+        await supabase.from("commande").delete().eq("id", commande.id);
+        throw new Error(reservationError.message || "Impossible de réserver le stock");
       }
 
       // Sauvegarder le contact si demandé

@@ -216,6 +216,18 @@ export const CommandeDetailDialog = ({
   const handleChangeStatus = async (nouveauStatut: string) => {
     setStatusChanging(true);
     try {
+      // Si on passe à "expedie", convertir les réservations en sorties
+      if (nouveauStatut === 'expedie') {
+        const { data: expeditionResult, error: expeditionError } = await supabase.rpc(
+          'expedier_commande_stock',
+          { p_commande_id: commandeId }
+        );
+
+        if (expeditionError) {
+          throw new Error(`Erreur conversion stock: ${expeditionError.message}`);
+        }
+      }
+
       await transitionStatut('commande', commandeId, nouveauStatut, 'Changement manuel de statut');
       refetch();
       onSuccess?.();

@@ -99,7 +99,13 @@ const Produits = () => {
               Catalogue et gestion des stocks
             </p>
           </div>
-          <ViewSelector view={view} onViewChange={setView} />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => window.location.href = '/mouvements'}>
+              <Package className="h-4 w-4 mr-2" />
+              Historique Mouvements
+            </Button>
+            <ViewSelector view={view} onViewChange={setView} />
+          </div>
         </div>
 
         <Card>
@@ -147,46 +153,46 @@ const Produits = () => {
                     <TableRow>
                       <TableHead>Référence</TableHead>
                       <TableHead>Nom</TableHead>
-                      <TableHead className="text-center">Stock Physique</TableHead>
-                      <TableHead className="text-center">Réservé</TableHead>
-                      <TableHead className="text-center">Disponible</TableHead>
+                      <TableHead className="text-center">Stock Disponible</TableHead>
                       <TableHead>Stock Min.</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="text-center">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredProduits.map((produit) => (
-                      <TableRow
-                        key={produit.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => setSelectedProduitId(produit.id)}
-                      >
-                        <TableCell className="font-medium">{produit.reference}</TableCell>
-                        <TableCell>{produit.nom}</TableCell>
-                        <TableCell className="text-center">
-                          <span className="text-lg font-semibold">{produit.stock_physique || produit.stock_actuel}</span>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="text-lg font-semibold text-orange-600">{produit.stock_reserve || 0}</span>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="text-2xl font-bold text-green-600">{produit.stock_disponible ?? produit.stock_actuel}</span>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{produit.stock_minimum}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedProduitId(produit.id);
-                            }}
-                          >
-                            Détails
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredProduits.map((produit) => {
+                      const stockDisponible = produit.stock_disponible ?? produit.stock_actuel;
+                      const stockBas = stockDisponible <= produit.stock_minimum;
+                      
+                      return (
+                        <TableRow
+                          key={produit.id}
+                          className="hover:bg-muted/50"
+                        >
+                          <TableCell className="font-medium">{produit.reference}</TableCell>
+                          <TableCell>{produit.nom}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className={`text-2xl font-bold ${stockBas ? 'text-red-600' : 'text-green-600'}`}>
+                                {stockDisponible}
+                              </span>
+                              {stockBas && <AlertTriangle className="h-4 w-4 text-red-600" />}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{produit.stock_minimum}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedProduitId(produit.id)}
+                              >
+                                Détails
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
