@@ -14,42 +14,34 @@ import Commandes from "./pages/Commandes";
 import Reappro from "./pages/Reappro";
 import Produits from "./pages/Produits";
 import Emplacements from "./pages/Emplacements";
-import Transporteurs from "./pages/Transporteurs";
-import Facturation from "./pages/Facturation";
 import Retours from "./pages/Retours";
 import Parametres from "./pages/Parametres";
 import ConfigurationExpediteur from "./pages/ConfigurationExpediteur";
 import Preparation from "./pages/Preparation";
 import PreparationDetails from "./pages/PreparationDetails";
 import PickingMobile from "./pages/PickingMobile";
-import Connecteurs from "./pages/Connecteurs";
-import ServicesLogistiques from "./pages/ServicesLogistiques";
 import BacsAdresses from "./pages/BacsAdresses";
 import Expedition from "./pages/Expedition";
-import ImportExport from "./pages/ImportExport";
 import Utilisateurs from "./pages/Utilisateurs";
 import GestionClients from "./pages/GestionClients";
-import Notifications from "./pages/Notifications";
 import SendCloudSync from "./pages/SendCloudSync";
+import Transporteurs from "./pages/Transporteurs";
 
 import NotFound from "./pages/NotFound";
 import ClientProduits from "./pages/client/MesProduits";
 import ClientRetours from "./pages/client/MesRetours";
-import CreerRetour from "./pages/client/CreerRetour";
 import ClientCommandes from "./pages/client/MesCommandes";
 import ClientMouvements from "./pages/client/MesMouvements";
 import ClientFacturation from "./pages/client/MaFacturation";
 import ClientAttenduReception from "./pages/client/AttenduReception";
 import ClientCreerCommande from "./pages/client/CreerCommande";
 import AdminBootstrap from "./pages/AdminBootstrap";
-import ServiceClient from "./pages/ServiceClient";
 import ReglesExpediteur from "./pages/ReglesExpediteur";
 import ReparationCommandes from "./pages/ReparationCommandes";
 import MonDashboard from "./pages/MonDashboard";
 
 const queryClient = new QueryClient();
 
-// Client routes implementation
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -69,6 +61,8 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            
+            {/* Stock Routes */}
             <Route
               path="/stock/reception"
               element={
@@ -82,22 +76,6 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur', 'client']}>
                   <Mouvements />
-                </ProtectedRoute>
-              }
-            />
-          <Route
-            path="/commandes"
-            element={
-              <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire', 'client']}>
-                <Commandes />
-              </ProtectedRoute>
-            }
-          />
-            <Route
-              path="/commandes/reappro"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
-                  <Reappro />
                 </ProtectedRoute>
               }
             />
@@ -122,6 +100,24 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
                   <BacsAdresses />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Commandes Routes */}
+            <Route
+              path="/commandes"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire', 'client']}>
+                  <Commandes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/commandes/reappro"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <Reappro />
                 </ProtectedRoute>
               }
             />
@@ -157,54 +153,8 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/integrations/transporteurs"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'client']}>
-                  <Transporteurs />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/parametres/expediteur"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
-                  <ConfigurationExpediteur />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/integrations/connecteurs"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'client']}>
-                  <Connecteurs />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/administratif/facturation"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
-                  <Facturation />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/administratif/services"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
-                  <ServicesLogistiques />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/parametres"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'client']}>
-                  <Parametres />
-                </ProtectedRoute>
-              }
-            />
+            
+            {/* Expedition */}
             <Route
               path="/expedition"
               element={
@@ -213,19 +163,13 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            
+            {/* Paramètres Routes */}
             <Route
-              path="/service-client"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
-                  <ServiceClient />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/gestion-donnees/import-export"
+              path="/parametres"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'client']}>
-                  <ImportExport />
+                  <Parametres />
                 </ProtectedRoute>
               }
             />
@@ -246,25 +190,9 @@ const App = () => (
               }
             />
             <Route
-              path="/parametres/notifications"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <Notifications />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/integrations/sendcloud-sync"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
-                  <SendCloudSync />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/parametres/expediteur"
               element={
-                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
                   <ConfigurationExpediteur />
                 </ProtectedRoute>
               }
@@ -285,6 +213,26 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            
+            {/* Intégrations */}
+            <Route
+              path="/integrations/transporteurs"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'client']}>
+                  <Transporteurs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/integrations/sendcloud-sync"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <SendCloudSync />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Réparation */}
             <Route
               path="/reparation-urgence"
               element={
@@ -293,18 +241,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/administratif/services"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
-                  <ServicesLogistiques />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/parametres/chatbot-ia"
-              element={<Navigate to="/parametres/utilisateurs" replace />}
-            />
+            
             {/* Client Routes */}
             <Route
               path="/client/produits"
@@ -315,10 +252,34 @@ const App = () => (
               }
             />
             <Route
+              path="/client/commandes"
+              element={
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
+                  <ClientCommandes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/commandes/creer"
+              element={
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
+                  <ClientCreerCommande />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/client/retours"
               element={
                 <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
                   <ClientRetours />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/mouvements"
+              element={
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
+                  <ClientMouvements />
                 </ProtectedRoute>
               }
             />
@@ -338,24 +299,13 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/client/commandes/creer"
-              element={
-                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
-                  <ClientCreerCommande />
-                </ProtectedRoute>
-              }
-            />
-            {/* Redirections anciennes routes client */}
+            
+            {/* Redirections */}
             <Route path="/produits" element={<Navigate to="/stock/produits" replace />} />
             <Route path="/retours" element={<Navigate to="/commandes/retours" replace />} />
             <Route path="/client/attendu-reception" element={<Navigate to="/client/reception" replace />} />
-            <Route path="/client/commandes" element={<ClientCommandes />} />
-            <Route path="/client/retours" element={<ClientRetours />} />
-            <Route path="/client/produits" element={<ClientProduits />} />
-            <Route path="/client/mouvements" element={<ClientMouvements />} />
             
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

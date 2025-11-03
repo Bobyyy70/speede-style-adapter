@@ -19,7 +19,6 @@ const routeLabels: Record<string, string> = {
   "/expedition": "Expédition",
   "/expedition/create-label": "Expédition > Créer une étiquette",
   "/expedition/tracking": "Expédition > Suivi",
-  "/service-client": "Service Client",
   "/integrations": "Intégrations",
   "/integrations/transporteurs": "Transporteurs",
   "/integrations/connecteurs": "Connecteurs",

@@ -113,10 +113,6 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         icon: ArrowRightLeft
       }]
     }, {
-      name: "Service Client",
-      href: "/service-client",
-      icon: Headphones
-    }, {
       name: "Services Logistiques",
       href: "/administratif/services",
       icon: Building2
@@ -214,10 +210,6 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/stock/mouvements",
         icon: ArrowRightLeft
       }]
-    }, {
-      name: "Service Client",
-      href: "/service-client",
-      icon: Headphones
     }, {
       name: "Services Logistiques",
       href: "/administratif/services",
@@ -335,10 +327,6 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/stock/mouvements",
         icon: ArrowRightLeft
       }]
-    }, {
-      name: "Service Client",
-      href: "/service-client",
-      icon: Headphones
     }];
   }
   if (role === "client") {
@@ -690,41 +678,6 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Diagnostic Badge */}
-              <div className="flex items-center gap-2 px-3 py-1 bg-muted rounded-md text-xs">
-                <span className="font-medium">Rôle actif:</span>
-                <Badge variant={getRoleBadgeVariant(userRole)} className="capitalize text-xs">
-                  {getRoleLabel(userRole)}
-                </Badge>
-                <span className="text-muted-foreground">•</span>
-                <span className="font-medium">Mode vue:</span>
-                <span className={isActuallyViewingAsClient ? "text-blue-600 font-semibold" : "text-green-600"}>
-                  {isActuallyViewingAsClient ? "Vue Client" : "Normal"}
-                </span>
-                <span className="text-muted-foreground">•</span>
-                <span className="font-medium">{navigation.length} onglets</span>
-              </div>
-
-              {/* Refresh Permissions Button (admin only) */}
-              {userRole === 'admin' && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleRefreshPermissions}
-                  className="gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Rafraîchir permissions
-                </Button>
-              )}
-
-              {/* Affichage du rôle utilisateur */}
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-lg">
-                <span className="text-sm text-muted-foreground">{user?.email}</span>
-                <Badge variant={getRoleBadgeVariant(userRole)}>
-                  {getRoleLabel(userRole)}
-                </Badge>
-              </div>
 
               {(userRole === 'admin' || userRole === 'gestionnaire') && <div className="flex items-center gap-1">
                   
