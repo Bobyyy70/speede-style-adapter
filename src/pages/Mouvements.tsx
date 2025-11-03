@@ -279,7 +279,7 @@ const Mouvements = () => {
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            ) : paginatedMouvements && paginatedMouvements.length > 0 ? (
+            ) : (
               <div className="space-y-4">
                 <div className="overflow-x-auto">
                   <Table>
@@ -297,7 +297,8 @@ const Mouvements = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paginatedMouvements.map((mouvement: any) => {
+                      {paginatedMouvements && paginatedMouvements.length > 0 ? (
+                        paginatedMouvements.map((mouvement: any) => {
                         return (
                           <TableRow key={mouvement.id}>
                             <TableCell className="text-sm whitespace-nowrap">
@@ -401,13 +402,23 @@ const Mouvements = () => {
                             </TableCell>
                           </TableRow>
                         );
-                      })}
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={9} className="h-32 text-center">
+                            <div className="flex flex-col items-center justify-center text-muted-foreground">
+                              <p className="text-lg font-medium">Aucun mouvement de stock trouvé</p>
+                              <p className="text-sm mt-1">Les mouvements apparaîtront ici dès qu'ils seront enregistrés</p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </div>
 
                 {/* Pagination */}
-                {totalPages > 1 && (
+                {paginatedMouvements && paginatedMouvements.length > 0 && totalPages > 1 && (
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-muted-foreground">
                       Page {currentPage} sur {totalPages} ({filteredMouvements?.length || 0} mouvements)
@@ -454,10 +465,6 @@ const Mouvements = () => {
                     </Pagination>
                   </div>
                 )}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                Aucun mouvement trouvé
               </div>
             )}
           </CardContent>
