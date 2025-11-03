@@ -431,6 +431,36 @@ const CreerCommande = () => {
         throw new Error(reservationError.message || "Impossible de réserver le stock");
       }
 
+      // Synchroniser avec SendCloud (ne bloque pas si échec)
+      try {
+        const { data: sendcloudData, error: sendcloudError } = await supabase.functions.invoke(
+          'sendcloud-create-parcel',
+          { body: { commande_id: commande.id } }
+        );
+
+        if (sendcloudError || !sendcloudData?.success) {
+          console.error('SendCloud sync failed:', sendcloudError || sendcloudData?.error);
+          toast({
+            title: "Commande créée",
+            description: "⚠️ Synchronisation SendCloud échouée. Réessayez depuis la fiche commande.",
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "Succès complet",
+            description: "Commande créée et étiquette SendCloud générée",
+          });
+        }
+      } catch (sendcloudError: any) {
+        console.error('SendCloud error:', sendcloudError);
+        // Ne pas bloquer, la commande est créée
+        toast({
+          title: "Commande créée",
+          description: "⚠️ SendCloud non disponible. Synchronisation possible ultérieurement.",
+          variant: "default",
+        });
+      }
+
       // Sauvegarder le contact si demandé
       if (saveAsContact && !useExistingContact && formData.nom_client && formData.adresse_ligne_1) {
         await supabase.from("contact_destinataire").insert({
@@ -471,11 +501,7 @@ const CreerCommande = () => {
         }
       }
 
-      toast({
-        title: "Succès",
-        description: "Commande créée avec succès",
-      });
-
+      // Ne plus afficher de toast ici car déjà fait dans la section SendCloud
       navigate("/client/commandes");
     } catch (error: any) {
       toast({

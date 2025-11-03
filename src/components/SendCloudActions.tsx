@@ -126,6 +126,18 @@ export function SendCloudActions({
 
   return (
     <div className="flex gap-2 flex-wrap">
+      {!hasSendcloudId && !hasLabel && (
+        <Button
+          size="sm"
+          variant="default"
+          onClick={handleCreateParcel}
+          disabled={loading === 'create'}
+        >
+          <Printer className="h-4 w-4" />
+          Créer étiquette
+        </Button>
+      )}
+
       {hasSendcloudId && (
         <>
           <Button
