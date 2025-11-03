@@ -88,7 +88,21 @@ Deno.serve(async (req) => {
 
     console.log('✅ Retour créé dans SendCloud:', JSON.stringify(sendcloudData, null, 2));
 
-    // 4. Créer ou mettre à jour le retour dans notre DB
+    // 4. Mettre à jour le statut de la commande
+    const { error: updateCommandeError } = await supabase
+      .from('commande')
+      .update({
+        statut_wms: 'Retour en cours',
+      })
+      .eq('id', commande_id);
+
+    if (updateCommandeError) {
+      console.error('⚠️ Erreur mise à jour statut commande:', updateCommandeError);
+    } else {
+      console.log('✅ Statut commande mis à jour: Retour en cours');
+    }
+
+    // 5. Créer ou mettre à jour le retour dans notre DB
     let retourDbId = retour_id;
     if (retour_id) {
       // Mettre à jour le retour existant

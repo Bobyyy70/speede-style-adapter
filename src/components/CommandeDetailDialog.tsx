@@ -37,6 +37,7 @@ import { DocumentsSection } from "./expedition/DocumentsSection";
 import { HistoireTimeline } from "./expedition/HistoireTimeline";
 import { FicheCommandeComplete } from "./FicheCommandeComplete";
 import { CreerRetourDialog } from "./CreerRetourDialog";
+import { SendCloudActions } from "./SendCloudActions";
 import { ORDER_STATUS_LABELS, getStatutBadgeVariant } from "@/lib/orderStatuses";
 import {
   Package,
@@ -403,6 +404,19 @@ export const CommandeDetailDialog = ({
                 <PackageX className="h-4 w-4 mr-2" />
                 Créer un retour
               </Button>
+
+              {/* Actions SendCloud */}
+              {commande?.sendcloud_shipment_id && (
+                <SendCloudActions
+                  commandeId={commandeId}
+                  hasLabel={!!commande?.label_url}
+                  hasSendcloudId={!!commande?.sendcloud_shipment_id}
+                  onSuccess={() => {
+                    refetch();
+                    onSuccess?.();
+                  }}
+                />
+              )}
             </div>
 
             <div className="flex items-center gap-2">
