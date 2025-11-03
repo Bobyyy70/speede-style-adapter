@@ -134,12 +134,19 @@ Deno.serve(async (req) => {
     const orderNumber = sendcloudData.order_number || sendcloudData.order_id || String(sendcloudData.id);
     console.log('📋 Traitement commande:', orderNumber);
 
-    // 1. Vérifier si la commande existe déjà (par sendcloud_id ET par numero_commande)
-    const { data: existingCommande } = await supabase
+    // 1. Vérifier si la commande existe déjà
+    // CRITIQUE: Chercher d'abord par external_reference si présent (c'est notre ID interne)
+    let existingCommande = null;
+    
+    // On ne peut pas utiliser external_reference dans ce webhook car SendCloud ne le renvoie pas
+    // On cherche donc par sendcloud_id ou numero_commande
+    const { data: foundCommande } = await supabase
       .from('commande')
-      .select('id, numero_commande')
+      .select('id, numero_commande, sendcloud_id')
       .or(`sendcloud_id.eq.${sendcloudData.id},numero_commande.eq.${orderNumber}`)
       .maybeSingle();
+    
+    existingCommande = foundCommande;
 
     if (existingCommande) {
       console.log('⚠️ Commande déjà existante:', existingCommande.numero_commande);
@@ -174,6 +181,7 @@ Deno.serve(async (req) => {
       .from('commande')
       .insert({
         sendcloud_id: String(sendcloudData.id),
+        // sendcloud_reference sera mis à jour plus tard si on a external_reference
         numero_commande: orderNumber,
         nom_client: sendcloudData.name,
         email_client: sendcloudData.email || null,

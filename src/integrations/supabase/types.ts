@@ -442,6 +442,7 @@ export type Database = {
           reference_interne: string | null
           remarques: string | null
           sendcloud_id: string | null
+          sendcloud_reference: string | null
           sendcloud_shipment_id: string | null
           source: string
           sous_client: string | null
@@ -521,6 +522,7 @@ export type Database = {
           reference_interne?: string | null
           remarques?: string | null
           sendcloud_id?: string | null
+          sendcloud_reference?: string | null
           sendcloud_shipment_id?: string | null
           source: string
           sous_client?: string | null
@@ -600,6 +602,7 @@ export type Database = {
           reference_interne?: string | null
           remarques?: string | null
           sendcloud_id?: string | null
+          sendcloud_reference?: string | null
           sendcloud_shipment_id?: string | null
           source?: string
           sous_client?: string | null

@@ -128,6 +128,7 @@ Deno.serve(async (req) => {
       .from('commande')
       .update({
         sendcloud_id: String(sendcloudData.id),
+        sendcloud_reference: commande.id, // ✅ CRITIQUE: Garantir mapping tracking correct
         sendcloud_shipment_id: sendcloudData.shipment_id || String(sendcloudData.id),
         tracking_number: sendcloudData.tracking_number || null,
         tracking_url: sendcloudData.tracking_url || null,
@@ -142,7 +143,7 @@ Deno.serve(async (req) => {
       throw updateError;
     }
 
-    console.log('✅ Commande mise à jour avec données SendCloud');
+    console.log(`✅ Tracking créé: Commande ${commande.numero_commande} (${commande.id}) → SendCloud ID ${sendcloudData.id} → Tracking ${sendcloudData.tracking_number}`);
 
     return new Response(
       JSON.stringify({

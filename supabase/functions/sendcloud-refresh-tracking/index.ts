@@ -111,6 +111,7 @@ serve(async (req) => {
             tracking_url: parcel.tracking_url || null,
             label_url: parcel.label?.label_printer || null,
             sendcloud_shipment_id: parcel.id?.toString() || null,
+            sendcloud_reference: commande.id, // ✅ Garantir mapping correct
             poids_reel_kg: parcel.weight || null,
             poids_volumetrique_kg: parcel.order_weight || null,
             statut_wms: statutWms,
@@ -121,7 +122,7 @@ serve(async (req) => {
           console.error(`[Refresh Tracking] Error updating order ${commande.numero_commande}:`, updateError);
           errors++;
         } else {
-          console.log(`[Refresh Tracking] Updated order ${commande.numero_commande} with tracking ${parcel.tracking_number}`);
+          console.log(`[Refresh Tracking] ✅ Updated order ${commande.numero_commande} (${commande.id}) with tracking ${parcel.tracking_number}`);
           updated++;
         }
       } catch (err: any) {

@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
         if (nouveauStatut !== commande.statut_wms) {
           const updateData: any = {
             statut_wms: nouveauStatut,
+            sendcloud_reference: commande.id, // ✅ Garantir mapping correct
             transporteur: parcel.carrier?.name || null,
             tracking_number: parcel.tracking_number || null,
             tracking_url: parcel.tracking_url || null,
@@ -100,7 +101,7 @@ Deno.serve(async (req) => {
             .update(updateData)
             .eq('id', commande.id);
 
-          console.log(`[Update Shipped] ${commande.numero_commande}: ${commande.statut_wms} → ${nouveauStatut}${isCancelled ? ' (cancelled)' : ''}`);
+          console.log(`[Update Shipped] ${commande.numero_commande} (${commande.id}): ${commande.statut_wms} → ${nouveauStatut}${isCancelled ? ' (cancelled)' : ''}`);
           updatedCount++;
         }
       } catch (error) {
