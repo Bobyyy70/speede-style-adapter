@@ -16,9 +16,11 @@ const Mouvements = () => {
   const { user, userRole, getViewingClientId } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [dateDebut, setDateDebut] = useState<string>("");
+  const [dateFin, setDateFin] = useState<string>("");
 
   const { data: mouvements, isLoading } = useQuery({
-    queryKey: ["mouvements-detail", user?.id, getViewingClientId(), typeFilter, searchTerm],
+    queryKey: ["mouvements-detail", user?.id, getViewingClientId(), typeFilter, searchTerm, dateDebut, dateFin],
     queryFn: async () => {
       let query = supabase
         .from("mouvement_stock")
@@ -41,7 +43,18 @@ const Mouvements = () => {
             email
           )
         `)
-        .order("date_mouvement", { ascending: false });
+        .order("date_mouvement", { ascending: false })
+        .limit(500);
+
+      // Filtres de date
+      if (dateDebut) {
+        query = query.gte("date_mouvement", new Date(dateDebut).toISOString());
+      }
+      if (dateFin) {
+        const endDate = new Date(dateFin);
+        endDate.setHours(23, 59, 59, 999);
+        query = query.lte("date_mouvement", endDate.toISOString());
+      }
 
       // Filter by client if needed
       const viewingClientId = getViewingClientId();
@@ -102,7 +115,7 @@ const Mouvements = () => {
                 <CardTitle>Historique des mouvements</CardTitle>
                 <CardDescription>Tous les mouvements de stock enregistrés</CardDescription>
               </div>
-              <div className="flex gap-4">
+              <div className="flex flex-wrap gap-4">
                 <div className="relative w-[300px]">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -113,17 +126,33 @@ const Mouvements = () => {
                   />
                 </div>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Type de mouvement" />
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tous les types</SelectItem>
+                    <SelectItem value="all">Tous</SelectItem>
                     <SelectItem value="entrée">Entrée</SelectItem>
                     <SelectItem value="sortie">Sortie</SelectItem>
                     <SelectItem value="transfert">Transfert</SelectItem>
                     <SelectItem value="réservation">Réservation</SelectItem>
+                    <SelectItem value="ajustement_inventaire_positif">Ajustement +</SelectItem>
+                    <SelectItem value="ajustement_inventaire_negatif">Ajustement -</SelectItem>
                   </SelectContent>
                 </Select>
+                <Input
+                  type="date"
+                  placeholder="Date début"
+                  className="w-[160px]"
+                  value={dateDebut}
+                  onChange={(e) => setDateDebut(e.target.value)}
+                />
+                <Input
+                  type="date"
+                  placeholder="Date fin"
+                  className="w-[160px]"
+                  value={dateFin}
+                  onChange={(e) => setDateFin(e.target.value)}
+                />
               </div>
             </div>
           </CardHeader>
@@ -148,6 +177,7 @@ const Mouvements = () => {
                       <TableHead className="w-[120px]">Raison</TableHead>
                       <TableHead className="w-[100px]">Empl. Source</TableHead>
                       <TableHead className="w-[100px]">Empl. Dest</TableHead>
+                      <TableHead className="w-[200px]">Remarques</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -209,6 +239,9 @@ const Mouvements = () => {
                           </TableCell>
                           <TableCell className="font-mono text-xs">
                             {mouvement.emplacement_destination?.code_emplacement || "-"}
+                          </TableCell>
+                          <TableCell className="text-xs max-w-[200px] truncate text-muted-foreground">
+                            {mouvement.remarques || "-"}
                           </TableCell>
                         </TableRow>
                       );
