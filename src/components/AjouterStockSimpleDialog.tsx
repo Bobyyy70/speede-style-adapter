@@ -71,11 +71,11 @@ export function AjouterStockSimpleDialog({
       
       if (updateError) throw updateError;
       
-      // 3. UPDATE emplacement - incrémenter quantité
+      // 3. UPDATE emplacement - incrémenter quantité (FIX: parenthèses pour priorité correcte)
       const { error: emplError } = await supabase
         .from('emplacement')
         .update({ 
-          quantite_actuelle: (emplacement as any).quantite_actuelle || 0 + quantite,
+          quantite_actuelle: ((emplacement as any).quantite_actuelle || 0) + quantite,
           statut_actuel: 'occupé'
         })
         .eq('id', emplacement.id);
