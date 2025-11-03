@@ -46,9 +46,9 @@ serve(async (req) => {
       try {
         console.log(`[Refresh Tracking] Processing order ${commande.numero_commande} (SendCloud ID: ${commande.sendcloud_id})`);
 
-        // Récupérer le parcel via l'API SendCloud v2 Parcels
+        // Récupérer le parcel via l'API SendCloud v2 Parcels par ID (fiable)
         const parcelResponse = await fetch(
-          `https://panel.sendcloud.sc/api/v2/parcels?external_order_id=${commande.sendcloud_id}`,
+          `https://panel.sendcloud.sc/api/v2/parcels/${commande.sendcloud_id}`,
           {
             headers: {
               'Authorization': `Basic ${basicAuth}`,
@@ -65,12 +65,11 @@ serve(async (req) => {
 
         const parcelData = await parcelResponse.json();
         
-        if (!parcelData.parcels || parcelData.parcels.length === 0) {
+        const parcel = parcelData.parcel || (parcelData.parcels && parcelData.parcels[0]);
+        if (!parcel) {
           console.log(`[Refresh Tracking] No parcel found for order ${commande.numero_commande}`);
           continue;
         }
-
-        const parcel = parcelData.parcels[0];
 
         // Mapper le statut SendCloud vers statut WMS (nouveaux statuts ajoutés)
         let statutWms = 'en_attente_reappro';

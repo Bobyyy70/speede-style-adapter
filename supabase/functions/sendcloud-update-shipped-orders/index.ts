@@ -46,9 +46,9 @@ Deno.serve(async (req) => {
 
     for (const commande of commandes) {
       try {
-        // Récupérer le parcel depuis SendCloud
+        // Récupérer le parcel depuis SendCloud par ID fiable
         const parcelResponse = await fetch(
-          `https://panel.sendcloud.sc/api/v2/parcels?external_order_id=${commande.sendcloud_id}`,
+          `https://panel.sendcloud.sc/api/v2/parcels/${commande.sendcloud_id}`,
           {
             headers: {
               'Authorization': authHeader,
@@ -60,9 +60,8 @@ Deno.serve(async (req) => {
         if (!parcelResponse.ok) continue;
 
         const parcelData = await parcelResponse.json();
-        if (!parcelData.parcels || parcelData.parcels.length === 0) continue;
-
-        const parcel = parcelData.parcels[0];
+        const parcel = parcelData.parcel || (parcelData.parcels && parcelData.parcels[0]);
+        if (!parcel) continue;
         const statusId = parcel.status?.id || 0;
         const statusMessage = parcel.status?.message || '';
 
