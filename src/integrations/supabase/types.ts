@@ -1524,7 +1524,7 @@ export type Database = {
           emplacement_destination_id: string | null
           emplacement_source_id: string | null
           id: string
-          numero_mouvement: string
+          numero_mouvement: string | null
           produit_id: string
           quantite: number
           raison: string | null
@@ -1543,7 +1543,7 @@ export type Database = {
           emplacement_destination_id?: string | null
           emplacement_source_id?: string | null
           id?: string
-          numero_mouvement: string
+          numero_mouvement?: string | null
           produit_id: string
           quantite: number
           raison?: string | null
@@ -1562,7 +1562,7 @@ export type Database = {
           emplacement_destination_id?: string | null
           emplacement_source_id?: string | null
           id?: string
-          numero_mouvement?: string
+          numero_mouvement?: string | null
           produit_id?: string
           quantite?: number
           raison?: string | null

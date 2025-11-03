@@ -41,25 +41,73 @@ export function RetirerStockDialog({ open, onOpenChange, emplacement, produitNom
       return;
     }
 
-    if (parseInt(quantite) > (emplacement.quantite_actuelle || 0)) {
-      toast.error("Quantité supérieure au stock disponible");
+    const qty = parseInt(quantite);
+    const stockActuel = emplacement.quantite_actuelle || 0;
+
+    if (qty > stockActuel) {
+      toast.error(`Quantité supérieure au stock disponible (${stockActuel} unités)`);
+      return;
+    }
+
+    if (!emplacement.produit_actuel_id) {
+      toast.error("Aucun produit dans cet emplacement");
       return;
     }
 
     setLoading(true);
     try {
-      const { data, error } = await (supabase.rpc as any)('retirer_stock_manuel', {
-        p_emplacement_id: emplacement.id,
-        p_quantite: parseInt(quantite),
-        p_remarques: remarques || null
-      });
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (error) throw error;
+      // 1. Récupérer le stock actuel du produit
+      const { data: produit, error: fetchError } = await supabase
+        .from('produit')
+        .select('stock_actuel')
+        .eq('id', emplacement.produit_actuel_id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      const stockAvant = produit?.stock_actuel || 0;
 
-      if (data && !(data as any).success) {
-        toast.error((data as any).error || "Erreur lors du retrait du stock");
-        return;
-      }
+      // 2. UPDATE produit - décrémenter stock
+      const { error: updateError } = await supabase
+        .from('produit')
+        .update({ 
+          stock_actuel: Math.max(0, stockAvant - qty),
+          date_modification: new Date().toISOString()
+        })
+        .eq('id', emplacement.produit_actuel_id);
+      
+      if (updateError) throw updateError;
+
+      // 3. UPDATE emplacement - décrémenter quantité
+      const nouvelleQuantite = Math.max(0, stockActuel - qty);
+      const { error: emplError } = await supabase
+        .from('emplacement')
+        .update({ 
+          quantite_actuelle: nouvelleQuantite,
+          statut_actuel: nouvelleQuantite === 0 ? 'disponible' : 'occupé',
+          produit_actuel_id: nouvelleQuantite === 0 ? null : emplacement.produit_actuel_id
+        })
+        .eq('id', emplacement.id);
+        
+      if (emplError) throw emplError;
+
+      // 4. INSERT mouvement_stock pour traçabilité
+      const { error: insertError } = await supabase
+        .from('mouvement_stock')
+        .insert({
+          produit_id: emplacement.produit_actuel_id,
+          emplacement_source_id: emplacement.id,
+          quantite: -qty,
+          type_mouvement: 'retrait',
+          raison: 'Retrait manuel',
+          remarques: remarques || null,
+          created_by: user?.id,
+          stock_apres_mouvement: Math.max(0, stockAvant - qty),
+          date_mouvement: new Date().toISOString()
+        });
+      
+      if (insertError) throw insertError;
 
       toast.success(`${quantite} unités retirées de ${emplacement.code_emplacement}`);
       onSuccess();

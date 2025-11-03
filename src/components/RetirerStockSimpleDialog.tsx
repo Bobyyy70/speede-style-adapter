@@ -58,17 +58,68 @@ export function RetirerStockSimpleDialog({
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("retirer_stock_manuel", {
-        p_emplacement_id: emplacement.id,
-        p_quantite: quantite,
-        p_remarques: remarques || null,
-        p_raison: raison
-      });
-
-      if (error) throw error;
+      const { data: { user } } = await supabase.auth.getUser();
       
-      const result = data as { success: boolean; error?: string };
-      if (!result?.success) throw new Error(result?.error || "Erreur lors du retrait");
+      // 1. Récupérer le stock actuel et le produit_id de l'emplacement
+      const { data: empl, error: emplFetchError } = await supabase
+        .from('emplacement')
+        .select('produit_actuel_id, quantite_actuelle')
+        .eq('id', emplacement.id)
+        .single();
+      
+      if (emplFetchError) throw emplFetchError;
+      if (!empl?.produit_actuel_id) throw new Error("Aucun produit dans cet emplacement");
+
+      // 2. Récupérer stock produit
+      const { data: produit, error: fetchError } = await supabase
+        .from('produit')
+        .select('stock_actuel')
+        .eq('id', empl.produit_actuel_id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      const stockAvant = produit?.stock_actuel || 0;
+
+      // 3. UPDATE produit - décrémenter stock
+      const { error: updateError } = await supabase
+        .from('produit')
+        .update({ 
+          stock_actuel: Math.max(0, stockAvant - quantite),
+          date_modification: new Date().toISOString()
+        })
+        .eq('id', empl.produit_actuel_id);
+      
+      if (updateError) throw updateError;
+
+      // 4. UPDATE emplacement - décrémenter quantité
+      const nouvelleQuantite = Math.max(0, (empl.quantite_actuelle || 0) - quantite);
+      const { error: emplError } = await supabase
+        .from('emplacement')
+        .update({ 
+          quantite_actuelle: nouvelleQuantite,
+          statut_actuel: nouvelleQuantite === 0 ? 'disponible' : 'occupé',
+          produit_actuel_id: nouvelleQuantite === 0 ? null : empl.produit_actuel_id
+        })
+        .eq('id', emplacement.id);
+        
+      if (emplError) throw emplError;
+
+      // 5. INSERT mouvement_stock pour traçabilité
+      const { error: insertError } = await supabase
+        .from('mouvement_stock')
+        .insert({
+          produit_id: empl.produit_actuel_id,
+          emplacement_source_id: emplacement.id,
+          quantite: -quantite,
+          type_mouvement: 'retrait',
+          raison: raison,
+          remarques: remarques || null,
+          created_by: user?.id,
+          stock_apres_mouvement: Math.max(0, stockAvant - quantite),
+          date_mouvement: new Date().toISOString()
+        });
+      
+      if (insertError) throw insertError;
 
       toast({
         title: "Stock retiré",
@@ -81,9 +132,10 @@ export function RetirerStockSimpleDialog({
       setRemarques("");
       setRaison("Expédition");
     } catch (error: any) {
+      console.error('Erreur retrait stock:', error);
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error.message || "Erreur lors du retrait du stock",
         variant: "destructive"
       });
     } finally {

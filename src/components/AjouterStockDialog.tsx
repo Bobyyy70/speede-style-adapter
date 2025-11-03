@@ -68,9 +68,11 @@ export function AjouterStockDialog({ open, onOpenChange, emplacement, onSuccess 
       return;
     }
 
+    const qty = parseInt(quantite);
+
     // Vérification capacité poids si disponible
     if (selectedProduit?.poids_unitaire && (emplacement as any).capacite_max_kg) {
-      const poidsTotal = selectedProduit.poids_unitaire * parseInt(quantite);
+      const poidsTotal = selectedProduit.poids_unitaire * qty;
       if (poidsTotal > (emplacement as any).capacite_max_kg) {
         toast.error(`Capacité dépassée: ${poidsTotal.toFixed(1)} kg > ${(emplacement as any).capacite_max_kg} kg`);
         return;
@@ -79,19 +81,57 @@ export function AjouterStockDialog({ open, onOpenChange, emplacement, onSuccess 
 
     setLoading(true);
     try {
-      const { data, error } = await (supabase.rpc as any)('ajouter_stock_manuel', {
-        p_emplacement_id: emplacement.id,
-        p_produit_id: selectedProduit.id,
-        p_quantite: parseInt(quantite),
-        p_remarques: remarques || null
-      });
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (error) throw error;
+      // 1. Récupérer le stock actuel du produit
+      const { data: produit, error: fetchError } = await supabase
+        .from('produit')
+        .select('stock_actuel')
+        .eq('id', selectedProduit.id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      const stockAvant = produit?.stock_actuel || 0;
 
-      if (data && !(data as any).success) {
-        toast.error((data as any).error || "Erreur lors de l'ajout du stock");
-        return;
-      }
+      // 2. UPDATE produit - incrémenter stock
+      const { error: updateError } = await supabase
+        .from('produit')
+        .update({ 
+          stock_actuel: stockAvant + qty,
+          date_modification: new Date().toISOString()
+        })
+        .eq('id', selectedProduit.id);
+      
+      if (updateError) throw updateError;
+
+      // 3. UPDATE emplacement - affecter produit et quantité
+      const { error: emplError } = await supabase
+        .from('emplacement')
+        .update({ 
+          produit_actuel_id: selectedProduit.id,
+          quantite_actuelle: ((emplacement.quantite_actuelle || 0) + qty),
+          statut_actuel: 'occupé'
+        })
+        .eq('id', emplacement.id);
+        
+      if (emplError) throw emplError;
+
+      // 4. INSERT mouvement_stock pour traçabilité
+      const { error: insertError } = await supabase
+        .from('mouvement_stock')
+        .insert({
+          produit_id: selectedProduit.id,
+          emplacement_destination_id: emplacement.id,
+          quantite: qty,
+          type_mouvement: 'ajout',
+          raison: 'Ajout manuel',
+          remarques: remarques || null,
+          created_by: user?.id,
+          stock_apres_mouvement: stockAvant + qty,
+          date_mouvement: new Date().toISOString()
+        });
+      
+      if (insertError) throw insertError;
 
       toast.success(`${quantite} unités ajoutées à ${emplacement.code_emplacement}`);
       onSuccess();

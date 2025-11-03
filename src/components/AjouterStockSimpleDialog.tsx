@@ -48,18 +48,56 @@ export function AjouterStockSimpleDialog({
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("ajouter_stock_manuel", {
-        p_emplacement_id: emplacement.id,
-        p_produit_id: emplacement.produit_actuel_id,
-        p_quantite: quantite,
-        p_remarques: remarques || null,
-        p_raison: raison
-      });
-
-      if (error) throw error;
+      const { data: { user } } = await supabase.auth.getUser();
       
-      const result = data as { success: boolean; error?: string };
-      if (!result?.success) throw new Error(result?.error || "Erreur lors de l'ajout");
+      // 1. Récupérer le stock actuel du produit
+      const { data: produit, error: fetchError } = await supabase
+        .from('produit')
+        .select('stock_actuel')
+        .eq('id', emplacement.produit_actuel_id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      const stockAvant = produit?.stock_actuel || 0;
+
+      // 2. UPDATE produit - incrémenter stock
+      const { error: updateError } = await supabase
+        .from('produit')
+        .update({ 
+          stock_actuel: stockAvant + quantite,
+          date_modification: new Date().toISOString()
+        })
+        .eq('id', emplacement.produit_actuel_id);
+      
+      if (updateError) throw updateError;
+      
+      // 3. UPDATE emplacement - incrémenter quantité
+      const { error: emplError } = await supabase
+        .from('emplacement')
+        .update({ 
+          quantite_actuelle: (emplacement as any).quantite_actuelle || 0 + quantite,
+          statut_actuel: 'occupé'
+        })
+        .eq('id', emplacement.id);
+        
+      if (emplError) throw emplError;
+
+      // 4. INSERT mouvement_stock pour traçabilité
+      const { error: insertError } = await supabase
+        .from('mouvement_stock')
+        .insert({
+          produit_id: emplacement.produit_actuel_id,
+          emplacement_destination_id: emplacement.id,
+          quantite: quantite,
+          type_mouvement: 'ajout',
+          raison: raison,
+          remarques: remarques || null,
+          created_by: user?.id,
+          stock_apres_mouvement: stockAvant + quantite,
+          date_mouvement: new Date().toISOString()
+        });
+      
+      if (insertError) throw insertError;
 
       toast({
         title: "Stock ajouté",
@@ -72,9 +110,10 @@ export function AjouterStockSimpleDialog({
       setRemarques("");
       setRaison("Réception");
     } catch (error: any) {
+      console.error('Erreur ajout stock:', error);
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error.message || "Erreur lors de l'ajout du stock",
         variant: "destructive"
       });
     } finally {
