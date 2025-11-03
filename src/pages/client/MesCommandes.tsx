@@ -182,6 +182,9 @@ export default function MesCommandes() {
                 open={detailDialogOpen}
                 onOpenChange={setDetailDialogOpen}
                 commandeId={selectedCommandeId}
+                onSuccess={() => {
+                  fetchCommandes();
+                }}
               />
             )}
           </>

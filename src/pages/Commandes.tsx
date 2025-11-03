@@ -321,7 +321,11 @@ export default function Commandes() {
         {view === 'kanban' ? (
           <>
             <CommandesKanban
-              commandes={commandesData || []}
+              commandes={
+                statusFilters.length > 0
+                  ? (commandesData || []).filter(cmd => statusFilters.includes(cmd.statut_wms))
+                  : (commandesData || [])
+              }
               onCommandeClick={(id) => {
                 setSelectedCommandeId(id);
                 setDetailDialogOpen(true);
@@ -333,6 +337,10 @@ export default function Commandes() {
                 open={detailDialogOpen}
                 onOpenChange={setDetailDialogOpen}
                 commandeId={selectedCommandeId}
+                onSuccess={() => {
+                  fetchStats();
+                  refetch();
+                }}
               />
             )}
           </>
