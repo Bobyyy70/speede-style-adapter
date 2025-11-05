@@ -83,24 +83,32 @@ export default function MesProduits() {
 
       if (produitsError) throw produitsError;
 
-      // Récupérer le stock disponible pour chaque produit
-      const { data: stockData, error: stockError } = await (supabase as any)
-        .from("stock_disponible")
-        .select("*")
-        .eq("client_id", clientId);
-
-      if (stockError) {
-        console.error("Error fetching stock_disponible:", stockError);
+      // Calculer les stocks réservés pour chaque produit
+      const produitIds = (produitsData || []).map(p => p.id);
+      
+      let stocksReserves: Record<string, number> = {};
+      if (produitIds.length > 0) {
+        const { data: mouvements } = await supabase
+          .from("mouvement_stock")
+          .select("produit_id, quantite")
+          .in("produit_id", produitIds)
+          .eq("type_mouvement", "réservation");
+        
+        // Sommer les réservations par produit
+        stocksReserves = (mouvements || []).reduce((acc, m) => {
+          acc[m.produit_id] = (acc[m.produit_id] || 0) + Math.abs(m.quantite);
+          return acc;
+        }, {} as Record<string, number>);
       }
 
-      // Fusionner les données
+      // Calculer stock disponible = stock_actuel - réservé
       const produitsAvecStock = (produitsData || []).map(produit => {
-        const stock = (stockData as any)?.find((s: any) => s.produit_id === produit.id);
+        const reserve = stocksReserves[produit.id] || 0;
         return {
           ...produit,
-          stock_physique: stock?.stock_physique || 0,
-          stock_reserve: stock?.stock_reserve || 0,
-          stock_disponible: stock?.stock_disponible || 0
+          stock_physique: produit.stock_actuel,
+          stock_reserve: reserve,
+          stock_disponible: Math.max(0, produit.stock_actuel - reserve)
         };
       });
 
