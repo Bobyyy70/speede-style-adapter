@@ -328,6 +328,9 @@ Deno.serve(async (req) => {
         let tousProduitsTrouves = true;
         const produitsCommande: any[] = [];
 
+        const publicKey = Deno.env.get('SENDCLOUD_API_PUBLIC_KEY');
+        const secretKey = Deno.env.get('SENDCLOUD_API_SECRET_KEY');
+
         for (const product of sendcloudData.order_products) {
           // Chercher le produit par SKU puis par EAN
           let { data: produit } = await supabase
@@ -345,8 +348,73 @@ Deno.serve(async (req) => {
               .maybeSingle());
           }
 
+          // Si toujours pas trouvé, récupérer depuis SendCloud API et créer le produit
+          if (!produit && publicKey && secretKey) {
+            console.log(`🔍 Produit ${product.sku} non trouvé, récupération depuis SendCloud...`);
+            
+            try {
+              const basicAuth = btoa(`${publicKey}:${secretKey}`);
+              
+              // Chercher le produit dans SendCloud Products API par SKU
+              const productResponse = await fetch(
+                `https://panel.sendcloud.sc/api/v3/products?sku=${encodeURIComponent(product.sku)}`,
+                {
+                  headers: {
+                    'Authorization': `Basic ${basicAuth}`,
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+
+              if (productResponse.ok) {
+                const productData = await productResponse.json();
+                const scProduct = productData.products?.[0];
+
+                if (scProduct) {
+                  console.log(`✅ Produit trouvé dans SendCloud: ${scProduct.description}`);
+                  
+                  // Déterminer le client_id par défaut (HEFAGROUP)
+                  const { data: defaultClient } = await supabase
+                    .from('client')
+                    .select('id')
+                    .eq('nom_entreprise', 'HEFAGROUP OÜ')
+                    .maybeSingle();
+
+                  // Créer le produit dans notre base
+                  const { data: newProduit, error: createError } = await supabase
+                    .from('produit')
+                    .insert({
+                      reference: product.sku,
+                      nom: scProduct.description || product.name,
+                      code_barre_ean: scProduct.ean || product.ean || null,
+                      poids_unitaire: scProduct.weight?.value || 0.1,
+                      prix_unitaire: product.unit_price?.value || 0,
+                      client_id: defaultClient?.id,
+                      stock_actuel: 0,
+                      stock_minimum: 0,
+                      statut_actif: true,
+                      pays_origine: scProduct.origin_country || 'FR',
+                      code_sh: scProduct.hs_code || null,
+                      marque: 'SendCloud Import',
+                    })
+                    .select('id, nom, reference, marque, client_id, stock_actuel, poids_unitaire, prix_unitaire')
+                    .single();
+
+                  if (createError) {
+                    console.error(`❌ Erreur création produit ${product.sku}:`, createError);
+                  } else {
+                    console.log(`✅ Produit ${product.sku} créé automatiquement`);
+                    produit = newProduit;
+                  }
+                }
+              }
+            } catch (apiError) {
+              console.error(`⚠️ Erreur API SendCloud Products pour ${product.sku}:`, apiError);
+            }
+          }
+
           if (!produit) {
-            console.log(`⚠️ Produit non trouvé: SKU=${product.sku}, EAN=${product.ean || 'N/A'}`);
+            console.log(`⚠️ Produit non trouvé et non créé: SKU=${product.sku}, EAN=${product.ean || 'N/A'}`);
             tousProduitsTrouves = false;
             continue;
           }
