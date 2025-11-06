@@ -59,24 +59,25 @@ const Produits = () => {
       const { data: produitsData, error: produitsError } = await query;
       if (produitsError) throw produitsError;
 
-      // Récupérer le stock disponible
-      let stockQuery = (supabase as any).from("stock_disponible").select("*");
-      if (clientIdFilter) {
-        stockQuery = stockQuery.eq("client_id", clientIdFilter);
-      }
-      
-      const { data: stockData } = await stockQuery;
-
-      // Fusionner les données
-      const produitsAvecStock = (produitsData || []).map((produit: any) => {
-        const stock = (stockData as any)?.find((s: any) => s.produit_id === produit.id);
+      // Calculer le stock disponible directement depuis mouvement_stock
+      const produitsAvecStock = await Promise.all((produitsData || []).map(async (produit: any) => {
+        // Stock réservé = SUM(quantite) WHERE type_mouvement = 'réservation'
+        const { data: reservations } = await supabase
+          .from('mouvement_stock')
+          .select('quantite')
+          .eq('produit_id', produit.id)
+          .eq('type_mouvement', 'réservation');
+        
+        const stock_reserve = reservations?.reduce((sum, m) => sum + Math.abs(m.quantite), 0) || 0;
+        const stock_disponible = (produit.stock_actuel || 0) - stock_reserve;
+        
         return {
           ...produit,
-          stock_physique: stock?.stock_physique || 0,
-          stock_reserve: stock?.stock_reserve || 0,
-          stock_disponible: stock?.stock_disponible || 0
+          stock_physique: produit.stock_actuel || 0,
+          stock_reserve,
+          stock_disponible
         };
-      });
+      }));
 
       return produitsAvecStock;
     },

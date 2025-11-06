@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { CommandesList } from "@/components/CommandesList";
-import { CommandesKanban } from "@/components/CommandesKanban";
-import { ViewSelector } from "@/components/ViewSelector";
 import { CommandeDetailDialog } from "@/components/CommandeDetailDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,9 +28,6 @@ export default function Commandes() {
     ORDER_STATUSES.STOCK_RESERVE,
     ORDER_STATUSES.EN_PREPARATION
   ]);
-  const [view, setView] = useState<'list' | 'kanban'>(() => {
-    return (localStorage.getItem('commandes_view') as 'list' | 'kanban') || 'list';
-  });
   const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [stats, setStats] = useState({
@@ -104,10 +99,6 @@ export default function Commandes() {
       supabase.removeChannel(channel);
     };
   }, [refetch]);
-
-  useEffect(() => {
-    localStorage.setItem('commandes_view', view);
-  }, [view]);
 
   useEffect(() => {
     const saved = localStorage.getItem('commandes_status_filters');
@@ -267,7 +258,6 @@ export default function Commandes() {
                 </Button>
               </>
             )}
-            <ViewSelector view={view} onViewChange={setView} />
           </div>
         </div>
 
@@ -317,50 +307,21 @@ export default function Commandes() {
           </Card>
         </div>
 
-        {/* Affichage conditionnel Liste ou Kanban */}
-        {view === 'kanban' ? (
-          <>
-            <CommandesKanban
-              commandes={
-                statusFilters.length > 0
-                  ? (commandesData || []).filter(cmd => statusFilters.includes(cmd.statut_wms))
-                  : (commandesData || [])
-              }
-              onCommandeClick={(id) => {
-                setSelectedCommandeId(id);
-                setDetailDialogOpen(true);
-              }}
-              loading={isLoading}
+        <Tabs defaultValue="toutes" className="space-y-4">
+          <TabsContent value="toutes">
+            <CommandesList 
+              onUpdate={() => {
+                fetchStats();
+                refetch();
+              }} 
+              userRole={userRole} 
+              userId={user?.id} 
+              viewingClientId={getViewingClientId()} 
+              clientFilter={selectedClientFilter} 
+              statusFilters={statusFilters} 
             />
-            {selectedCommandeId && (
-              <CommandeDetailDialog
-                open={detailDialogOpen}
-                onOpenChange={setDetailDialogOpen}
-                commandeId={selectedCommandeId}
-                onSuccess={() => {
-                  fetchStats();
-                  refetch();
-                }}
-              />
-            )}
-          </>
-        ) : (
-          <Tabs defaultValue="toutes" className="space-y-4">
-            <TabsContent value="toutes">
-              <CommandesList 
-                onUpdate={() => {
-                  fetchStats();
-                  refetch();
-                }} 
-                userRole={userRole} 
-                userId={user?.id} 
-                viewingClientId={getViewingClientId()} 
-                clientFilter={selectedClientFilter} 
-                statusFilters={statusFilters} 
-              />
-            </TabsContent>
-          </Tabs>
-        )}
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );
