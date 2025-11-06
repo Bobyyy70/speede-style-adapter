@@ -49,10 +49,10 @@ export function FicheCommandeComplete({
   const isInternational = commande.pays_code !== 'FR';
 
   return (
-    <div className={`space-y-6 ${compact ? 'max-w-4xl' : 'max-w-6xl'}`}>
+    <div className={`${compact ? 'space-y-3' : 'space-y-6'}`}>
       {/* EN-TÊTE */}
       <Card>
-        <CardHeader>
+        <CardHeader className={compact ? 'pb-3' : ''}>
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <div className="flex items-center gap-3">
@@ -92,7 +92,7 @@ export function FicheCommandeComplete({
       )}
 
       {/* INFORMATIONS COMMERCIALES */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-2 md:grid-cols-4 ${compact ? 'gap-2' : 'gap-4'}`}>
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -151,7 +151,7 @@ export function FicheCommandeComplete({
       </div>
 
       {/* ADRESSES */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className={`grid grid-cols-1 lg:grid-cols-2 ${compact ? 'gap-2' : 'gap-4'}`}>
         {/* EXPÉDITEUR */}
         <Card>
           <CardHeader>

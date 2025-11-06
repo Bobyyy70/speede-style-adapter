@@ -59,25 +59,43 @@ const Produits = () => {
       const { data: produitsData, error: produitsError } = await query;
       if (produitsError) throw produitsError;
 
-      // Calculer le stock disponible directement depuis mouvement_stock
-      const produitsAvecStock = await Promise.all((produitsData || []).map(async (produit: any) => {
-        // Stock réservé = SUM(quantite) WHERE type_mouvement = 'réservation'
-        const { data: reservations } = await supabase
-          .from('mouvement_stock')
-          .select('quantite')
-          .eq('produit_id', produit.id)
-          .eq('type_mouvement', 'réservation');
-        
-        const stock_reserve = reservations?.reduce((sum, m) => sum + Math.abs(m.quantite), 0) || 0;
+      if (!produitsData || produitsData.length === 0) {
+        return [];
+      }
+
+      // Batch query: récupérer toutes les réservations en une seule fois
+      const produitIds = produitsData.map((p: any) => p.id);
+      const { data: reservations, error: reservError } = await supabase
+        .from('mouvement_stock')
+        .select('produit_id, quantite')
+        .in('produit_id', produitIds)
+        .eq('type_mouvement', 'réservation')
+        .eq('statut_mouvement', 'stock_physique');
+
+      if (reservError) {
+        console.error('[Produits] Erreur lecture réservations:', reservError);
+        // Continuer sans réservations plutôt que de crasher
+      }
+
+      // Grouper les réservations par produit_id
+      const reservationsParProduit = new Map<string, number>();
+      (reservations || []).forEach((r: any) => {
+        const current = reservationsParProduit.get(r.produit_id) || 0;
+        reservationsParProduit.set(r.produit_id, current + Math.abs(r.quantite));
+      });
+
+      // Calculer stock disponible pour chaque produit
+      const produitsAvecStock = produitsData.map((produit: any) => {
+        const stock_reserve = reservationsParProduit.get(produit.id) || 0;
         const stock_disponible = (produit.stock_actuel || 0) - stock_reserve;
-        
+
         return {
           ...produit,
           stock_physique: produit.stock_actuel || 0,
           stock_reserve,
           stock_disponible
         };
-      }));
+      });
 
       return produitsAvecStock;
     },

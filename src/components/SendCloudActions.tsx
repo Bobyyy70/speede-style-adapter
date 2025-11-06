@@ -18,6 +18,7 @@ interface SendCloudActionsProps {
   commandeId: string;
   hasLabel: boolean;
   hasSendcloudId: boolean;
+  showReturnButton?: boolean; // Pour cacher le bouton "Créer retour" si doublon
   onSuccess?: () => void;
 }
 
@@ -25,6 +26,7 @@ export function SendCloudActions({
   commandeId,
   hasLabel,
   hasSendcloudId,
+  showReturnButton = true,
   onSuccess,
 }: SendCloudActionsProps) {
   const [loading, setLoading] = useState<string | null>(null);
@@ -150,15 +152,17 @@ export function SendCloudActions({
             Tracking
           </Button>
 
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setReturnDialogOpen(true)}
-            disabled={loading === 'return'}
-          >
-            <RotateCcw className="h-4 w-4" />
-            Créer retour
-          </Button>
+          {showReturnButton && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setReturnDialogOpen(true)}
+              disabled={loading === 'return'}
+            >
+              <RotateCcw className="h-4 w-4" />
+              Créer retour
+            </Button>
+          )}
 
           <Button
             size="sm"

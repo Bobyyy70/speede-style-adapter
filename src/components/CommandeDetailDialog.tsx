@@ -54,6 +54,7 @@ import {
   Euro,
   Clock,
   User,
+  MapPin,
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -113,6 +114,59 @@ export const CommandeDetailDialog = ({
 
     return () => unsubscribe();
   }, [commandeId, open]);
+
+  // Appliquer automatiquement les règles si expéditeur/transporteur manquant
+  useEffect(() => {
+    if (!open || !commande) return;
+
+    const applyMissingRules = async () => {
+      let rulesApplied = false;
+
+      // Appliquer règles expéditeur si vide
+      if (!commande.expediteur_entreprise && commande.client_id) {
+        try {
+          const { data, error } = await supabase.functions.invoke('apply-expediteur-rules', {
+            body: {
+              commandeId,
+              clientId: commande.client_id,
+              nomClient: commande.nom_client,
+              tagsCommande: commande.tags,
+              sousClient: commande.sous_client,
+            }
+          });
+
+          if (!error && data?.success && data?.matched) {
+            rulesApplied = true;
+            console.log('[Auto] Règle expéditeur appliquée:', data.sender);
+          }
+        } catch (err) {
+          console.error('[Auto] Erreur règles expéditeur:', err);
+        }
+      }
+
+      // Appliquer règles auto (transporteur, etc.) si vide
+      if (!commande.transporteur || !commande.methode_expedition) {
+        try {
+          const { data, error } = await supabase.functions.invoke('apply-automatic-rules', {
+            body: { commandeId }
+          });
+
+          if (!error && data?.updates && Object.keys(data.updates).length > 0) {
+            rulesApplied = true;
+            console.log('[Auto] Règles transporteur appliquées:', data.updates);
+          }
+        } catch (err) {
+          console.error('[Auto] Erreur règles auto:', err);
+        }
+      }
+
+      if (rulesApplied) {
+        refetch();
+      }
+    };
+
+    applyMissingRules();
+  }, [open, commande?.id]);
 
   // Fetch lignes de commande
   const { data: lignes } = useQuery({
@@ -326,7 +380,7 @@ export const CommandeDetailDialog = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto p-4">
           <DialogHeader>
             <div className="flex items-center justify-between gap-4">
               <div className="flex-1">
@@ -370,119 +424,87 @@ export const CommandeDetailDialog = ({
             </div>
           </DialogHeader>
 
-          {/* BARRE D'ACTIONS */}
-          <div className="flex items-center justify-between gap-2 py-3 border-t border-b bg-muted/30 -mx-6 px-6">
-            <div className="flex items-center gap-2">
-              {/* Changer le statut */}
-              {transitionsPossibles && transitionsPossibles.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      disabled={statusChanging}
-                    >
-                      {statusChanging ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <ArrowRight className="h-4 w-4 mr-2" />
-                      )}
-                      Changer le statut
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuLabel>Transitions possibles</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {transitionsPossibles.map((statut) => (
-                      <DropdownMenuItem
-                        key={statut}
-                        onClick={() => handleChangeStatus(statut)}
-                      >
-                        <ArrowRight className="h-3 w-3 mr-2" />
-                        {ORDER_STATUS_LABELS[statut] || statut}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-
-              {/* Créer un retour */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowRetourDialog(true)}
-              >
-                <PackageX className="h-4 w-4 mr-2" />
-                Créer un retour
-              </Button>
-
-              {/* Actions SendCloud */}
-              {commande?.sendcloud_shipment_id && (
-                <SendCloudActions
-                  commandeId={commandeId}
-                  hasLabel={!!commande?.label_url}
-                  hasSendcloudId={!!commande?.sendcloud_shipment_id}
-                  onSuccess={() => {
-                    refetch();
-                    onSuccess?.();
-                  }}
-                />
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              {/* Dupliquer */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDuplicate}
-                disabled={actionLoading === "duplicate"}
-              >
-                {actionLoading === "duplicate" ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Copy className="h-4 w-4 mr-2" />
+          {/* BARRE D'ACTIONS UNIFIÉE */}
+          <div className="flex items-center justify-end gap-2 py-2 border-t border-b -mx-6 px-6">
+            {/* Menu Actions principal */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="default" size="sm">
+                  Actions
+                  <ChevronDown className="h-3 w-3 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Actions disponibles</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                {/* Tracking si disponible */}
+                {commande.tracking_url && (
+                  <DropdownMenuItem asChild>
+                    <a href={commande.tracking_url} target="_blank" rel="noopener noreferrer">
+                      <MapPin className="h-4 w-4 mr-2" />
+                      Suivi colis
+                    </a>
+                  </DropdownMenuItem>
                 )}
-                Dupliquer
-              </Button>
 
-              {/* Imprimer */}
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="h-4 w-4 mr-2" />
-                Imprimer
-              </Button>
+                {/* Créer un retour */}
+                <DropdownMenuItem onClick={() => setShowRetourDialog(true)}>
+                  <PackageX className="h-4 w-4 mr-2" />
+                  Créer un retour
+                </DropdownMenuItem>
 
-              {/* Télécharger tout */}
-              <Button variant="outline" size="sm">
-                <Archive className="h-4 w-4 mr-2" />
-                Télécharger
-              </Button>
+                {/* Dupliquer */}
+                <DropdownMenuItem onClick={handleDuplicate} disabled={actionLoading === "duplicate"}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Dupliquer
+                </DropdownMenuItem>
 
-              {/* Annuler */}
-              {!isExpedieOrLivre && commande.statut_wms !== "annule" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCancelConfirm(true)}
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Annuler
-                </Button>
-              )}
+                {/* Imprimer */}
+                <DropdownMenuItem onClick={handlePrint}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimer
+                </DropdownMenuItem>
 
-              {/* Supprimer (admin only) */}
-              {canDelete && !isExpedieOrLivre && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowDeleteConfirm(true)}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Supprimer
-                </Button>
-              )}
-            </div>
+                {/* Télécharger */}
+                <DropdownMenuItem>
+                  <Download className="h-4 w-4 mr-2" />
+                  Télécharger
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                {/* Annuler */}
+                {!isExpedieOrLivre && commande.statut_wms !== "annule" && (
+                  <DropdownMenuItem onClick={() => setShowCancelConfirm(true)} className="text-orange-600">
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Annuler la commande
+                  </DropdownMenuItem>
+                )}
+
+                {/* Supprimer (admin only) */}
+                {canDelete && !isExpedieOrLivre && (
+                  <DropdownMenuItem onClick={() => setShowDeleteConfirm(true)} className="text-red-600">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Actions SendCloud (seulement si existe) */}
+            {commande?.sendcloud_shipment_id && (
+              <SendCloudActions
+                commandeId={commandeId}
+                hasLabel={!!commande?.label_url}
+                hasSendcloudId={!!commande?.sendcloud_shipment_id}
+                showReturnButton={false}
+                onSuccess={() => {
+                  refetch();
+                  onSuccess?.();
+                }}
+              />
+            )}
           </div>
 
           {/* TABS */}
@@ -498,9 +520,9 @@ export const CommandeDetailDialog = ({
               <FicheCommandeComplete
                 commande={commande}
                 lignes={lignes}
+                compact={true}
                 showTimeline={false}
                 showProducts={false}
-                compact={true}
               />
             </TabsContent>
 
