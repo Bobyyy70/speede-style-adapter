@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     const { data: regles } = await supabase
       .from('regle_selection_transporteur' as any)
       .select('*')
-      .eq('active', true);
+      .eq('actif', true);
 
     // Préparer le contexte pour l'IA
     const contextPrompt = `Analyse d'optimisation des coûts transporteurs - ${periode_jours} derniers jours

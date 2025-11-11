@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      alerte_performance_transporteur: {
+        Row: {
+          actions_recommandees: Json | null
+          date_creation: string | null
+          date_traitement: string | null
+          degradation_pourcentage: number | null
+          id: string
+          message: string
+          score_actuel: number | null
+          score_precedent: number | null
+          severite: string
+          statut: string | null
+          traitee_par: string | null
+          transporteur_code: string
+          type_alerte: string
+        }
+        Insert: {
+          actions_recommandees?: Json | null
+          date_creation?: string | null
+          date_traitement?: string | null
+          degradation_pourcentage?: number | null
+          id?: string
+          message: string
+          score_actuel?: number | null
+          score_precedent?: number | null
+          severite: string
+          statut?: string | null
+          traitee_par?: string | null
+          transporteur_code: string
+          type_alerte: string
+        }
+        Update: {
+          actions_recommandees?: Json | null
+          date_creation?: string | null
+          date_traitement?: string | null
+          degradation_pourcentage?: number | null
+          id?: string
+          message?: string
+          score_actuel?: number | null
+          score_precedent?: number | null
+          severite?: string
+          statut?: string | null
+          traitee_par?: string | null
+          transporteur_code?: string
+          type_alerte?: string
+        }
+        Relationships: []
+      }
+      analyse_optimisation_couts: {
+        Row: {
+          cout_total_actuel: number | null
+          cout_total_optimal: number | null
+          date_analyse: string | null
+          economies_potentielles: number | null
+          generee_par: string | null
+          id: string
+          metadata: Json | null
+          nombre_commandes_analysees: number | null
+          nombre_suggestions: number | null
+          periode_debut: string
+          periode_fin: string
+          pourcentage_economie: number | null
+        }
+        Insert: {
+          cout_total_actuel?: number | null
+          cout_total_optimal?: number | null
+          date_analyse?: string | null
+          economies_potentielles?: number | null
+          generee_par?: string | null
+          id?: string
+          metadata?: Json | null
+          nombre_commandes_analysees?: number | null
+          nombre_suggestions?: number | null
+          periode_debut: string
+          periode_fin: string
+          pourcentage_economie?: number | null
+        }
+        Update: {
+          cout_total_actuel?: number | null
+          cout_total_optimal?: number | null
+          date_analyse?: string | null
+          economies_potentielles?: number | null
+          generee_par?: string | null
+          id?: string
+          metadata?: Json | null
+          nombre_commandes_analysees?: number | null
+          nombre_suggestions?: number | null
+          periode_debut?: string
+          periode_fin?: string
+          pourcentage_economie?: number | null
+        }
+        Relationships: []
+      }
       attendu_reception: {
         Row: {
           client_id: string | null
@@ -426,6 +519,7 @@ export type Database = {
           label_source: string | null
           label_url: string | null
           methode_expedition: string | null
+          montant_expedition: number | null
           nature_marchandise: string | null
           nom_client: string
           notes_expedition: string | null
@@ -509,6 +603,7 @@ export type Database = {
           label_source?: string | null
           label_url?: string | null
           methode_expedition?: string | null
+          montant_expedition?: number | null
           nature_marchandise?: string | null
           nom_client: string
           notes_expedition?: string | null
@@ -592,6 +687,7 @@ export type Database = {
           label_source?: string | null
           label_url?: string | null
           methode_expedition?: string | null
+          montant_expedition?: number | null
           nature_marchandise?: string | null
           nom_client?: string
           notes_expedition?: string | null
@@ -786,6 +882,63 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "regle_validation_commande"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      config_auto_selection_transporteur: {
+        Row: {
+          actif: boolean | null
+          client_id: string | null
+          date_activation: string | null
+          date_modification: string | null
+          fallback_manuel: boolean | null
+          id: string
+          metadata: Json | null
+          mode_selection: string | null
+          regles_prioritaires: Json | null
+          seuil_confiance_minimum: number | null
+          utiliser_ia: boolean | null
+        }
+        Insert: {
+          actif?: boolean | null
+          client_id?: string | null
+          date_activation?: string | null
+          date_modification?: string | null
+          fallback_manuel?: boolean | null
+          id?: string
+          metadata?: Json | null
+          mode_selection?: string | null
+          regles_prioritaires?: Json | null
+          seuil_confiance_minimum?: number | null
+          utiliser_ia?: boolean | null
+        }
+        Update: {
+          actif?: boolean | null
+          client_id?: string | null
+          date_activation?: string | null
+          date_modification?: string | null
+          fallback_manuel?: boolean | null
+          id?: string
+          metadata?: Json | null
+          mode_selection?: string | null
+          regles_prioritaires?: Json | null
+          seuil_confiance_minimum?: number | null
+          utiliser_ia?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "config_auto_selection_transporteur_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "config_auto_selection_transporteur_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -1052,6 +1205,100 @@ export type Database = {
         }
         Relationships: []
       }
+      decision_transporteur: {
+        Row: {
+          analyse_ia: string | null
+          commande_id: string
+          confiance_decision: number | null
+          cout_estime: number | null
+          date_decision: string | null
+          delai_souhaite: string | null
+          duree_calcul_ms: number | null
+          facteurs_decision: Json | null
+          force_manuellement: boolean | null
+          id: string
+          mode_decision: string | null
+          nombre_regles_matchees: number | null
+          pays_destination: string | null
+          poids_colis: number | null
+          raison_forcage: string | null
+          recommandation_ia: string | null
+          regles_appliquees: Json | null
+          score_transporteur: number | null
+          transporteur_choisi_code: string
+          transporteur_choisi_nom: string
+          transporteurs_alternatives: Json | null
+        }
+        Insert: {
+          analyse_ia?: string | null
+          commande_id: string
+          confiance_decision?: number | null
+          cout_estime?: number | null
+          date_decision?: string | null
+          delai_souhaite?: string | null
+          duree_calcul_ms?: number | null
+          facteurs_decision?: Json | null
+          force_manuellement?: boolean | null
+          id?: string
+          mode_decision?: string | null
+          nombre_regles_matchees?: number | null
+          pays_destination?: string | null
+          poids_colis?: number | null
+          raison_forcage?: string | null
+          recommandation_ia?: string | null
+          regles_appliquees?: Json | null
+          score_transporteur?: number | null
+          transporteur_choisi_code: string
+          transporteur_choisi_nom: string
+          transporteurs_alternatives?: Json | null
+        }
+        Update: {
+          analyse_ia?: string | null
+          commande_id?: string
+          confiance_decision?: number | null
+          cout_estime?: number | null
+          date_decision?: string | null
+          delai_souhaite?: string | null
+          duree_calcul_ms?: number | null
+          facteurs_decision?: Json | null
+          force_manuellement?: boolean | null
+          id?: string
+          mode_decision?: string | null
+          nombre_regles_matchees?: number | null
+          pays_destination?: string | null
+          poids_colis?: number | null
+          raison_forcage?: string | null
+          recommandation_ia?: string | null
+          regles_appliquees?: Json | null
+          score_transporteur?: number | null
+          transporteur_choisi_code?: string
+          transporteur_choisi_nom?: string
+          transporteurs_alternatives?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_transporteur_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_transporteur_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_transporteur_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demande_service_personnalise: {
         Row: {
           client_id: string
@@ -1266,6 +1513,77 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      feedback_decision_transporteur: {
+        Row: {
+          commande_id: string
+          commentaire: string | null
+          date_feedback: string | null
+          decision_id: string | null
+          id: string
+          metadata: Json | null
+          raison_changement: string | null
+          regles_ignorees: Json | null
+          transporteur_initial: string
+          transporteur_modifie: string
+          utilisateur_id: string | null
+        }
+        Insert: {
+          commande_id: string
+          commentaire?: string | null
+          date_feedback?: string | null
+          decision_id?: string | null
+          id?: string
+          metadata?: Json | null
+          raison_changement?: string | null
+          regles_ignorees?: Json | null
+          transporteur_initial: string
+          transporteur_modifie: string
+          utilisateur_id?: string | null
+        }
+        Update: {
+          commande_id?: string
+          commentaire?: string | null
+          date_feedback?: string | null
+          decision_id?: string | null
+          id?: string
+          metadata?: Json | null
+          raison_changement?: string | null
+          regles_ignorees?: Json | null
+          transporteur_initial?: string
+          transporteur_modifie?: string
+          utilisateur_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_decision_transporteur_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_decision_transporteur_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_decision_transporteur_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_decision_transporteur_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "decision_transporteur"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ia_conversation: {
         Row: {
@@ -1602,6 +1920,133 @@ export type Database = {
           },
         ]
       }
+      log_auto_selection_transporteur: {
+        Row: {
+          client_id: string | null
+          commande_id: string
+          date_log: string | null
+          decision_id: string | null
+          duree_ms: number | null
+          erreur: string | null
+          id: string
+          metadata: Json | null
+          methode_selection: string | null
+          succes: boolean | null
+          transporteur_selectionne: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          commande_id: string
+          date_log?: string | null
+          decision_id?: string | null
+          duree_ms?: number | null
+          erreur?: string | null
+          id?: string
+          metadata?: Json | null
+          methode_selection?: string | null
+          succes?: boolean | null
+          transporteur_selectionne?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          commande_id?: string
+          date_log?: string | null
+          decision_id?: string | null
+          duree_ms?: number | null
+          erreur?: string | null
+          id?: string
+          metadata?: Json | null
+          methode_selection?: string | null
+          succes?: boolean | null
+          transporteur_selectionne?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "log_auto_selection_transporteur_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "log_auto_selection_transporteur_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "log_auto_selection_transporteur_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "log_auto_selection_transporteur_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "log_auto_selection_transporteur_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "log_auto_selection_transporteur_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "decision_transporteur"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      metrique_apprentissage: {
+        Row: {
+          date_metrique: string
+          economies_potentielles: number | null
+          economies_realisees: number | null
+          id: string
+          metadata: Json | null
+          nombre_changements_manuels: number | null
+          nombre_decisions: number | null
+          nombre_suggestions_appliquees: number | null
+          nombre_suggestions_generees: number | null
+          precision_predictions: number | null
+          taux_changement_manuel: number | null
+        }
+        Insert: {
+          date_metrique: string
+          economies_potentielles?: number | null
+          economies_realisees?: number | null
+          id?: string
+          metadata?: Json | null
+          nombre_changements_manuels?: number | null
+          nombre_decisions?: number | null
+          nombre_suggestions_appliquees?: number | null
+          nombre_suggestions_generees?: number | null
+          precision_predictions?: number | null
+          taux_changement_manuel?: number | null
+        }
+        Update: {
+          date_metrique?: string
+          economies_potentielles?: number | null
+          economies_realisees?: number | null
+          id?: string
+          metadata?: Json | null
+          nombre_changements_manuels?: number | null
+          nombre_decisions?: number | null
+          nombre_suggestions_appliquees?: number | null
+          nombre_suggestions_generees?: number | null
+          precision_predictions?: number | null
+          taux_changement_manuel?: number | null
+        }
+        Relationships: []
+      }
       mouvement_stock: {
         Row: {
           commande_id: string | null
@@ -1807,6 +2252,178 @@ export type Database = {
           nom?: string
           nombre_executions?: number | null
           webhook_url?: string
+        }
+        Relationships: []
+      }
+      notification_transporteur: {
+        Row: {
+          date_creation: string | null
+          date_lecture: string | null
+          id: string
+          lien_action: string | null
+          lue: boolean | null
+          message: string
+          metadata: Json | null
+          severite: string
+          titre: string
+          type_notification: string
+          user_id: string | null
+        }
+        Insert: {
+          date_creation?: string | null
+          date_lecture?: string | null
+          id?: string
+          lien_action?: string | null
+          lue?: boolean | null
+          message: string
+          metadata?: Json | null
+          severite: string
+          titre: string
+          type_notification: string
+          user_id?: string | null
+        }
+        Update: {
+          date_creation?: string | null
+          date_lecture?: string | null
+          id?: string
+          lien_action?: string | null
+          lue?: boolean | null
+          message?: string
+          metadata?: Json | null
+          severite?: string
+          titre?: string
+          type_notification?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      performance_reelle_transporteur: {
+        Row: {
+          commande_id: string | null
+          commentaire_client: string | null
+          cout_prevu: number | null
+          cout_reel: number | null
+          date_enregistrement: string | null
+          date_expedition: string | null
+          date_livraison: string | null
+          delai_prevu_jours: number | null
+          delai_reel_jours: number | null
+          id: string
+          incidents: Json | null
+          note_client: number | null
+          statut_livraison: string | null
+          transporteur_code: string
+        }
+        Insert: {
+          commande_id?: string | null
+          commentaire_client?: string | null
+          cout_prevu?: number | null
+          cout_reel?: number | null
+          date_enregistrement?: string | null
+          date_expedition?: string | null
+          date_livraison?: string | null
+          delai_prevu_jours?: number | null
+          delai_reel_jours?: number | null
+          id?: string
+          incidents?: Json | null
+          note_client?: number | null
+          statut_livraison?: string | null
+          transporteur_code: string
+        }
+        Update: {
+          commande_id?: string | null
+          commentaire_client?: string | null
+          cout_prevu?: number | null
+          cout_reel?: number | null
+          date_enregistrement?: string | null
+          date_expedition?: string | null
+          date_livraison?: string | null
+          delai_prevu_jours?: number | null
+          delai_reel_jours?: number | null
+          id?: string
+          incidents?: Json | null
+          note_client?: number | null
+          statut_livraison?: string | null
+          transporteur_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_reelle_transporteur_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_reelle_transporteur_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_reelle_transporteur_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prediction_performance_transporteur: {
+        Row: {
+          confiance_prediction: number | null
+          date_prediction: string | null
+          facteurs_cles: Json | null
+          id: string
+          metadata: Json | null
+          nombre_commandes_analysees: number | null
+          periode_analyse_jours: number | null
+          score_cout: number | null
+          score_delai: number | null
+          score_fiabilite: number | null
+          score_predictif: number
+          score_qualite: number | null
+          tendance: string | null
+          transporteur_code: string
+          transporteur_nom: string
+          valide_jusqu_a: string | null
+        }
+        Insert: {
+          confiance_prediction?: number | null
+          date_prediction?: string | null
+          facteurs_cles?: Json | null
+          id?: string
+          metadata?: Json | null
+          nombre_commandes_analysees?: number | null
+          periode_analyse_jours?: number | null
+          score_cout?: number | null
+          score_delai?: number | null
+          score_fiabilite?: number | null
+          score_predictif: number
+          score_qualite?: number | null
+          tendance?: string | null
+          transporteur_code: string
+          transporteur_nom: string
+          valide_jusqu_a?: string | null
+        }
+        Update: {
+          confiance_prediction?: number | null
+          date_prediction?: string | null
+          facteurs_cles?: Json | null
+          id?: string
+          metadata?: Json | null
+          nombre_commandes_analysees?: number | null
+          periode_analyse_jours?: number | null
+          score_cout?: number | null
+          score_delai?: number | null
+          score_fiabilite?: number | null
+          score_predictif?: number
+          score_qualite?: number | null
+          tendance?: string | null
+          transporteur_code?: string
+          transporteur_nom?: string
+          valide_jusqu_a?: string | null
         }
         Relationships: []
       }
@@ -2205,6 +2822,79 @@ export type Database = {
           strategie?: string
         }
         Relationships: []
+      }
+      regle_selection_transporteur: {
+        Row: {
+          actif: boolean | null
+          client_id: string | null
+          conditions: Json
+          critere_principal: string | null
+          date_creation: string | null
+          date_modification: string | null
+          description: string | null
+          force_transporteur: boolean | null
+          id: string
+          nom_regle: string
+          nombre_utilisations: number | null
+          priorite: number | null
+          score_performance: number | null
+          transporteur_force_id: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          client_id?: string | null
+          conditions?: Json
+          critere_principal?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          force_transporteur?: boolean | null
+          id?: string
+          nom_regle: string
+          nombre_utilisations?: number | null
+          priorite?: number | null
+          score_performance?: number | null
+          transporteur_force_id?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          client_id?: string | null
+          conditions?: Json
+          critere_principal?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          force_transporteur?: boolean | null
+          id?: string
+          nom_regle?: string
+          nombre_utilisations?: number | null
+          priorite?: number | null
+          score_performance?: number | null
+          transporteur_force_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regle_selection_transporteur_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regle_selection_transporteur_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "regle_selection_transporteur_transporteur_force_id_fkey"
+            columns: ["transporteur_force_id"]
+            isOneToOne: false
+            referencedRelation: "transporteur_service"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       regle_session_preparation: {
         Row: {
@@ -3254,6 +3944,150 @@ export type Database = {
         }
         Relationships: []
       }
+      suggestion_ajustement_regle: {
+        Row: {
+          applique_le: string | null
+          approuve_par: string | null
+          confiance: number | null
+          date_approbation: string | null
+          date_creation: string | null
+          id: string
+          impact_estime: Json | null
+          justification: string
+          modification_proposee: Json
+          regle_cible_id: string | null
+          resultat_application: Json | null
+          statut: string | null
+          type_ajustement: string
+        }
+        Insert: {
+          applique_le?: string | null
+          approuve_par?: string | null
+          confiance?: number | null
+          date_approbation?: string | null
+          date_creation?: string | null
+          id?: string
+          impact_estime?: Json | null
+          justification: string
+          modification_proposee: Json
+          regle_cible_id?: string | null
+          resultat_application?: Json | null
+          statut?: string | null
+          type_ajustement: string
+        }
+        Update: {
+          applique_le?: string | null
+          approuve_par?: string | null
+          confiance?: number | null
+          date_approbation?: string | null
+          date_creation?: string | null
+          id?: string
+          impact_estime?: Json | null
+          justification?: string
+          modification_proposee?: Json
+          regle_cible_id?: string | null
+          resultat_application?: Json | null
+          statut?: string | null
+          type_ajustement?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggestion_ajustement_regle_regle_cible_id_fkey"
+            columns: ["regle_cible_id"]
+            isOneToOne: false
+            referencedRelation: "regle_selection_transporteur"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suggestion_optimisation: {
+        Row: {
+          actions_requises: Json | null
+          analyse_id: string | null
+          appliquee_le: string | null
+          confiance: number | null
+          date_creation: string | null
+          description: string
+          id: string
+          impact_financier: number | null
+          pourcentage_economie: number | null
+          priorite: number | null
+          statut: string | null
+          type_suggestion: string
+        }
+        Insert: {
+          actions_requises?: Json | null
+          analyse_id?: string | null
+          appliquee_le?: string | null
+          confiance?: number | null
+          date_creation?: string | null
+          description: string
+          id?: string
+          impact_financier?: number | null
+          pourcentage_economie?: number | null
+          priorite?: number | null
+          statut?: string | null
+          type_suggestion: string
+        }
+        Update: {
+          actions_requises?: Json | null
+          analyse_id?: string | null
+          appliquee_le?: string | null
+          confiance?: number | null
+          date_creation?: string | null
+          description?: string
+          id?: string
+          impact_financier?: number | null
+          pourcentage_economie?: number | null
+          priorite?: number | null
+          statut?: string | null
+          type_suggestion?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggestion_optimisation_analyse_id_fkey"
+            columns: ["analyse_id"]
+            isOneToOne: false
+            referencedRelation: "analyse_optimisation_couts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suggestion_vote: {
+        Row: {
+          commentaire: string | null
+          date_vote: string | null
+          id: string
+          suggestion_id: string
+          user_id: string
+          vote: string
+        }
+        Insert: {
+          commentaire?: string | null
+          date_vote?: string | null
+          id?: string
+          suggestion_id: string
+          user_id: string
+          vote: string
+        }
+        Update: {
+          commentaire?: string | null
+          date_vote?: string | null
+          id?: string
+          suggestion_id?: string
+          user_id?: string
+          vote?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggestion_vote_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "suggestion_ajustement_regle"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transporteur_configuration: {
         Row: {
           actif: boolean | null
@@ -3997,7 +4831,23 @@ export type Database = {
         Returns: string
       }
       can_client_create_user: { Args: { _client_id: string }; Returns: boolean }
+      check_unanimite_suggestion: {
+        Args: { p_suggestion_id: string }
+        Returns: Json
+      }
       cleanup_webhook_rate_limit: { Args: never; Returns: undefined }
+      creer_notification: {
+        Args: {
+          p_lien_action?: string
+          p_message: string
+          p_metadata?: Json
+          p_severite: string
+          p_titre: string
+          p_type: string
+          p_user_ids: string[]
+        }
+        Returns: undefined
+      }
       execute_sql_admin: { Args: { statements: string[] }; Returns: Json }
       expedier_commande_stock: {
         Args: { p_commande_id: string }
@@ -4054,6 +4904,7 @@ export type Database = {
         Args: { user_email: string }
         Returns: undefined
       }
+      refresh_materialized_views: { Args: never; Returns: undefined }
       reintegrer_produits_retour: {
         Args: { p_retour_id: string }
         Returns: Json

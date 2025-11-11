@@ -6,6 +6,12 @@ verify_jwt = true
 [functions.approve-commande]
 verify_jwt = true
 
+[functions.send-carrier-notifications]
+verify_jwt = false
+
+[functions.simulate-rule-impact]
+verify_jwt = true
+
 [functions.n8n-import-sendcloud-orders]
 verify_jwt = false
 

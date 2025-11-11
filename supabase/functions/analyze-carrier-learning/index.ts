@@ -27,14 +27,8 @@ serve(async (req) => {
     
     const { data: feedbacks, error: feedbackError } = await supabaseClient
       .from('feedback_decision_transporteur')
-      .select(`
-        *,
-        commande:commande_id(poids_total, destination_pays, delai_souhaite),
-        transporteur_initial:transporteur_initial_id(nom, cout_kg),
-        transporteur_final:transporteur_final_id(nom, cout_kg)
-      `)
-      .gte('created_at', dateDebut.toISOString())
-      .eq('type_feedback', 'changement_manuel');
+      .select('*')
+      .gte('date_feedback', dateDebut.toISOString());
 
     if (feedbackError) {
       console.error('[analyze-carrier-learning] Erreur feedbacks:', feedbackError);
@@ -46,11 +40,8 @@ serve(async (req) => {
     // 2. Récupérer les performances réelles
     const { data: performances, error: perfError } = await supabaseClient
       .from('performance_reelle_transporteur')
-      .select(`
-        *,
-        transporteur:transporteur_id(nom, delai_moyen, cout_kg)
-      `)
-      .gte('periode', dateDebut.toISOString().split('T')[0]);
+      .select('*')
+      .gte('date_enregistrement', dateDebut.toISOString());
 
     if (perfError) {
       console.error('[analyze-carrier-learning] Erreur performances:', perfError);
@@ -72,7 +63,7 @@ serve(async (req) => {
     const { data: regles, error: reglesError } = await supabaseClient
       .from('regle_selection_transporteur')
       .select('*')
-      .eq('est_active', true);
+      .eq('actif', true);
 
     if (reglesError) {
       console.error('[analyze-carrier-learning] Erreur règles:', reglesError);
@@ -85,13 +76,10 @@ serve(async (req) => {
       nb_feedbacks: feedbacks?.length || 0,
       nb_performances: performances?.length || 0,
       feedbacks_resume: feedbacks?.slice(0, 20).map((f: any) => ({
-        transporteur_initial: f.transporteur_initial?.nom,
-        transporteur_final: f.transporteur_final?.nom,
-        raison: f.raison,
-        impact_cout: f.impact_cout,
-        impact_delai: f.impact_delai,
-        poids: f.commande?.poids_total,
-        pays: f.commande?.destination_pays
+        transporteur_initial: f.transporteur_initial,
+        transporteur_modifie: f.transporteur_modifie,
+        raison_changement: f.raison_changement,
+        commentaire: f.commentaire
       })),
       patterns_frequents: patterns?.slice(0, 10),
       performances_problematiques: performances?.filter((p: any) => 

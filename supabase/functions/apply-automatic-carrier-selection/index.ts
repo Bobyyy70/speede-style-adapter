@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     const { data: regles } = await supabase
       .from('regle_selection_transporteur')
       .select('*')
-      .eq('active', true)
+      .eq('actif', true)
       .order('priorite', { ascending: false });
 
     // Filtrer les règles qui matchent la commande
@@ -106,17 +106,33 @@ Deno.serve(async (req) => {
     transporteursScores.sort((a, b) => b.score - a.score);
 
     // Si des règles strictes matchent, forcer leur choix
-    const regleStricte = reglesMatchees.find(r => r.force_transporteur);
+    const regleStricte = reglesMatchees.find(r => r.force_transporteur && r.transporteur_force_id);
     let transporteurChoisi;
     let modeDecision = 'automatique';
     let analyseIA = '';
 
     if (regleStricte) {
-      transporteurChoisi = transporteursScores.find(t => t.code_service === regleStricte.transporteur_code);
-      modeDecision = 'regle_stricte';
-      analyseIA = `Règle stricte appliquée: ${regleStricte.nom}. Transporteur forcé selon les conditions définies.`;
-      console.log('🔒 Règle stricte appliquée:', regleStricte.nom);
-    } else {
+      // Récupérer le transporteur forcé par son ID
+      const { data: forcedTransporteur } = await supabase
+        .from('transporteur_service')
+        .select('*')
+        .eq('id', regleStricte.transporteur_force_id)
+        .single();
+      
+      if (forcedTransporteur) {
+        transporteurChoisi = transporteursScores.find(t => t.code_service === forcedTransporteur.code_service) || {
+          code_service: forcedTransporteur.code_service,
+          nom: forcedTransporteur.nom_affichage,
+          score: 100,
+          details: {}
+        };
+        modeDecision = 'regle_stricte';
+        analyseIA = `Règle stricte appliquée: ${regleStricte.nom_regle}. Transporteur forcé selon les conditions définies.`;
+        console.log('🔒 Règle stricte appliquée:', regleStricte.nom_regle);
+      }
+    }
+    
+    if (!transporteurChoisi) {
       // Sinon, demander à l'IA de choisir le meilleur
       const contextPrompt = `Sélection intelligente du transporteur pour la commande ${commande.numero_commande}
 
