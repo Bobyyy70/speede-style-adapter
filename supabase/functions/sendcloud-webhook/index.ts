@@ -2,8 +2,112 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-token',
 };
+
+// Constant-time string comparison to prevent timing attacks
+function constantTimeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  
+  return result === 0;
+}
+
+// Rate limiting: max 100 requests per minute per IP
+async function checkRateLimit(
+  supabase: any, 
+  ipAddress: string, 
+  endpoint: string
+): Promise<{ allowed: boolean; reason?: string }> {
+  const now = new Date();
+  const oneMinuteAgo = new Date(now.getTime() - 60000);
+  
+  // Get or create rate limit entry
+  const { data: existing } = await supabase
+    .from('webhook_rate_limit')
+    .select('*')
+    .eq('ip_address', ipAddress)
+    .eq('endpoint', endpoint)
+    .gte('last_request_at', oneMinuteAgo.toISOString())
+    .single();
+  
+  if (existing) {
+    // Check if blocked
+    if (existing.blocked_until && new Date(existing.blocked_until) > now) {
+      return { 
+        allowed: false, 
+        reason: `Blocked until ${existing.blocked_until}` 
+      };
+    }
+    
+    // Check rate limit (100 req/min)
+    if (existing.request_count >= 100) {
+      // Block for 5 minutes
+      const blockedUntil = new Date(now.getTime() + 300000);
+      
+      await supabase
+        .from('webhook_rate_limit')
+        .update({ 
+          blocked_until: blockedUntil.toISOString(),
+          last_request_at: now.toISOString()
+        })
+        .eq('id', existing.id);
+      
+      return { 
+        allowed: false, 
+        reason: 'Rate limit exceeded (100 req/min)' 
+      };
+    }
+    
+    // Increment counter
+    await supabase
+      .from('webhook_rate_limit')
+      .update({ 
+        request_count: existing.request_count + 1,
+        last_request_at: now.toISOString()
+      })
+      .eq('id', existing.id);
+  } else {
+    // Create new entry
+    await supabase
+      .from('webhook_rate_limit')
+      .insert({
+        ip_address: ipAddress,
+        endpoint: endpoint,
+        request_count: 1,
+        first_request_at: now.toISOString(),
+        last_request_at: now.toISOString()
+      });
+  }
+  
+  return { allowed: true };
+}
+
+// Log security events
+async function logSecurityEvent(
+  supabase: any,
+  ipAddress: string | null,
+  endpoint: string,
+  eventType: string,
+  userAgent: string | null,
+  details: any
+): Promise<void> {
+  await supabase
+    .from('webhook_security_log')
+    .insert({
+      ip_address: ipAddress,
+      endpoint: endpoint,
+      event_type: eventType,
+      user_agent: userAgent,
+      details: details
+    });
+}
 
 interface SendCloudProduct {
   sku: string;
@@ -39,38 +143,126 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // Get IP address and user agent for rate limiting and logging
+  const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                   req.headers.get('x-real-ip') || 
+                   'unknown';
+  const userAgent = req.headers.get('user-agent');
+  const endpoint = '/sendcloud-webhook';
+
   let logId: string | null = null;
   
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    console.log('📦 Webhook SendCloud reçu');
+    console.log('📦 Webhook SendCloud reçu from', ipAddress);
     console.log('Method:', req.method);
     console.log('Content-Type:', req.headers.get('content-type'));
 
-    // 🔒 Vérifier le token de sécurité
-    const authHeader = req.headers.get('x-webhook-token');
-    const url = new URL(req.url);
-    const queryToken = url.searchParams.get('token');
-    const receivedToken = authHeader || queryToken;
+    // 🛡️ 1. CHECK RATE LIMITING FIRST
+    const rateLimitCheck = await checkRateLimit(supabase, ipAddress, endpoint);
     
-    const expectedToken = Deno.env.get('SENDCLOUD_WEBHOOK_SECRET') || 'default-webhook-secret-change-me';
-    
-    if (receivedToken !== expectedToken) {
-      console.error('❌ Token invalide ou manquant');
+    if (!rateLimitCheck.allowed) {
+      await logSecurityEvent(
+        supabase,
+        ipAddress,
+        endpoint,
+        'rate_limit_exceeded',
+        userAgent,
+        { reason: rateLimitCheck.reason }
+      );
+      
+      console.error(`❌ Rate limit exceeded for ${ipAddress}`);
+      
       return new Response(
         JSON.stringify({ 
-          success: false, 
-          error: 'Token de sécurité invalide ou manquant',
-          hint: 'Ajoutez le header X-Webhook-Token ou le query param ?token=...'
+          error: 'Too many requests', 
+          message: rateLimitCheck.reason 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': '300' // 5 minutes
+          } 
+        }
       );
     }
 
-    console.log('✅ Token validé');
+    // 🔒 2. SECURITY CHECK: Validate webhook token (HEADER ONLY)
+    const receivedToken = req.headers.get('x-webhook-token');
+
+    if (!receivedToken) {
+      await logSecurityEvent(
+        supabase,
+        ipAddress,
+        endpoint,
+        'missing_token_header',
+        userAgent,
+        { message: 'X-Webhook-Token header missing' }
+      );
+      
+      console.error('❌ Missing X-Webhook-Token header');
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Unauthorized', 
+          message: 'X-Webhook-Token header is required' 
+        }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Get expected token from environment
+    const expectedToken = Deno.env.get('SENDCLOUD_WEBHOOK_SECRET');
+    
+    if (!expectedToken) {
+      console.error('❌ SENDCLOUD_WEBHOOK_SECRET not configured');
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Configuration error', 
+          message: 'Webhook not properly configured' 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // 🔐 3. CONSTANT-TIME COMPARISON to prevent timing attacks
+    if (!constantTimeCompare(receivedToken, expectedToken)) {
+      await logSecurityEvent(
+        supabase,
+        ipAddress,
+        endpoint,
+        'invalid_token',
+        userAgent,
+        { message: 'Invalid webhook token provided' }
+      );
+      
+      console.error('❌ Invalid webhook token');
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Unauthorized', 
+          message: 'Invalid webhook token' 
+        }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    console.log('✅ Token validé - IP:', ipAddress);
 
     // Lire le body brut d'abord
     const rawBody = await req.text();

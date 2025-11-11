@@ -3194,6 +3194,69 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_rate_limit: {
+        Row: {
+          blocked_until: string | null
+          created_at: string | null
+          endpoint: string
+          first_request_at: string | null
+          id: string
+          ip_address: unknown
+          last_request_at: string | null
+          request_count: number | null
+        }
+        Insert: {
+          blocked_until?: string | null
+          created_at?: string | null
+          endpoint: string
+          first_request_at?: string | null
+          id?: string
+          ip_address: unknown
+          last_request_at?: string | null
+          request_count?: number | null
+        }
+        Update: {
+          blocked_until?: string | null
+          created_at?: string | null
+          endpoint?: string
+          first_request_at?: string | null
+          id?: string
+          ip_address?: unknown
+          last_request_at?: string | null
+          request_count?: number | null
+        }
+        Relationships: []
+      }
+      webhook_security_log: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          endpoint: string
+          event_type: string
+          id: string
+          ip_address: unknown
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          endpoint: string
+          event_type: string
+          id?: string
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          endpoint?: string
+          event_type?: string
+          id?: string
+          ip_address?: unknown
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       webhook_sendcloud_log: {
         Row: {
           commande_id: string | null
@@ -3683,6 +3746,7 @@ export type Database = {
       }
       backfill_missing_profiles: { Args: never; Returns: undefined }
       can_client_create_user: { Args: { _client_id: string }; Returns: boolean }
+      cleanup_webhook_rate_limit: { Args: never; Returns: undefined }
       execute_sql_admin: { Args: { statements: string[] }; Returns: Json }
       expedier_commande_stock: {
         Args: { p_commande_id: string }
