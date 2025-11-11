@@ -3610,6 +3610,15 @@ export type Database = {
         }
         Returns: Json
       }
+      rollback_transition: {
+        Args: {
+          p_raison: string
+          p_transition_id: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       supprimer_emplacements_zone: { Args: { p_zone?: string }; Returns: Json }
       transition_statut_attendu: {
         Args: {
