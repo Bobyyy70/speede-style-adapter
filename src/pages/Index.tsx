@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { format, subDays } from "date-fns";
 import { DashboardAIAssistant } from "@/components/DashboardAIAssistant";
+import { AlertesDegradationTransporteur } from "@/components/AlertesDegradationTransporteur";
 import { useAuth } from "@/hooks/useAuth";
 import { ORDER_STATUSES } from "@/lib/orderStatuses";
 const Index = () => {
@@ -188,6 +189,11 @@ const Index = () => {
           <StatCard title="Taux Livraison" value={`${stats.tauxLivraisonHeure}%`} icon={PackageCheck} variant="success" />
           <StatCard title="Délai Moyen Prépa (h)" value={stats.delaiMoyenPreparation} icon={Clock} variant="primary" />
         </div>
+
+        {/* Alertes Dégradation Transporteurs */}
+        {(userRole === 'admin' || userRole === 'gestionnaire') && (
+          <AlertesDegradationTransporteur limit={3} />
+        )}
 
         <div className="grid gap-4 lg:grid-cols-2 mx-0 px-0 py-0 my-0">
           <Card>

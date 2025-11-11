@@ -50,6 +50,7 @@ import SendCloudDocuments from "./pages/integrations/SendCloudDocuments";
 import SendCloudProducts from "./pages/integrations/SendCloudProducts";
 import SendCloudEvents from "./pages/integrations/SendCloudEvents";
 import ReglesTransporteurs from "./pages/configuration/ReglesTransporteurs";
+import ScoringPredictif from "./pages/analytics/ScoringPredictif";
 
 const queryClient = new QueryClient();
 
@@ -306,6 +307,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <DashboardAnalytique />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics/scoring-predictif"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ScoringPredictif />
                 </ProtectedRoute>
               }
             />
