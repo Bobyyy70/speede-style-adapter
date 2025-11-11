@@ -137,6 +137,327 @@ interface SendCloudOrder {
   };
 }
 
+// SendCloud webhook event types
+interface SendCloudWebhookEvent {
+  action: string;
+  timestamp: string;
+  integration?: number;
+  parcel?: SendCloudParcel;
+  order?: SendCloudOrder;
+}
+
+interface SendCloudParcel {
+  id: number;
+  external_order_id?: string;
+  external_reference?: string;
+  tracking_number?: string;
+  tracking_url?: string;
+  carrier?: {
+    code?: string;
+    name?: string;
+  };
+  status?: {
+    id: number;
+    message: string;
+  };
+  shipment?: {
+    id: number;
+    name?: string;
+  };
+  label?: {
+    label_printer?: string;
+    normal_printer?: string[];
+  };
+  to_address?: {
+    name: string;
+    country: string;
+    city: string;
+  };
+}
+
+// Map SendCloud status IDs to WMS statuses
+function mapSendcloudStatusToWMS(statusId: number): string {
+  // SendCloud status mappings based on documentation
+  if (statusId >= 2000 && statusId < 3000) return 'livre'; // Delivered
+  if (statusId >= 1000 && statusId < 2000) return 'expedie'; // In transit
+  if (statusId >= 13 && statusId < 1000) return 'en_preparation'; // Ready for shipping
+  if (statusId >= 3000) return 'annule'; // Cancelled/Error
+  return 'en_attente_reappro'; // Unknown/pending
+}
+
+// Event handlers
+async function handleParcelStatusChanged(supabase: any, event: SendCloudWebhookEvent) {
+  if (!event.parcel) return { success: false, error: 'No parcel data' };
+  
+  const { parcel } = event;
+  const externalRef = parcel.external_reference || parcel.external_order_id;
+  
+  if (!externalRef) {
+    console.warn('⚠️ No external reference in parcel status changed event');
+    return { success: false, error: 'No external reference' };
+  }
+  
+  // Find order by external reference or sendcloud_shipment_id
+  const { data: commande } = await supabase
+    .from('commande')
+    .select('id, numero_commande, statut_wms')
+    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
+    .maybeSingle();
+  
+  if (!commande) {
+    console.warn(`⚠️ Order not found for reference: ${externalRef}`);
+    return { success: false, error: 'Order not found' };
+  }
+  
+  const newStatus = mapSendcloudStatusToWMS(parcel.status?.id || 0);
+  
+  await supabase
+    .from('commande')
+    .update({
+      statut_wms: newStatus,
+      tracking_number: parcel.tracking_number || undefined,
+      tracking_url: parcel.tracking_url || undefined,
+      transporteur: parcel.carrier?.code || parcel.carrier?.name || undefined,
+      date_modification: new Date().toISOString(),
+    })
+    .eq('id', commande.id);
+  
+  console.log(`✅ Status updated: ${commande.numero_commande} -> ${newStatus}`);
+  
+  return { 
+    success: true, 
+    commande_id: commande.id,
+    old_status: commande.statut_wms,
+    new_status: newStatus,
+  };
+}
+
+async function handleTrackingUpdated(supabase: any, event: SendCloudWebhookEvent) {
+  if (!event.parcel) return { success: false, error: 'No parcel data' };
+  
+  const { parcel } = event;
+  const externalRef = parcel.external_reference || parcel.external_order_id;
+  
+  if (!externalRef) return { success: false, error: 'No external reference' };
+  
+  const { data: commande } = await supabase
+    .from('commande')
+    .select('id, numero_commande')
+    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
+    .maybeSingle();
+  
+  if (!commande) return { success: false, error: 'Order not found' };
+  
+  await supabase
+    .from('commande')
+    .update({
+      tracking_number: parcel.tracking_number,
+      tracking_url: parcel.tracking_url,
+      date_modification: new Date().toISOString(),
+    })
+    .eq('id', commande.id);
+  
+  console.log(`✅ Tracking updated: ${commande.numero_commande}`);
+  
+  return { success: true, commande_id: commande.id };
+}
+
+async function handleLabelCreated(supabase: any, event: SendCloudWebhookEvent) {
+  if (!event.parcel) return { success: false, error: 'No parcel data' };
+  
+  const { parcel } = event;
+  const externalRef = parcel.external_reference || parcel.external_order_id;
+  
+  if (!externalRef) return { success: false, error: 'No external reference' };
+  
+  const { data: commande } = await supabase
+    .from('commande')
+    .select('id, numero_commande')
+    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
+    .maybeSingle();
+  
+  if (!commande) return { success: false, error: 'Order not found' };
+  
+  // Get label URLs from parcel data
+  const labelUrl = parcel.label?.label_printer || parcel.label?.normal_printer?.[0];
+  
+  await supabase
+    .from('commande')
+    .update({
+      label_url: labelUrl,
+      label_source: 'sendcloud',
+      sendcloud_shipment_id: String(parcel.id),
+      date_modification: new Date().toISOString(),
+    })
+    .eq('id', commande.id);
+  
+  console.log(`✅ Label created: ${commande.numero_commande}`);
+  
+  return { success: true, commande_id: commande.id, label_url: labelUrl };
+}
+
+async function handleShipmentDelayed(supabase: any, event: SendCloudWebhookEvent) {
+  if (!event.parcel) return { success: false, error: 'No parcel data' };
+  
+  const { parcel } = event;
+  const externalRef = parcel.external_reference || parcel.external_order_id;
+  
+  if (!externalRef) return { success: false, error: 'No external reference' };
+  
+  const { data: commande } = await supabase
+    .from('commande')
+    .select('id, numero_commande, remarques')
+    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
+    .maybeSingle();
+  
+  if (!commande) return { success: false, error: 'Order not found' };
+  
+  const delayNote = `[${new Date().toISOString()}] Expédition retardée - Statut: ${parcel.status?.message || 'Unknown'}`;
+  const updatedRemarks = commande.remarques ? `${commande.remarques}\n${delayNote}` : delayNote;
+  
+  await supabase
+    .from('commande')
+    .update({
+      remarques: updatedRemarks,
+      date_modification: new Date().toISOString(),
+    })
+    .eq('id', commande.id);
+  
+  console.log(`⚠️ Shipment delayed: ${commande.numero_commande}`);
+  
+  return { success: true, commande_id: commande.id };
+}
+
+async function handleDeliveryFailed(supabase: any, event: SendCloudWebhookEvent) {
+  if (!event.parcel) return { success: false, error: 'No parcel data' };
+  
+  const { parcel } = event;
+  const externalRef = parcel.external_reference || parcel.external_order_id;
+  
+  if (!externalRef) return { success: false, error: 'No external reference' };
+  
+  const { data: commande } = await supabase
+    .from('commande')
+    .select('id, numero_commande, remarques')
+    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
+    .maybeSingle();
+  
+  if (!commande) return { success: false, error: 'Order not found' };
+  
+  const failNote = `[${new Date().toISOString()}] ❌ Échec de livraison - ${parcel.status?.message || 'Unknown reason'}`;
+  const updatedRemarks = commande.remarques ? `${commande.remarques}\n${failNote}` : failNote;
+  
+  await supabase
+    .from('commande')
+    .update({
+      statut_wms: 'probleme',
+      remarques: updatedRemarks,
+      date_modification: new Date().toISOString(),
+    })
+    .eq('id', commande.id);
+  
+  console.log(`❌ Delivery failed: ${commande.numero_commande}`);
+  
+  return { success: true, commande_id: commande.id };
+}
+
+async function handleReturnInitiated(supabase: any, event: SendCloudWebhookEvent) {
+  if (!event.parcel) return { success: false, error: 'No parcel data' };
+  
+  const { parcel } = event;
+  const externalRef = parcel.external_reference || parcel.external_order_id;
+  
+  if (!externalRef) return { success: false, error: 'No external reference' };
+  
+  const { data: commande } = await supabase
+    .from('commande')
+    .select('id, numero_commande, client_id, remarques')
+    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
+    .maybeSingle();
+  
+  if (!commande) return { success: false, error: 'Order not found' };
+  
+  // Create return record
+  const { data: retour } = await supabase
+    .from('retour_produit')
+    .insert({
+      client_id: commande.client_id,
+      commande_origine_id: commande.id,
+      statut: 'en_transit',
+      raison_retour: ['retour_client'],
+      tracking_number: parcel.tracking_number,
+      remarques: `Retour initié depuis SendCloud - Parcel ID: ${parcel.id}`,
+    })
+    .select()
+    .single();
+  
+  const returnNote = `[${new Date().toISOString()}] 🔄 Retour initié - Retour ID: ${retour?.id || 'N/A'}`;
+  const updatedRemarks = commande.remarques ? `${commande.remarques}\n${returnNote}` : returnNote;
+  
+  await supabase
+    .from('commande')
+    .update({
+      remarques: updatedRemarks,
+      date_modification: new Date().toISOString(),
+    })
+    .eq('id', commande.id);
+  
+  console.log(`🔄 Return initiated: ${commande.numero_commande}`);
+  
+  return { success: true, commande_id: commande.id, retour_id: retour?.id };
+}
+
+async function handleCancellationRequested(supabase: any, event: SendCloudWebhookEvent) {
+  if (!event.parcel) return { success: false, error: 'No parcel data' };
+  
+  const { parcel } = event;
+  const externalRef = parcel.external_reference || parcel.external_order_id;
+  
+  if (!externalRef) return { success: false, error: 'No external reference' };
+  
+  const { data: commande } = await supabase
+    .from('commande')
+    .select('id, numero_commande')
+    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
+    .maybeSingle();
+  
+  if (!commande) return { success: false, error: 'Order not found' };
+  
+  await supabase
+    .from('commande')
+    .update({
+      statut_wms: 'annule',
+      date_modification: new Date().toISOString(),
+    })
+    .eq('id', commande.id);
+  
+  console.log(`🚫 Cancellation requested: ${commande.numero_commande}`);
+  
+  return { success: true, commande_id: commande.id };
+}
+
+// Generic handler for status-only updates
+async function handleGenericStatusUpdate(supabase: any, event: SendCloudWebhookEvent, action: string) {
+  if (!event.parcel) return { success: false, error: 'No parcel data' };
+  
+  const { parcel } = event;
+  const externalRef = parcel.external_reference || parcel.external_order_id;
+  
+  if (!externalRef) return { success: false, error: 'No external reference' };
+  
+  const { data: commande } = await supabase
+    .from('commande')
+    .select('id, numero_commande')
+    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
+    .maybeSingle();
+  
+  if (!commande) return { success: false, error: 'Order not found' };
+  
+  console.log(`ℹ️ Generic event handled: ${action} for ${commande.numero_commande}`);
+  
+  return { success: true, commande_id: commande.id, action };
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -266,8 +587,7 @@ Deno.serve(async (req) => {
 
     // Lire le body brut d'abord
     const rawBody = await req.text();
-    console.log('Raw body:', rawBody);
-    console.log('Body length:', rawBody.length);
+    console.log('Raw body length:', rawBody.length);
 
     // Vérifier si le body est vide
     if (!rawBody || rawBody.trim() === '') {
@@ -282,9 +602,9 @@ Deno.serve(async (req) => {
     }
 
     // Parser le JSON
-    let sendcloudData: SendCloudOrder;
+    let webhookEvent: SendCloudWebhookEvent | SendCloudOrder;
     try {
-      sendcloudData = JSON.parse(rawBody);
+      webhookEvent = JSON.parse(rawBody);
     } catch (parseError) {
       console.error('❌ Erreur parsing JSON:', parseError);
       
@@ -300,276 +620,163 @@ Deno.serve(async (req) => {
           success: false, 
           error: 'JSON invalide',
           details: parseError instanceof Error ? parseError.message : 'Unknown parsing error',
-          receivedBody: rawBody.substring(0, 500)
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
 
-    console.log('Données SendCloud parsées:', JSON.stringify(sendcloudData, null, 2));
+    console.log('📦 Webhook data received');
+    
+    // Detect event type
+    const eventType = 'action' in webhookEvent ? webhookEvent.action : 'order_import';
+    console.log('📋 Event type:', eventType);
 
-    // Logger la réception du webhook
-    const { data: logData } = await supabase
-      .from('webhook_sendcloud_log')
+    // Log event to history
+    const { data: historyLog } = await supabase
+      .from('sendcloud_event_history')
       .insert({
-        payload: sendcloudData,
-        statut: 'recu',
+        event_type: eventType,
+        direction: 'incoming',
+        entity_type: 'action' in webhookEvent ? 'parcel' : 'order',
+        success: false, // Will update later
+        metadata: webhookEvent,
       })
       .select()
       .single();
-    
-    if (logData) {
-      logId = logData.id;
-    }
 
-    // Normaliser order_number (accepter order_number ou order_id)
-    const orderNumber = sendcloudData.order_number || sendcloudData.order_id || String(sendcloudData.id);
-    console.log('📋 Traitement commande:', orderNumber);
+    const historyId = historyLog?.id;
 
-    // 1. Vérifier si la commande existe déjà
-    // CRITIQUE: Chercher d'abord par external_reference si présent (c'est notre ID interne)
-    let existingCommande = null;
-    
-    // On ne peut pas utiliser external_reference dans ce webhook car SendCloud ne le renvoie pas
-    // On cherche donc par sendcloud_id ou numero_commande
-    const { data: foundCommande } = await supabase
-      .from('commande')
-      .select('id, numero_commande, sendcloud_id')
-      .or(`sendcloud_id.eq.${sendcloudData.id},numero_commande.eq.${orderNumber}`)
-      .maybeSingle();
-    
-    existingCommande = foundCommande;
+    // Route to appropriate handler based on event type
+    let result: any;
+    const startTime = Date.now();
 
-    if (existingCommande) {
-      console.log('⚠️ Commande déjà existante:', existingCommande.numero_commande);
-      
-      // Mettre à jour le log
-      if (logId) {
-        await supabase
-          .from('webhook_sendcloud_log')
-          .update({
-            statut: 'deja_existe',
-            commande_id: existingCommande.id,
-            traite_a: new Date().toISOString(),
-          })
-          .eq('id', logId);
+    try {
+      switch (eventType) {
+        // === Status & Tracking Events ===
+        case 'parcel_status_changed':
+        case 'status_changed':
+          result = await handleParcelStatusChanged(supabase, webhookEvent as SendCloudWebhookEvent);
+          break;
+
+        case 'tracking_updated':
+        case 'tracking_number_updated':
+          result = await handleTrackingUpdated(supabase, webhookEvent as SendCloudWebhookEvent);
+          break;
+
+        case 'label_created':
+        case 'label_printed':
+          result = await handleLabelCreated(supabase, webhookEvent as SendCloudWebhookEvent);
+          break;
+
+        // === Delivery Events ===
+        case 'shipment_departed':
+        case 'parcel_departed':
+          result = await handleGenericStatusUpdate(supabase, webhookEvent as SendCloudWebhookEvent, 'departed');
+          break;
+
+        case 'shipment_in_transit':
+        case 'parcel_in_transit':
+          result = await handleGenericStatusUpdate(supabase, webhookEvent as SendCloudWebhookEvent, 'in_transit');
+          break;
+
+        case 'shipment_delivered':
+        case 'parcel_delivered':
+          result = await handleParcelStatusChanged(supabase, webhookEvent as SendCloudWebhookEvent);
+          break;
+
+        case 'shipment_delayed':
+        case 'delivery_delayed':
+          result = await handleShipmentDelayed(supabase, webhookEvent as SendCloudWebhookEvent);
+          break;
+
+        case 'delivery_failed':
+        case 'delivery_exception':
+          result = await handleDeliveryFailed(supabase, webhookEvent as SendCloudWebhookEvent);
+          break;
+
+        // === Return Events ===
+        case 'return_initiated':
+        case 'return_requested':
+          result = await handleReturnInitiated(supabase, webhookEvent as SendCloudWebhookEvent);
+          break;
+
+        case 'return_received':
+        case 'return_delivered':
+          result = await handleGenericStatusUpdate(supabase, webhookEvent as SendCloudWebhookEvent, 'return_received');
+          break;
+
+        // === Cancellation Events ===
+        case 'cancellation_requested':
+        case 'parcel_cancelled':
+          result = await handleCancellationRequested(supabase, webhookEvent as SendCloudWebhookEvent);
+          break;
+
+        // === Exception Events ===
+        case 'shipment_exception':
+        case 'customs_delay':
+        case 'address_issue':
+          result = await handleGenericStatusUpdate(supabase, webhookEvent as SendCloudWebhookEvent, eventType);
+          break;
+
+        // === Order Import (Legacy/Default) ===
+        case 'order_import':
+        case 'order_created':
+        default:
+          // Handle as order creation (original logic)
+          result = await handleOrderImport(supabase, webhookEvent as SendCloudOrder);
+          break;
       }
-      
+
+      const processingTime = Date.now() - startTime;
+
+      // Update history with success
+      if (historyId) {
+        await supabase
+          .from('sendcloud_event_history')
+          .update({
+            success: result.success,
+            processing_time_ms: processingTime,
+            entity_id: result.commande_id || result.retour_id,
+            error_details: result.error || null,
+          })
+          .eq('id', historyId);
+      }
+
+      console.log(`✅ Event processed in ${processingTime}ms:`, eventType);
+
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           success: true,
-          already_exists: true,
-          message: 'Commande déjà traitée',
-          commande_id: existingCommande.id,
-          numero_commande: existingCommande.numero_commande
+          event_type: eventType,
+          result: result,
+          processing_time_ms: processingTime,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
-    }
 
-    // 2. Insérer la commande
-    console.log('➕ Création nouvelle commande:', orderNumber);
-    const { data: commande, error: commandeError } = await supabase
-      .from('commande')
-      .insert({
-        sendcloud_id: String(sendcloudData.id),
-        // sendcloud_reference sera mis à jour plus tard si on a external_reference
-        numero_commande: orderNumber,
-        nom_client: sendcloudData.name,
-        email_client: sendcloudData.email || null,
-        telephone_client: sendcloudData.telephone || null,
-        adresse_nom: sendcloudData.name,
-        adresse_ligne_1: sendcloudData.address,
-        adresse_ligne_2: sendcloudData.address_2 || null,
-        code_postal: sendcloudData.postal_code,
-        ville: sendcloudData.city,
-        pays_code: sendcloudData.country,
-        valeur_totale: sendcloudData.total_order_value || 0,
-        devise: sendcloudData.currency || 'EUR',
-        statut_wms: 'en_attente_reappro',
-        source: 'sendcloud',
-        transporteur: sendcloudData.shipment?.name || null,
-      })
-      .select()
-      .single();
+    } catch (handlerError) {
+      const processingTime = Date.now() - startTime;
+      const errorMessage = handlerError instanceof Error ? handlerError.message : 'Unknown handler error';
 
-    if (commandeError) {
-      console.error('❌ Erreur insertion commande:', orderNumber, commandeError);
-      throw commandeError;
-    }
-
-    console.log('✅ Commande créée:', commande.id, '- N°:', commande.numero_commande);
-
-    // 3. Traiter chaque produit et créer les lignes
-    const lignesCreees = [];
-    const mouvementsCreees = [];
-    const produitsManquants = [];
-    let peutReserver = true;
-
-    for (const product of sendcloudData.order_products) {
-      console.log(`📦 Traitement produit: ${product.sku} x${product.quantity}`);
-
-      // Chercher le produit par référence
-      const { data: produit, error: produitError } = await supabase
-        .from('produit')
-        .select('id, reference, nom, stock_actuel, poids_unitaire, prix_unitaire')
-        .eq('reference', product.sku)
-        .eq('statut_actif', true)
-        .single();
-
-      if (produitError || !produit) {
-        console.warn(`⚠️ Produit non trouvé: ${product.sku}`);
-        produitsManquants.push(product.sku);
-        peutReserver = false;
-        
-        // Créer quand même la ligne avec produit_id null
-        const { data: ligne } = await supabase
-          .from('ligne_commande')
-          .insert({
-            commande_id: commande.id,
-            produit_reference: product.sku,
-            produit_nom: product.name,
-            quantite_commandee: product.quantity,
-            quantite_preparee: 0,
-            poids_unitaire: product.weight || null,
-            prix_unitaire: product.price || null,
-            valeur_totale: (product.price || 0) * product.quantity,
-            statut_ligne: 'en_attente',
+      // Update history with failure
+      if (historyId) {
+        await supabase
+          .from('sendcloud_event_history')
+          .update({
+            success: false,
+            processing_time_ms: processingTime,
+            error_details: errorMessage,
           })
-          .select()
-          .single();
-
-        if (ligne) lignesCreees.push(ligne);
-        continue;
+          .eq('id', historyId);
       }
 
-      // Vérifier le stock disponible
-      const { data: stockDispo } = await supabase
-        .from('stock_disponible')
-        .select('stock_disponible')
-        .eq('produit_id', produit.id)
-        .single();
-
-      const stockDisponible = stockDispo?.stock_disponible || produit.stock_actuel;
-
-      if (stockDisponible < product.quantity) {
-        console.warn(`⚠️ Stock insuffisant pour ${product.sku}: dispo=${stockDisponible}, demandé=${product.quantity}`);
-        peutReserver = false;
-      }
-
-      // Créer la ligne de commande
-      const { data: ligne, error: ligneError } = await supabase
-        .from('ligne_commande')
-        .insert({
-          commande_id: commande.id,
-          produit_id: produit.id,
-          produit_reference: product.sku,
-          produit_nom: product.name,
-          quantite_commandee: product.quantity,
-          quantite_preparee: 0,
-          poids_unitaire: product.weight || produit.poids_unitaire,
-          prix_unitaire: product.price || produit.prix_unitaire,
-          valeur_totale: (product.price || produit.prix_unitaire || 0) * product.quantity,
-          statut_ligne: stockDisponible >= product.quantity ? 'en_attente' : 'en_attente',
-        })
-        .select()
-        .single();
-
-      if (ligneError) {
-        console.error('❌ Erreur création ligne:', ligneError);
-        continue;
-      }
-
-      lignesCreees.push(ligne);
-
-      // Si stock suffisant, créer la réservation
-      if (stockDisponible >= product.quantity) {
-        const { data: reservation, error: reservError } = await supabase.rpc('reserver_stock', {
-          p_produit_id: produit.id,
-          p_quantite: product.quantity,
-          p_commande_id: commande.id,
-          p_reference_origine: commande.numero_commande,
-        });
-
-        if (reservError) {
-          console.error('❌ Erreur réservation stock:', reservError);
-        } else if (reservation?.success) {
-          console.log(`✅ Stock réservé: ${product.sku} x${product.quantity}`);
-          mouvementsCreees.push(reservation.mouvement_id);
-          
-          // Mettre à jour le statut de la ligne
-          await supabase
-            .from('ligne_commande')
-            .update({ statut_ligne: 'réservé' })
-            .eq('id', ligne.id);
-        }
-      }
+      throw handlerError;
     }
-
-    // 4. Mettre à jour le statut de la commande
-    let nouveauStatut = 'En attente de réappro';
-    if (peutReserver && produitsManquants.length === 0) {
-      nouveauStatut = 'Réservé';
-    } else if (produitsManquants.length > 0) {
-      nouveauStatut = 'En attente de réappro';
-    }
-
-    await supabase
-      .from('commande')
-      .update({ statut_wms: nouveauStatut })
-      .eq('id', commande.id);
-
-    console.log('✅ Traitement terminé -', commande.numero_commande, '- Statut:', nouveauStatut);
-
-    // Mettre à jour le log comme traité
-    if (logId) {
-      await supabase
-        .from('webhook_sendcloud_log')
-        .update({
-          statut: 'traite',
-          commande_id: commande.id,
-          traite_a: new Date().toISOString(),
-        })
-        .eq('id', logId);
-    }
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        commande_id: commande.id,
-        numero_commande: commande.numero_commande,
-        statut: nouveauStatut,
-        lignes_creees: lignesCreees.length,
-        mouvements_crees: mouvementsCreees.length,
-        produits_manquants: produitsManquants,
-        details: {
-          peut_reserver: peutReserver,
-          lignes: lignesCreees,
-        }
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    );
-
   } catch (error) {
     console.error('❌ Erreur webhook:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
-    
-    // Logger l'erreur
-    if (logId) {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
-      
-      await supabase
-        .from('webhook_sendcloud_log')
-        .update({
-          statut: 'erreur',
-          erreur: `${errorMessage}\n\n${errorStack || ''}`,
-        })
-        .eq('id', logId);
-    }
-    
+
     return new Response(
       JSON.stringify({ 
         success: false, 
@@ -580,3 +787,227 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+// Order import handler (original logic refactored)
+async function handleOrderImport(supabase: any, sendcloudData: SendCloudOrder) {
+  let logId: string | null = null;
+
+  // Logger la réception du webhook
+  const { data: logData } = await supabase
+    .from('webhook_sendcloud_log')
+    .insert({
+      payload: sendcloudData,
+      statut: 'recu',
+    })
+    .select()
+    .single();
+  
+  if (logData) {
+    logId = logData.id;
+  }
+
+  // Normaliser order_number (accepter order_number ou order_id)
+  const orderNumber = sendcloudData.order_number || sendcloudData.order_id || String(sendcloudData.id);
+  console.log('📋 Traitement commande:', orderNumber);
+
+  // 1. Vérifier si la commande existe déjà
+  let existingCommande = null;
+  
+  const { data: foundCommande } = await supabase
+    .from('commande')
+    .select('id, numero_commande, sendcloud_id')
+    .or(`sendcloud_id.eq.${sendcloudData.id},numero_commande.eq.${orderNumber}`)
+    .maybeSingle();
+  
+  existingCommande = foundCommande;
+
+  if (existingCommande) {
+    console.log('⚠️ Commande déjà existante:', existingCommande.numero_commande);
+    
+    if (logId) {
+      await supabase
+        .from('webhook_sendcloud_log')
+        .update({
+          statut: 'deja_existe',
+          commande_id: existingCommande.id,
+          traite_a: new Date().toISOString(),
+        })
+        .eq('id', logId);
+    }
+    
+    return { 
+      success: true,
+      already_exists: true,
+      commande_id: existingCommande.id,
+      numero_commande: existingCommande.numero_commande
+    };
+  }
+
+  // 2. Insérer la commande
+  console.log('➕ Création nouvelle commande:', orderNumber);
+  const { data: commande, error: commandeError } = await supabase
+    .from('commande')
+    .insert({
+      sendcloud_id: String(sendcloudData.id),
+      numero_commande: orderNumber,
+      nom_client: sendcloudData.name,
+      email_client: sendcloudData.email || null,
+      telephone_client: sendcloudData.telephone || null,
+      adresse_nom: sendcloudData.name,
+      adresse_ligne_1: sendcloudData.address,
+      adresse_ligne_2: sendcloudData.address_2 || null,
+      code_postal: sendcloudData.postal_code,
+      ville: sendcloudData.city,
+      pays_code: sendcloudData.country,
+      valeur_totale: sendcloudData.total_order_value || 0,
+      devise: sendcloudData.currency || 'EUR',
+      statut_wms: 'en_attente_reappro',
+      source: 'sendcloud',
+      transporteur: sendcloudData.shipment?.name || null,
+    })
+    .select()
+    .single();
+
+  if (commandeError) {
+    console.error('❌ Erreur insertion commande:', orderNumber, commandeError);
+    throw commandeError;
+  }
+
+  console.log('✅ Commande créée:', commande.id, '- N°:', commande.numero_commande);
+
+  // 3. Traiter chaque produit et créer les lignes
+  const lignesCreees = [];
+  const mouvementsCreees = [];
+  const produitsManquants = [];
+  let peutReserver = true;
+
+  for (const product of sendcloudData.order_products) {
+    console.log(`📦 Traitement produit: ${product.sku} x${product.quantity}`);
+
+    const { data: produit, error: produitError } = await supabase
+      .from('produit')
+      .select('id, reference, nom, stock_actuel, poids_unitaire, prix_unitaire')
+      .eq('reference', product.sku)
+      .eq('statut_actif', true)
+      .single();
+
+    if (produitError || !produit) {
+      console.warn(`⚠️ Produit non trouvé: ${product.sku}`);
+      produitsManquants.push(product.sku);
+      peutReserver = false;
+      
+      const { data: ligne } = await supabase
+        .from('ligne_commande')
+        .insert({
+          commande_id: commande.id,
+          produit_reference: product.sku,
+          produit_nom: product.name,
+          quantite_commandee: product.quantity,
+          quantite_preparee: 0,
+          poids_unitaire: product.weight || null,
+          prix_unitaire: product.price || null,
+          valeur_totale: (product.price || 0) * product.quantity,
+          statut_ligne: 'en_attente',
+        })
+        .select()
+        .single();
+
+      if (ligne) lignesCreees.push(ligne);
+      continue;
+    }
+
+    const { data: stockDispo } = await supabase
+      .from('stock_disponible')
+      .select('stock_disponible')
+      .eq('produit_id', produit.id)
+      .single();
+
+    const stockDisponible = stockDispo?.stock_disponible || produit.stock_actuel;
+
+    if (stockDisponible < product.quantity) {
+      console.warn(`⚠️ Stock insuffisant pour ${product.sku}`);
+      peutReserver = false;
+    }
+
+    const { data: ligne, error: ligneError } = await supabase
+      .from('ligne_commande')
+      .insert({
+        commande_id: commande.id,
+        produit_id: produit.id,
+        produit_reference: product.sku,
+        produit_nom: product.name,
+        quantite_commandee: product.quantity,
+        quantite_preparee: 0,
+        poids_unitaire: product.weight || produit.poids_unitaire,
+        prix_unitaire: product.price || produit.prix_unitaire,
+        valeur_totale: (product.price || produit.prix_unitaire || 0) * product.quantity,
+        statut_ligne: 'en_attente',
+      })
+      .select()
+      .single();
+
+    if (ligneError) {
+      console.error('❌ Erreur création ligne:', ligneError);
+      continue;
+    }
+
+    lignesCreees.push(ligne);
+
+    if (stockDisponible >= product.quantity) {
+      const { data: reservation, error: reservError } = await supabase.rpc('reserver_stock', {
+        p_produit_id: produit.id,
+        p_quantite: product.quantity,
+        p_commande_id: commande.id,
+        p_reference_origine: commande.numero_commande,
+      });
+
+      if (reservError) {
+        console.error('❌ Erreur réservation stock:', reservError);
+      } else if (reservation?.success) {
+        console.log(`✅ Stock réservé: ${product.sku} x${product.quantity}`);
+        mouvementsCreees.push(reservation.mouvement_id);
+        
+        await supabase
+          .from('ligne_commande')
+          .update({ statut_ligne: 'réservé' })
+          .eq('id', ligne.id);
+      }
+    }
+  }
+
+  // 4. Mettre à jour le statut de la commande
+  let nouveauStatut = 'En attente de réappro';
+  if (peutReserver && produitsManquants.length === 0) {
+    nouveauStatut = 'Réservé';
+  } else if (produitsManquants.length > 0) {
+    nouveauStatut = 'En attente de réappro';
+  }
+
+  await supabase
+    .from('commande')
+    .update({ statut_wms: nouveauStatut })
+    .eq('id', commande.id);
+
+  console.log('✅ Traitement terminé -', commande.numero_commande, '- Statut:', nouveauStatut);
+
+  if (logId) {
+    await supabase
+      .from('webhook_sendcloud_log')
+      .update({
+        statut: 'traite',
+        commande_id: commande.id,
+        traite_a: new Date().toISOString(),
+      })
+      .eq('id', logId);
+  }
+
+  return {
+    success: true,
+    commande_id: commande.id,
+    numero_commande: commande.numero_commande,
+    statut: nouveauStatut,
+    lignes_creees: lignesCreees.length,
+    mouvements_crees: mouvementsCreees.length,
+    produits_manquants: produitsManquants,
+  };
+}
