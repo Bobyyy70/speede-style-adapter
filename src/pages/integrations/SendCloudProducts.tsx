@@ -43,7 +43,16 @@ export default function SendCloudProducts() {
             reference,
             nom,
             stock_actuel,
-            client_id
+            client_id,
+            code_barre_ean,
+            poids_unitaire,
+            longueur_cm,
+            largeur_cm,
+            hauteur_cm,
+            volume_m3,
+            pays_origine,
+            valeur_douaniere,
+            code_sh
           )
         `)
         .order("last_sync_at", { ascending: false });
@@ -270,42 +279,61 @@ export default function SendCloudProducts() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>SKU / Référence</TableHead>
-                      <TableHead>Nom Produit</TableHead>
-                      <TableHead>Stock WMS</TableHead>
-                      <TableHead>Statut Sync</TableHead>
-                      <TableHead>Dernière Sync</TableHead>
-                      <TableHead>SendCloud ID</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mappedProducts && mappedProducts.length > 0 ? (
-                      mappedProducts.map((mapping: any) => (
-                        <TableRow key={mapping.id}>
-                          <TableCell className="font-medium">{mapping.sendcloud_sku}</TableCell>
-                          <TableCell>{mapping.produit?.nom || "-"}</TableCell>
-                          <TableCell>{mapping.produit?.stock_actuel || 0}</TableCell>
-                          <TableCell>{getSyncStatusBadge(mapping.sync_status)}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {format(new Date(mapping.last_sync_at), "dd/MM/yyyy HH:mm")}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {mapping.sendcloud_product_id}
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>SKU</TableHead>
+                        <TableHead>Nom</TableHead>
+                        <TableHead>EAN</TableHead>
+                        <TableHead>Poids (kg)</TableHead>
+                        <TableHead>Dimensions (cm)</TableHead>
+                        <TableHead>Volume (m³)</TableHead>
+                        <TableHead>Code HS</TableHead>
+                        <TableHead>Pays</TableHead>
+                        <TableHead>Val. Douane</TableHead>
+                        <TableHead>Stock</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>Sync</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mappedProducts && mappedProducts.length > 0 ? (
+                        mappedProducts.map((mapping: any) => {
+                          const produit = mapping.produit;
+                          const dimensions = produit?.longueur_cm && produit?.largeur_cm && produit?.hauteur_cm
+                            ? `${produit.longueur_cm}×${produit.largeur_cm}×${produit.hauteur_cm}`
+                            : "-";
+                          
+                          return (
+                            <TableRow key={mapping.id}>
+                              <TableCell className="font-mono text-sm font-medium">{mapping.sendcloud_sku}</TableCell>
+                              <TableCell className="max-w-[180px] truncate">{produit?.nom || "-"}</TableCell>
+                              <TableCell className="font-mono text-xs">{produit?.code_barre_ean || "-"}</TableCell>
+                              <TableCell className="text-right tabular-nums">{produit?.poids_unitaire?.toFixed(2) || "-"}</TableCell>
+                              <TableCell className="font-mono text-xs whitespace-nowrap">{dimensions}</TableCell>
+                              <TableCell className="text-right tabular-nums">{produit?.volume_m3?.toFixed(4) || "-"}</TableCell>
+                              <TableCell className="font-mono text-xs">{produit?.code_sh || "-"}</TableCell>
+                              <TableCell>{produit?.pays_origine || "-"}</TableCell>
+                              <TableCell className="text-right tabular-nums">{produit?.valeur_douaniere?.toFixed(2) || "-"} €</TableCell>
+                              <TableCell className="text-center font-semibold">{produit?.stock_actuel || 0}</TableCell>
+                              <TableCell>{getSyncStatusBadge(mapping.sync_status)}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                {format(new Date(mapping.last_sync_at), "dd/MM HH:mm")}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={12} className="text-center text-muted-foreground">
+                            Aucun produit synchronisé
                           </TableCell>
                         </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground">
-                          Aucun produit synchronisé
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
