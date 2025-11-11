@@ -54,6 +54,7 @@ import ReglesTransporteurs from "./pages/configuration/ReglesTransporteurs";
 import AutomationTransporteurs from "./pages/configuration/AutomationTransporteurs";
 import ScoringPredictif from "./pages/analytics/ScoringPredictif";
 import OptimisationCouts from "./pages/analytics/OptimisationCouts";
+import ApprentissageContinu from "./pages/analytics/ApprentissageContinu";
 
 const queryClient = new QueryClient();
 
@@ -339,6 +340,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <OptimisationCouts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics/apprentissage-continu"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ApprentissageContinu />
                 </ProtectedRoute>
               }
             />
