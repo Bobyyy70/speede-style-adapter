@@ -3838,6 +3838,7 @@ export type Database = {
         | "livre"
         | "annule"
         | "erreur"
+        | "en_attente_validation"
       statut_ligne_attendu:
         | "attendu"
         | "réceptionné"
@@ -3994,6 +3995,7 @@ export const Constants = {
         "livre",
         "annule",
         "erreur",
+        "en_attente_validation",
       ],
       statut_ligne_attendu: [
         "attendu",

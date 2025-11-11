@@ -5,7 +5,10 @@ import { CommandesList } from "@/components/CommandesList";
 import { CommandeDetailDialog } from "@/components/CommandeDetailDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { ValidationsEnAttenteTable } from "@/components/ValidationsEnAttenteTable";
+import { AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Package, Clock, CheckCircle2, TrendingUp, Activity, Filter } from "lucide-react";
@@ -33,6 +36,7 @@ export default function Commandes() {
   const [stats, setStats] = useState({
     total: 0,
     enAttente: 0,
+    enAttenteValidation: 0,
     prete: 0,
     enPreparation: 0
   });
@@ -157,6 +161,7 @@ export default function Commandes() {
       setStats({
         total: data?.length || 0,
         enAttente: data?.filter(c => c.statut_wms === ORDER_STATUSES.EN_ATTENTE_REAPPRO).length || 0,
+        enAttenteValidation: data?.filter(c => c.statut_wms === 'en_attente_validation' as any).length || 0,
         prete: data?.filter(c => c.statut_wms === ORDER_STATUSES.EXPEDIE).length || 0,
         enPreparation: data?.filter(c => c.statut_wms === ORDER_STATUSES.EN_PREPARATION).length || 0
       });
@@ -297,6 +302,17 @@ export default function Commandes() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">En attente validation</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-amber-600">{stats.enAttenteValidation}</div>
+              <p className="text-xs text-muted-foreground">Nécessitent approbation</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">En préparation</CardTitle>
               <TrendingUp className="h-4 w-4 text-blue-500" />
             </CardHeader>
@@ -308,6 +324,23 @@ export default function Commandes() {
         </div>
 
         <Tabs defaultValue="toutes" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="toutes">
+              Toutes ({stats.total})
+            </TabsTrigger>
+            <TabsTrigger value="validations" className="relative">
+              En attente validation
+              {stats.enAttenteValidation > 0 && (
+                <Badge className="ml-2 bg-amber-500" variant="destructive">
+                  {stats.enAttenteValidation}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="preparation">
+              En préparation ({stats.enPreparation})
+            </TabsTrigger>
+          </TabsList>
+
           <TabsContent value="toutes">
             <CommandesList 
               onUpdate={() => {
@@ -321,8 +354,61 @@ export default function Commandes() {
               statusFilters={statusFilters} 
             />
           </TabsContent>
+
+          <TabsContent value="validations">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  Commandes en attente de validation
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Ces commandes nécessitent une approbation avant de poursuivre le workflow
+                </p>
+              </CardHeader>
+              <CardContent>
+                <ValidationsEnAttenteTable 
+                  onApprove={() => {
+                    fetchStats();
+                    refetch();
+                  }}
+                  onReject={() => {
+                    fetchStats();
+                    refetch();
+                  }}
+                  onViewDetails={(commandeId) => {
+                    setSelectedCommandeId(commandeId);
+                    setDetailDialogOpen(true);
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="preparation">
+            <CommandesList 
+              filter={ORDER_STATUSES.EN_PREPARATION}
+              onUpdate={() => {
+                fetchStats();
+                refetch();
+              }} 
+              userRole={userRole} 
+              userId={user?.id} 
+              viewingClientId={getViewingClientId()} 
+              clientFilter={selectedClientFilter} 
+              statusFilters={statusFilters} 
+            />
+          </TabsContent>
         </Tabs>
       </div>
+
+      {selectedCommandeId && (
+        <CommandeDetailDialog
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          commandeId={selectedCommandeId}
+        />
+      )}
     </DashboardLayout>
   );
 }

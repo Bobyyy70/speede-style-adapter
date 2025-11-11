@@ -10,6 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSessionDialog } from "./CreateSessionDialog";
 import { CommandeDetailDialog } from "./CommandeDetailDialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ORDER_STATUSES, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, FILTER_STATUSES, OrderStatus } from "@/lib/orderStatuses";
 
 interface Commande {
@@ -22,6 +24,8 @@ interface Commande {
   valeur_totale: number;
   ville?: string;
   pays_code?: string;
+  validation_requise?: boolean;
+  validation_message?: string;
 }
 
 interface StatsData {
@@ -101,7 +105,9 @@ export function CommandesList({
           source,
           valeur_totale,
           ville,
-          pays_code
+          pays_code,
+          validation_requise,
+          validation_message
         `)
         .order("date_creation", { ascending: false });
 
@@ -398,6 +404,13 @@ export function CommandesList({
                             {getStatutLabel(commande.statut_wms)}
                           </span>
                           
+                          {commande.validation_requise && commande.statut_wms === 'en_attente_validation' && (
+                            <Badge variant="outline" className="border-amber-500 text-amber-700 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Validation requise
+                            </Badge>
+                          )}
+                          
                           {needsStockAlert(commande.statut_wms) && (
                             <span className="inline-flex items-center gap-1 text-xs text-orange-600">
                               <AlertCircle className="h-3 w-3" />
@@ -405,6 +418,15 @@ export function CommandesList({
                             </span>
                           )}
                         </div>
+                        
+                        {commande.validation_message && commande.statut_wms === 'en_attente_validation' && (
+                          <Alert variant="default" className="mt-2 border-amber-500 bg-amber-50">
+                            <AlertCircle className="h-4 w-4 text-amber-600" />
+                            <AlertDescription className="text-amber-800 text-sm">
+                              {commande.validation_message}
+                            </AlertDescription>
+                          </Alert>
+                        )}
                       </div>
 
                       <div className="text-right flex-shrink-0">

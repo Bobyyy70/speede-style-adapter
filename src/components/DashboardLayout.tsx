@@ -168,13 +168,21 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/commandes/regles-filtrage",
         icon: Filter
       }, {
+        name: "Règles d'emballage",
+        href: "/preparation/regles-emballages",
+        icon: Shield
+      }]
+    }, {
+      name: "Commandes",
+      icon: ClipboardList,
+      children: [{
+        name: "Gestion des commandes",
+        href: "/commandes",
+        icon: ClipboardList
+      }, {
         name: "Règles de validation",
         href: "/commandes/regles-validation",
         icon: Shield
-      }, {
-        name: "Validations en attente",
-        href: "/commandes/validations-en-attente",
-        icon: AlertTriangle
       }]
     }, {
       name: "Expédition",

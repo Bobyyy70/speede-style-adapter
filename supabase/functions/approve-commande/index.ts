@@ -92,6 +92,7 @@ Deno.serve(async (req) => {
         .update({
           validation_requise: false,
           validation_statut: 'approuve',
+          statut_wms: 'en_attente_reappro',
           validation_message: null,
           date_modification: new Date().toISOString()
         })

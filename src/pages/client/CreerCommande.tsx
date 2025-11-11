@@ -359,7 +359,7 @@ const CreerCommande = () => {
           client_id: clientId,
           numero_commande: `CMD-${Date.now()}`,
           source: "manuel",
-          statut_wms: ORDER_STATUSES.EN_ATTENTE_REAPPRO,
+          statut_wms: 'en_attente_reappro' as any,
           valeur_totale: valeurTotale,
           poids_total: poidsTotal,
           label_pregenere: !!labelUrl && !!trackingNumber,

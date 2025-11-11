@@ -1,5 +1,8 @@
 // Statuts de commande (ENUM statut_commande_enum)
 export const ORDER_STATUSES = {
+  // État de validation (AVANT les états de stock)
+  EN_ATTENTE_VALIDATION: 'en_attente_validation',
+  
   // États de stock
   EN_ATTENTE_REAPPRO: 'en_attente_reappro',
   STOCK_RESERVE: 'stock_reserve',
@@ -30,6 +33,7 @@ export type OrderStatus = typeof ORDER_STATUSES[keyof typeof ORDER_STATUSES];
 
 // Labels d'affichage en français
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  [ORDER_STATUSES.EN_ATTENTE_VALIDATION]: '⚠️ En attente de validation',
   [ORDER_STATUSES.EN_ATTENTE_REAPPRO]: 'En attente de réappro',
   [ORDER_STATUSES.STOCK_RESERVE]: 'Stock réservé',
   [ORDER_STATUSES.EN_PICKING]: 'En picking',
@@ -49,6 +53,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 
 // Couleurs pour l'affichage
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
+  [ORDER_STATUSES.EN_ATTENTE_VALIDATION]: 'text-amber-600',
   [ORDER_STATUSES.EN_ATTENTE_REAPPRO]: 'text-orange-600',
   [ORDER_STATUSES.STOCK_RESERVE]: 'text-blue-600',
   [ORDER_STATUSES.EN_PICKING]: 'text-purple-600',
@@ -118,6 +123,8 @@ export const FILTER_STATUSES = [
 // Fonction helper pour obtenir la variante de Badge selon le statut
 export const getStatutBadgeVariant = (statut: OrderStatus): "default" | "secondary" | "destructive" | "outline" => {
   switch (statut) {
+    case ORDER_STATUSES.EN_ATTENTE_VALIDATION:
+      return "outline";
     case ORDER_STATUSES.EN_ATTENTE_REAPPRO:
       return "outline";
     case ORDER_STATUSES.STOCK_RESERVE:

@@ -155,7 +155,8 @@ Deno.serve(async (req) => {
               .update({
                 validation_requise: true,
                 validation_statut: 'en_attente_validation',
-                validation_message: regle.message_utilisateur,
+                statut_wms: 'en_attente_validation',
+                validation_message: regle.message_utilisateur || `Règle: ${regle.nom_regle}`,
                 date_modification: new Date().toISOString()
               })
               .eq('id', commandeId);
