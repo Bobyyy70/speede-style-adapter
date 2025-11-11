@@ -2709,6 +2709,166 @@ export type Database = {
           },
         ]
       }
+      sendcloud_event_history: {
+        Row: {
+          created_at: string | null
+          direction: string
+          entity_id: string | null
+          entity_type: string | null
+          error_details: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          processing_time_ms: number | null
+          success: boolean
+        }
+        Insert: {
+          created_at?: string | null
+          direction: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_details?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          processing_time_ms?: number | null
+          success: boolean
+        }
+        Update: {
+          created_at?: string | null
+          direction?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_details?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          processing_time_ms?: number | null
+          success?: boolean
+        }
+        Relationships: []
+      }
+      sendcloud_outgoing_webhooks: {
+        Row: {
+          created_at: string | null
+          entity_id: string
+          entity_type: string
+          error_message: string | null
+          event_type: string
+          id: string
+          max_retries: number | null
+          next_retry_at: string | null
+          payload: Json
+          retry_count: number | null
+          sendcloud_response: Json | null
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          entity_id: string
+          entity_type: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          max_retries?: number | null
+          next_retry_at?: string | null
+          payload: Json
+          retry_count?: number | null
+          sendcloud_response?: Json | null
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          entity_id?: string
+          entity_type?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          max_retries?: number | null
+          next_retry_at?: string | null
+          payload?: Json
+          retry_count?: number | null
+          sendcloud_response?: Json | null
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
+      sendcloud_status_tracking: {
+        Row: {
+          carrier: string | null
+          commande_id: string | null
+          created_at: string | null
+          current_status: string | null
+          estimated_delivery_date: string | null
+          external_tracking_url: string | null
+          id: string
+          last_status_change: string | null
+          sendcloud_parcel_id: string
+          shipment_uuid: string | null
+          status_message: string | null
+          tracking_events: Json | null
+          tracking_number: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          carrier?: string | null
+          commande_id?: string | null
+          created_at?: string | null
+          current_status?: string | null
+          estimated_delivery_date?: string | null
+          external_tracking_url?: string | null
+          id?: string
+          last_status_change?: string | null
+          sendcloud_parcel_id: string
+          shipment_uuid?: string | null
+          status_message?: string | null
+          tracking_events?: Json | null
+          tracking_number?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          carrier?: string | null
+          commande_id?: string | null
+          created_at?: string | null
+          current_status?: string | null
+          estimated_delivery_date?: string | null
+          external_tracking_url?: string | null
+          id?: string
+          last_status_change?: string | null
+          sendcloud_parcel_id?: string
+          shipment_uuid?: string | null
+          status_message?: string | null
+          tracking_events?: Json | null
+          tracking_number?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sendcloud_status_tracking_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sendcloud_status_tracking_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sendcloud_status_tracking_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sendcloud_sync_log: {
         Row: {
           date_sync: string
@@ -2756,6 +2916,67 @@ export type Database = {
           statut?: string
         }
         Relationships: []
+      }
+      sendcloud_webhook_events: {
+        Row: {
+          commande_id: string | null
+          created_at: string | null
+          event_data: Json
+          event_type: string
+          id: string
+          processed: boolean | null
+          processed_at: string | null
+          processing_error: string | null
+          retry_count: number | null
+          sendcloud_id: string | null
+        }
+        Insert: {
+          commande_id?: string | null
+          created_at?: string | null
+          event_data: Json
+          event_type: string
+          id?: string
+          processed?: boolean | null
+          processed_at?: string | null
+          processing_error?: string | null
+          retry_count?: number | null
+          sendcloud_id?: string | null
+        }
+        Update: {
+          commande_id?: string | null
+          created_at?: string | null
+          event_data?: Json
+          event_type?: string
+          id?: string
+          processed?: boolean | null
+          processed_at?: string | null
+          processing_error?: string | null
+          retry_count?: number | null
+          sendcloud_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sendcloud_webhook_events_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sendcloud_webhook_events_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sendcloud_webhook_events_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_logistique: {
         Row: {
@@ -3435,6 +3656,32 @@ export type Database = {
           },
         ]
       }
+      sendcloud_event_stats: {
+        Row: {
+          avg_processing_time_ms: number | null
+          direction: string | null
+          event_type: string | null
+          failed_events: number | null
+          last_event_at: string | null
+          successful_events: number | null
+          total_events: number | null
+        }
+        Relationships: []
+      }
+      sendcloud_failed_webhooks: {
+        Row: {
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          error_message: string | null
+          event_type: string | null
+          id: string | null
+          max_retries: number | null
+          next_retry_at: string | null
+          retry_count: number | null
+        }
+        Relationships: []
+      }
       stock_disponible: {
         Row: {
           nom: string | null
@@ -3745,6 +3992,10 @@ export type Database = {
         Returns: Json
       }
       backfill_missing_profiles: { Args: never; Returns: undefined }
+      calculate_next_retry: {
+        Args: { base_delay_minutes?: number; retry_count: number }
+        Returns: string
+      }
       can_client_create_user: { Args: { _client_id: string }; Returns: boolean }
       cleanup_webhook_rate_limit: { Args: never; Returns: undefined }
       execute_sql_admin: { Args: { statements: string[] }; Returns: Json }
