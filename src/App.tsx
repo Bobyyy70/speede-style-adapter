@@ -39,6 +39,7 @@ import AdminBootstrap from "./pages/AdminBootstrap";
 import ReglesExpediteur from "./pages/ReglesExpediteur";
 import ReparationCommandes from "./pages/ReparationCommandes";
 import MonDashboard from "./pages/MonDashboard";
+import DashboardAnalytique from "./pages/DashboardAnalytique";
 
 const queryClient = new QueryClient();
 
@@ -238,6 +239,16 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <ReparationCommandes />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Analytics */}
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <DashboardAnalytique />
                 </ProtectedRoute>
               }
             />
