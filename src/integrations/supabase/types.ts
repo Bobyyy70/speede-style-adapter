@@ -458,6 +458,9 @@ export type Database = {
           valeur_assuree: number | null
           valeur_declaree_douane: number | null
           valeur_totale: number
+          validation_message: string | null
+          validation_requise: boolean | null
+          validation_statut: string | null
           ville: string
           zone_livraison: string | null
         }
@@ -538,6 +541,9 @@ export type Database = {
           valeur_assuree?: number | null
           valeur_declaree_douane?: number | null
           valeur_totale?: number
+          validation_message?: string | null
+          validation_requise?: boolean | null
+          validation_statut?: string | null
           ville: string
           zone_livraison?: string | null
         }
@@ -618,6 +624,9 @@ export type Database = {
           valeur_assuree?: number | null
           valeur_declaree_douane?: number | null
           valeur_totale?: number
+          validation_message?: string | null
+          validation_requise?: boolean | null
+          validation_statut?: string | null
           ville?: string
           zone_livraison?: string | null
         }
@@ -702,6 +711,80 @@ export type Database = {
             columns: ["commande_id"]
             isOneToOne: false
             referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commande_validation_log: {
+        Row: {
+          commande_id: string
+          commentaire_validateur: string | null
+          date_demande: string | null
+          date_reponse: string | null
+          destinataires_notification: string[] | null
+          id: string
+          metadata: Json | null
+          notification_envoyee: boolean | null
+          raison_blocage: string | null
+          regle_id: string | null
+          statut_validation: string
+          validateur_id: string | null
+        }
+        Insert: {
+          commande_id: string
+          commentaire_validateur?: string | null
+          date_demande?: string | null
+          date_reponse?: string | null
+          destinataires_notification?: string[] | null
+          id?: string
+          metadata?: Json | null
+          notification_envoyee?: boolean | null
+          raison_blocage?: string | null
+          regle_id?: string | null
+          statut_validation: string
+          validateur_id?: string | null
+        }
+        Update: {
+          commande_id?: string
+          commentaire_validateur?: string | null
+          date_demande?: string | null
+          date_reponse?: string | null
+          destinataires_notification?: string[] | null
+          id?: string
+          metadata?: Json | null
+          notification_envoyee?: boolean | null
+          raison_blocage?: string | null
+          regle_id?: string | null
+          statut_validation?: string
+          validateur_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commande_validation_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commande_validation_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commande_validation_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commande_validation_log_regle_id_fkey"
+            columns: ["regle_id"]
+            isOneToOne: false
+            referencedRelation: "regle_validation_commande"
             referencedColumns: ["id"]
           },
         ]
@@ -2275,6 +2358,78 @@ export type Database = {
           transporteur?: string
         }
         Relationships: []
+      }
+      regle_validation_commande: {
+        Row: {
+          actif: boolean | null
+          action_a_effectuer: string
+          approbateurs_autorises: string[] | null
+          client_id: string | null
+          conditions: Json
+          created_by: string | null
+          date_creation: string | null
+          date_modification: string | null
+          delai_max_jours: number | null
+          description: string | null
+          id: string
+          message_utilisateur: string | null
+          niveau_validation: string | null
+          nom_regle: string
+          priorite: number | null
+          statut_bloque: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          action_a_effectuer: string
+          approbateurs_autorises?: string[] | null
+          client_id?: string | null
+          conditions: Json
+          created_by?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          delai_max_jours?: number | null
+          description?: string | null
+          id?: string
+          message_utilisateur?: string | null
+          niveau_validation?: string | null
+          nom_regle: string
+          priorite?: number | null
+          statut_bloque?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          action_a_effectuer?: string
+          approbateurs_autorises?: string[] | null
+          client_id?: string | null
+          conditions?: Json
+          created_by?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          delai_max_jours?: number | null
+          description?: string | null
+          id?: string
+          message_utilisateur?: string | null
+          niveau_validation?: string | null
+          nom_regle?: string
+          priorite?: number | null
+          statut_bloque?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regle_validation_commande_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regle_validation_commande_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+        ]
       }
       retour_produit: {
         Row: {

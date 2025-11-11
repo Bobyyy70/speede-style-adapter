@@ -41,6 +41,11 @@ import ReparationCommandes from "./pages/ReparationCommandes";
 import MonDashboard from "./pages/MonDashboard";
 import DashboardAnalytique from "./pages/DashboardAnalytique";
 import GestionTransitions from "./pages/admin/GestionTransitions";
+import Workflows from "./pages/Workflows";
+import ReglesFiltrage from "./pages/commandes/ReglesFiltrage";
+import ReglesEmballages from "./pages/preparation/ReglesEmballages";
+import ReglesValidation from "./pages/commandes/ReglesValidation";
+import ValidationsEnAttente from "./pages/commandes/ValidationsEnAttente";
 
 const queryClient = new QueryClient();
 
@@ -155,6 +160,21 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/commandes/regles-filtrage" element={
+              <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                <ReglesFiltrage />
+              </ProtectedRoute>
+            } />
+            <Route path="/commandes/regles-validation" element={
+              <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                <ReglesValidation />
+              </ProtectedRoute>
+            } />
+            <Route path="/commandes/validations-en-attente" element={
+              <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                <ValidationsEnAttente />
+              </ProtectedRoute>
+            } />
             
             {/* Expedition */}
             <Route
