@@ -53,6 +53,7 @@ import SendCloudEvents from "./pages/integrations/SendCloudEvents";
 import ReglesTransporteurs from "./pages/configuration/ReglesTransporteurs";
 import AutomationTransporteurs from "./pages/configuration/AutomationTransporteurs";
 import ScoringPredictif from "./pages/analytics/ScoringPredictif";
+import OptimisationCouts from "./pages/analytics/OptimisationCouts";
 
 const queryClient = new QueryClient();
 
@@ -330,6 +331,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <ScoringPredictif />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics/optimisation-couts"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <OptimisationCouts />
                 </ProtectedRoute>
               }
             />
