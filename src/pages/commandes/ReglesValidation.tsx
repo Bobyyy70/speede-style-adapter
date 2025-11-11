@@ -19,20 +19,72 @@ const AVAILABLE_RELATIONS = [
     value: "Commande",
     label: "Commande",
     fields: [
-      { value: "valeur_totale", label: "Valeur totale", type: "number" as const },
+      { value: "numero_commande", label: "Numéro de commande", type: "text" as const },
+      { value: "valeur_totale", label: "Valeur totale (€)", type: "number" as const },
       { value: "poids_total", label: "Poids total (kg)", type: "number" as const },
-      { value: "pays_code", label: "Pays", type: "text" as const },
+      { value: "volume_total", label: "Volume total (m³)", type: "number" as const },
+      { value: "nombre_colis", label: "Nombre de colis", type: "number" as const },
+      { value: "longueur_cm", label: "Longueur (cm)", type: "number" as const },
+      { value: "largeur_cm", label: "Largeur (cm)", type: "number" as const },
+      { value: "hauteur_cm", label: "Hauteur (cm)", type: "number" as const },
+      { value: "pays_code", label: "Pays destination", type: "text" as const },
+      { value: "code_postal", label: "Code postal", type: "text" as const },
+      { value: "ville", label: "Ville", type: "text" as const },
       { value: "zone_livraison", label: "Zone de livraison", type: "text" as const },
+      { value: "transporteur", label: "Transporteur", type: "text" as const },
+      { value: "service_livraison", label: "Service de livraison", type: "text" as const },
+      { value: "numero_suivi", label: "Numéro de suivi", type: "text" as const },
+      { value: "incoterm", label: "Incoterm", type: "text" as const },
       { value: "tags", label: "Tags", type: "text" as const },
-      { value: "priorite_expedition", label: "Priorité", type: "text" as const }
+      { value: "priorite_expedition", label: "Priorité expédition", type: "text" as const },
+      { value: "statut_wms", label: "Statut WMS", type: "text" as const },
+      { value: "date_expedition_demandee", label: "Date expédition demandée", type: "date" as const },
+      { value: "valeur_douaniere_totale", label: "Valeur douanière (€)", type: "number" as const }
+    ]
+  },
+  {
+    value: "Produit",
+    label: "Produit",
+    fields: [
+      { value: "reference", label: "SKU / Référence", type: "text" as const },
+      { value: "nom", label: "Nom du produit", type: "text" as const },
+      { value: "code_barre_ean", label: "Code-barres EAN", type: "text" as const },
+      { value: "poids_unitaire", label: "Poids unitaire (kg)", type: "number" as const },
+      { value: "longueur_cm", label: "Longueur (cm)", type: "number" as const },
+      { value: "largeur_cm", label: "Largeur (cm)", type: "number" as const },
+      { value: "hauteur_cm", label: "Hauteur (cm)", type: "number" as const },
+      { value: "volume_m3", label: "Volume (m³)", type: "number" as const },
+      { value: "categorie", label: "Catégorie", type: "text" as const },
+      { value: "pays_origine", label: "Pays d'origine", type: "text" as const },
+      { value: "code_sh", label: "Code SH (douanes)", type: "text" as const },
+      { value: "valeur_douaniere", label: "Valeur douanière (€)", type: "number" as const },
+      { value: "stock_actuel", label: "Stock actuel", type: "number" as const },
+      { value: "stock_minimum", label: "Stock minimum", type: "number" as const },
+      { value: "dangereux", label: "Matière dangereuse", type: "text" as const }
     ]
   },
   {
     value: "Client",
     label: "Client",
     fields: [
+      { value: "nom_client", label: "Nom client", type: "text" as const },
       { value: "nom_entreprise", label: "Nom entreprise", type: "text" as const },
-      { value: "siret", label: "SIRET", type: "text" as const }
+      { value: "siret", label: "SIRET", type: "text" as const },
+      { value: "email", label: "Email", type: "text" as const },
+      { value: "telephone", label: "Téléphone", type: "text" as const },
+      { value: "pays", label: "Pays", type: "text" as const },
+      { value: "statut", label: "Statut client", type: "text" as const },
+      { value: "tva_intracommunautaire", label: "TVA intracommunautaire", type: "text" as const }
+    ]
+  },
+  {
+    value: "Expediteur",
+    label: "Expéditeur",
+    fields: [
+      { value: "expediteur_entreprise", label: "Entreprise", type: "text" as const },
+      { value: "expediteur_pays_code", label: "Pays", type: "text" as const },
+      { value: "expediteur_code_postal", label: "Code postal", type: "text" as const },
+      { value: "expediteur_ville", label: "Ville", type: "text" as const }
     ]
   }
 ];
