@@ -51,6 +51,7 @@ import SendCloudDocuments from "./pages/integrations/SendCloudDocuments";
 import SendCloudProducts from "./pages/integrations/SendCloudProducts";
 import SendCloudEvents from "./pages/integrations/SendCloudEvents";
 import ReglesTransporteurs from "./pages/configuration/ReglesTransporteurs";
+import AutomationTransporteurs from "./pages/configuration/AutomationTransporteurs";
 import ScoringPredictif from "./pages/analytics/ScoringPredictif";
 
 const queryClient = new QueryClient();
@@ -243,6 +244,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <ReglesTransporteurs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parametres/automation-transporteurs"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <AutomationTransporteurs />
                 </ProtectedRoute>
               }
             />

@@ -270,6 +270,25 @@ Fournis:
     const processingTime = Date.now() - startTime;
     console.log(`✅ Carrier selected in ${processingTime}ms: ${transporteurChoisi.nom}`);
 
+    // Mettre à jour le log si c'est un appel automatique
+    if (req.headers.get('x-trigger-source') === 'postgres_auto') {
+      await supabase
+        .from('log_auto_selection_transporteur')
+        .update({
+          transporteur_selectionne_code: transporteurChoisi.code_service,
+          transporteur_selectionne_nom: transporteurChoisi.nom,
+          score_selection: transporteurChoisi.score,
+          reponse_edge_function: {
+            success: true,
+            mode: modeDecision,
+            regles_matchees: reglesMatchees.length,
+          },
+        })
+        .eq('commande_id', commande_id)
+        .order('date_declenchement', { ascending: false })
+        .limit(1);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
