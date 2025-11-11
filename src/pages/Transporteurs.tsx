@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Cloud, TruckIcon, Tag, DollarSign, Plus, Trash2 } from "lucide-react";
+import { Cloud, TruckIcon, Tag, DollarSign, Plus, Trash2, RefreshCw, Download } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -51,6 +51,45 @@ export default function Transporteurs() {
     },
     onError: () => toast.error('Erreur lors de la mise à jour')
   });
+
+  // Import carriers mutation
+  const [importing, setImporting] = useState(false);
+  
+  const importCarriers = async () => {
+    setImporting(true);
+    try {
+      toast.info('Import des transporteurs en cours...');
+      const { data, error } = await supabase.functions.invoke('sendcloud-import-carriers');
+      
+      if (error) throw error;
+      
+      toast.success(data.message || 'Transporteurs importés avec succès');
+      queryClient.invalidateQueries({ queryKey: ['transporteur_configuration'] });
+      
+      // Importer automatiquement les services après les transporteurs
+      await importShippingMethods();
+    } catch (error: any) {
+      console.error('Error importing carriers:', error);
+      toast.error(error.message || 'Erreur lors de l\'import des transporteurs');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const importShippingMethods = async () => {
+    try {
+      toast.info('Import des services d\'expédition...');
+      const { data, error } = await supabase.functions.invoke('sendcloud-import-shipping-methods');
+      
+      if (error) throw error;
+      
+      toast.success(data.message || 'Services importés avec succès');
+      queryClient.invalidateQueries({ queryKey: ['transporteur_configuration'] });
+    } catch (error: any) {
+      console.error('Error importing shipping methods:', error);
+      toast.error(error.message || 'Erreur lors de l\'import des services');
+    }
+  };
   
   return (
     <DashboardLayout>
@@ -151,25 +190,69 @@ export default function Transporteurs() {
           <TabsContent value="sendcloud" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Intégration Sendcloud</CardTitle>
+                <CardTitle>Intégration SendCloud</CardTitle>
                 <CardDescription>
-                  Configuration de l'API Sendcloud pour gestion multi-transporteurs
+                  Import automatique des transporteurs et méthodes d'expédition depuis SendCloud
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    SendCloud permet de gérer plusieurs transporteurs via une seule intégration.
-                    Les commandes sont automatiquement synchronisées et les étiquettes générées
-                    selon vos règles de routage.
-                  </p>
-                  <div className="flex gap-2">
-                    <Button variant="outline">
-                      Configurer API
-                    </Button>
-                    <Button variant="outline">
-                      Tester connexion
-                    </Button>
+                <div className="space-y-6">
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2 flex items-center gap-2">
+                      <Cloud className="h-4 w-4" />
+                      Phase 3 : Import Automatique
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      SendCloud permet de gérer plusieurs transporteurs via une seule intégration.
+                      Importez automatiquement tous les transporteurs et leurs services disponibles.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={importCarriers}
+                        disabled={importing || isClient}
+                      >
+                        {importing ? (
+                          <>
+                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                            Import en cours...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="mr-2 h-4 w-4" />
+                            Importer depuis SendCloud
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        onClick={() => queryClient.invalidateQueries({ queryKey: ['transporteur_configuration'] })}
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Actualiser
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-2">Fonctionnalités de l'intégration</h4>
+                    <ul className="space-y-2 text-sm text-muted-foreground">
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-1">✓</span>
+                        <span>Import automatique des transporteurs disponibles dans votre compte SendCloud</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-1">✓</span>
+                        <span>Synchronisation des services d'expédition et de leurs caractéristiques (poids, délais, zones)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-1">✓</span>
+                        <span>Récupération automatique des documents (labels, CN23, factures commerciales)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-1">✓</span>
+                        <span>Mise à jour des transporteurs existants lors des imports successifs</span>
+                      </li>
+                    </ul>
                   </div>
                 </div>
               </CardContent>

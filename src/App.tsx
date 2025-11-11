@@ -46,6 +46,9 @@ import ReglesFiltrage from "./pages/commandes/ReglesFiltrage";
 import ReglesEmballages from "./pages/preparation/ReglesEmballages";
 import ReglesValidation from "./pages/commandes/ReglesValidation";
 import ValidationsEnAttente from "./pages/commandes/ValidationsEnAttente";
+import SendCloudDocuments from "./pages/integrations/SendCloudDocuments";
+import SendCloudProducts from "./pages/integrations/SendCloudProducts";
+import SendCloudEvents from "./pages/integrations/SendCloudEvents";
 
 const queryClient = new QueryClient();
 
@@ -250,6 +253,30 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <SendCloudSync />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/integrations/sendcloud-products"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <SendCloudProducts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/integrations/sendcloud-events"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <SendCloudEvents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/integrations/sendcloud-documents"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <SendCloudDocuments />
                 </ProtectedRoute>
               }
             />

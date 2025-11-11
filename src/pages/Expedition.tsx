@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, Truck, CheckCircle2, Clock, Zap } from "lucide-react";
+import { Package, Truck, CheckCircle2, Clock, Zap, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,11 +23,13 @@ interface Commande {
   poids_reel_kg?: number;
   poids_volumetrique_kg?: number;
   transporteur_choisi?: string;
+  sendcloud_shipment_id?: string;
 }
 export default function Expedition() {
   const { user, userRole, getViewingClientId } = useAuth();
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchingDocs, setFetchingDocs] = useState<string | null>(null);
   const {
     applyAutoRules
   } = useAutoRules();
@@ -74,6 +76,26 @@ export default function Expedition() {
   const handleApplyAutoRules = async (commandeId: string) => {
     await applyAutoRules(commandeId);
     fetchCommandes();
+  };
+
+  const handleFetchDocuments = async (commandeId: string) => {
+    setFetchingDocs(commandeId);
+    try {
+      toast.info('Récupération des documents en cours...');
+      const { data, error } = await supabase.functions.invoke('sendcloud-fetch-documents', {
+        body: { commandeId }
+      });
+
+      if (error) throw error;
+
+      toast.success(data.message || 'Documents récupérés avec succès');
+      fetchCommandes();
+    } catch (error: any) {
+      console.error('Error fetching documents:', error);
+      toast.error(error.message || 'Erreur lors de la récupération des documents');
+    } finally {
+      setFetchingDocs(null);
+    }
   };
   const getStatutBadge = (statut: string) => {
     const variants: Record<string, {
@@ -206,6 +228,17 @@ export default function Expedition() {
                           <Button size="sm" variant="outline" onClick={() => handleApplyAutoRules(commande.id)} title="Appliquer les règles automatiques">
                             <Zap className="h-4 w-4" />
                           </Button>
+                          {commande.sendcloud_shipment_id && (
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => handleFetchDocuments(commande.id)}
+                              disabled={fetchingDocs === commande.id}
+                              title="Récupérer documents SendCloud"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          )}
                           {commande.label_url ? <Button size="sm" variant="outline" onClick={() => handlePrintLabel(commande.label_url!)}>
                               Imprimer étiquette
                             </Button> : <Button size="sm" variant="outline" disabled>
