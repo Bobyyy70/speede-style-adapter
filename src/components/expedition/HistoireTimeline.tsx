@@ -9,27 +9,27 @@ interface HistoireTimelineProps {
 }
 
 const statusConfig: Record<string, { icon: any; color: string; label: string }> = {
-  "En attente de réappro": {
+  "en_attente_reappro": {
     icon: AlertCircle,
     color: "text-amber-500",
     label: "En attente",
   },
-  "Prêt à préparer": {
+  "pret_expedition": {
     icon: Package,
     color: "text-blue-500",
     label: "Prêt",
   },
-  "En préparation": {
+  "en_preparation": {
     icon: Package,
     color: "text-purple-500",
     label: "En cours",
   },
-  prete: {
+  "picking_termine": {
     icon: CheckCircle2,
     color: "text-green-500",
     label: "Préparée",
   },
-  expediee: {
+  "expedie": {
     icon: Truck,
     color: "text-green-600",
     label: "Expédiée",

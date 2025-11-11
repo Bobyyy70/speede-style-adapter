@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
       .from('commande')
       .select('id, sendcloud_id, numero_commande, statut_wms')
       .not('sendcloud_id', 'is', null)
-      .in('statut_wms', ['En attente de réappro', 'Prêt à préparer', 'En préparation'])
+      .in('statut_wms', ['en_attente_reappro', 'pret_expedition', 'en_preparation'])
       .limit(100);
 
     if (fetchError) throw fetchError;
@@ -72,13 +72,13 @@ Deno.serve(async (req) => {
         // Déterminer le nouveau statut WMS
         let nouveauStatut = commande.statut_wms;
         if (isCancelled) {
-          nouveauStatut = 'Archivé';
+          nouveauStatut = 'annule';
         } else if (statusId >= 3000) {
-          nouveauStatut = 'Livré';
+          nouveauStatut = 'livre';
         } else if (statusId >= 2000) {
-          nouveauStatut = 'Expédié';
+          nouveauStatut = 'expedie';
         } else if (statusId >= 1000) {
-          nouveauStatut = 'En préparation';
+          nouveauStatut = 'en_preparation';
         }
 
         // Mettre à jour si le statut a changé

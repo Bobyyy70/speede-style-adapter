@@ -231,7 +231,7 @@ Deno.serve(async (req) => {
             pays_code: paysCode,
             valeur_totale: sendcloudData.total_order_value || 0,
             devise: sendcloudData.currency || 'EUR',
-            statut_wms: 'En attente de réappro',
+            statut_wms: 'en_attente_reappro',
             source: 'sendcloud',
             // Données expéditeur depuis config
             expediteur_nom: expediteurDefault?.nom || null,
@@ -288,15 +288,15 @@ Deno.serve(async (req) => {
               if (parcelData.parcels && parcelData.parcels.length > 0) {
                 const parcel = parcelData.parcels[0];
                 
-                let statutWms = 'En attente de réappro';
+                let statutWms = 'en_attente_reappro';
                 if (parcel.status) {
                   const statusId = parcel.status.id;
                   if (statusId >= 1000 && statusId < 2000) {
-                    statutWms = 'En préparation';
+                    statutWms = 'en_preparation';
                   } else if (statusId >= 2000 && statusId < 3000) {
-                    statutWms = 'En cours de livraison';
+                    statutWms = 'en_transit';
                   } else if (statusId >= 3000) {
-                    statutWms = 'Livré';
+                    statutWms = 'livre';
                   }
                 }
 

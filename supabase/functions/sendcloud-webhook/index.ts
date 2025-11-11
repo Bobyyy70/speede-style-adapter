@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
         pays_code: sendcloudData.country,
         valeur_totale: sendcloudData.total_order_value || 0,
         devise: sendcloudData.currency || 'EUR',
-        statut_wms: 'En attente de réappro',
+        statut_wms: 'en_attente_reappro',
         source: 'sendcloud',
         transporteur: sendcloudData.shipment?.name || null,
       })

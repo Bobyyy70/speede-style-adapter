@@ -422,7 +422,7 @@ Deno.serve(async (req) => {
         ...commandeData,
         ...expediteurData,
         source: commandeData.source || 'n8n-custom',
-        statut_wms: 'En attente de réappro',
+        statut_wms: 'en_attente_reappro',
         devise: commandeData.devise || 'EUR',
         valeur_totale: 0,
         date_creation: new Date().toISOString(),
@@ -710,7 +710,7 @@ Deno.serve(async (req) => {
         commande: {
           id: commandeCreee.id,
           numero_commande: commandeCreee.numero_commande,
-          statut_wms: lignesFormatees.length > 0 ? 'Prêt à préparer' : 'En attente de réappro',
+          statut_wms: lignesFormatees.length > 0 ? 'pret_expedition' : 'en_attente_reappro',
           valeur_totale: valeurTotale,
         },
         lignes: lignesResultats,
