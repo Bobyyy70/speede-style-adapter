@@ -46,6 +46,7 @@ import ReglesFiltrage from "./pages/commandes/ReglesFiltrage";
 import ReglesEmballages from "./pages/preparation/ReglesEmballages";
 import ReglesValidation from "./pages/commandes/ReglesValidation";
 import ValidationsEnAttente from "./pages/commandes/ValidationsEnAttente";
+import DecisionsTransporteurs from "./pages/commandes/DecisionsTransporteurs";
 import SendCloudDocuments from "./pages/integrations/SendCloudDocuments";
 import SendCloudProducts from "./pages/integrations/SendCloudProducts";
 import SendCloudEvents from "./pages/integrations/SendCloudEvents";
@@ -178,6 +179,11 @@ const App = () => (
             <Route path="/commandes/validations-en-attente" element={
               <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                 <ValidationsEnAttente />
+              </ProtectedRoute>
+            } />
+            <Route path="/commandes/decisions-transporteurs" element={
+              <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                <DecisionsTransporteurs />
               </ProtectedRoute>
             } />
             
