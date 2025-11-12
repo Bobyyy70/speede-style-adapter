@@ -113,6 +113,8 @@ const SENDCLOUD_V3_ORDERS_ENDPOINTS = [
 const V3_DATE_PARAM_VARIANTS = ['updated_at__gte', 'updated_at_min', 'from'];
 
 Deno.serve(async (req) => {
+  console.log('[SendCloud Sync] Function started');
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
