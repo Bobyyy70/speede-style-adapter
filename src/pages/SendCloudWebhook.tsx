@@ -1,15 +1,17 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Copy, CheckCircle2, ExternalLink, Webhook, AlertCircle, RefreshCw } from "lucide-react";
+import { Copy, CheckCircle2, ExternalLink, Webhook, AlertCircle, RefreshCw, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
 const SendCloudWebhook = () => {
+  const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sendcloud-webhook`;
 
@@ -71,11 +73,20 @@ const SendCloudWebhook = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Configuration Webhook SendCloud</h1>
-        <p className="text-muted-foreground">
-          Configurez le webhook pour recevoir les commandes en temps réel depuis SendCloud
-        </p>
+      <div className="flex items-center gap-4 mb-6">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Configuration Webhook SendCloud</h1>
+          <p className="text-muted-foreground">
+            Configurez le webhook pour recevoir les commandes en temps réel depuis SendCloud
+          </p>
+        </div>
       </div>
 
       {/* Configuration principale */}
