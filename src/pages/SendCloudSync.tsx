@@ -6,12 +6,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { RefreshCw, Activity, CheckCircle2, XCircle, Clock, TrendingUp, Play, Trash2, CalendarIcon, Download } from "lucide-react";
+import { RefreshCw, Activity, CheckCircle2, XCircle, Clock, TrendingUp, Play, Trash2, CalendarIcon, Download, Plug } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ApiLog {
   id: string;
@@ -62,6 +63,8 @@ export default function SendCloudSync() {
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [startDate, setStartDate] = useState<Date>(new Date("2025-10-07"));
+  const [testing, setTesting] = useState(false);
+  const [connectionResult, setConnectionResult] = useState<any>(null);
 
   useEffect(() => {
     fetchLogs();
@@ -218,6 +221,37 @@ export default function SendCloudSync() {
     toast.success("Logs actualisés");
   };
 
+  const handleTestConnection = async () => {
+    setTesting(true);
+    setConnectionResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('sendcloud-test-connection');
+      
+      if (error) throw error;
+      
+      setConnectionResult(data);
+      
+      if (data.success) {
+        toast.success("Connexion SendCloud réussie !", {
+          description: `Compte: ${data.systemUser?.company || 'N/A'}`
+        });
+      } else {
+        toast.error("Échec de la connexion", {
+          description: data.error || 'Erreur inconnue'
+        });
+      }
+    } catch (error: any) {
+      console.error('Test connection error:', error);
+      toast.error("Erreur lors du test de connexion");
+      setConnectionResult({
+        success: false,
+        error: error.message
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const getStatusBadge = (statut: number | null, errorMessage: string | null) => {
     if (!statut || statut >= 400 || errorMessage) {
       return <Badge variant="destructive">Erreur</Badge>;
@@ -238,11 +272,51 @@ export default function SendCloudSync() {
               Suivi des synchronisations automatiques et appels API
             </p>
           </div>
-          <Button onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            Actualiser
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleTestConnection} disabled={testing} variant="outline">
+              <Plug className={`mr-2 h-4 w-4 ${testing ? "animate-spin" : ""}`} />
+              Test connexion
+            </Button>
+            <Button onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+              Actualiser
+            </Button>
+          </div>
         </div>
+
+        {/* Résultat du test de connexion */}
+        {connectionResult && (
+          <Alert variant={connectionResult.success ? "default" : "destructive"}>
+            <Plug className="h-4 w-4" />
+            <AlertDescription>
+              <div className="space-y-2">
+                <p className="font-semibold">
+                  {connectionResult.success ? '✅ Connexion SendCloud valide' : '❌ Échec de connexion'}
+                </p>
+                {connectionResult.success && (
+                  <>
+                    <div className="text-sm space-y-1">
+                      <p><strong>Compte:</strong> {connectionResult.systemUser?.company || 'N/A'}</p>
+                      <p><strong>Email:</strong> {connectionResult.systemUser?.email || 'N/A'}</p>
+                      <p><strong>Intégrations actives:</strong> {connectionResult.integrations?.length || 0}</p>
+                    </div>
+                    <div className="text-sm">
+                      <p className="font-medium mb-1">Droits API détectés:</p>
+                      <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                        {connectionResult.apiPermissions?.canReadOrders && <li>Lecture des commandes (Orders API v3)</li>}
+                        {connectionResult.apiPermissions?.canReadParcels && <li>Lecture des parcels (Parcels API v2)</li>}
+                        {connectionResult.apiPermissions?.canReadIntegrations && <li>Lecture des intégrations</li>}
+                      </ul>
+                    </div>
+                  </>
+                )}
+                {!connectionResult.success && (
+                  <p className="text-sm text-muted-foreground">{connectionResult.error}</p>
+                )}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Section Synchronisation Automatique */}
         <Card>
