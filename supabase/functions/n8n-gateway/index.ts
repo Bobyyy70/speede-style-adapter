@@ -25,28 +25,78 @@ Deno.serve(async (req) => {
     const path = url.pathname.replace('/n8n-gateway', '');
     const method = req.method;
 
-    // Validate API Key
+    // Initialize Supabase client with Service Role Key for validation
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // Validate API Key and get client_id
     const apiKey = req.headers.get('X-N8N-API-KEY');
-    const N8N_API_KEY = Deno.env.get('N8N_API_KEY');
     
-    if (!apiKey || apiKey !== N8N_API_KEY) {
+    if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized: Invalid or missing X-N8N-API-KEY' }),
+        JSON.stringify({ error: 'Unauthorized: Missing X-N8N-API-KEY header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Initialize Supabase client with Service Role Key (bypasses RLS)
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    // Create admin client with service role key
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-    
-    console.log('[n8n-gateway] Authenticated with Service Role Key');
+    // Check rate limit (60 requests per minute per API key)
+    const { data: rateLimitCheck } = await supabase.rpc('check_rate_limit', {
+      _identifier: `n8n_gateway:${apiKey.substring(0, 8)}`,
+      _max_requests: 60,
+      _window_seconds: 60
+    });
+
+    if (rateLimitCheck && !rateLimitCheck.allowed) {
+      console.warn(`[n8n-gateway] Rate limit exceeded for API key: ${apiKey.substring(0, 8)}`);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Rate limit exceeded', 
+          reason: rateLimitCheck.reason,
+          retry_after: rateLimitCheck.blocked_until 
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate API key and get client_id
+    const { data: validation } = await supabase.rpc('validate_n8n_api_key', {
+      _api_key: apiKey
+    });
+
+    if (!validation || !validation.valid) {
+      console.warn(`[n8n-gateway] Invalid API key attempt: ${apiKey.substring(0, 8)}`);
+      
+      // Log failed attempt
+      await supabase.from('n8n_gateway_audit').insert({
+        api_key_hash: apiKey.substring(0, 16),
+        endpoint: path,
+        method,
+        ip_address: req.headers.get('x-forwarded-for') || 'unknown',
+        success: false,
+        error_message: validation?.error || 'Invalid API key'
+      });
+
+      return new Response(
+        JSON.stringify({ error: validation?.error || 'Unauthorized: Invalid API key' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const clientId = validation.client_id;
+    console.log(`[n8n-gateway] Authenticated for client: ${clientId}`);
+
+    // Log successful request
+    await supabase.from('n8n_gateway_audit').insert({
+      client_id: clientId,
+      endpoint: path,
+      method,
+      ip_address: req.headers.get('x-forwarded-for') || 'unknown',
+      success: true
+    });
 
     // Log request
-    console.log(`[n8n-gateway] ${method} ${path}`);
+    console.log(`[n8n-gateway] ${method} ${path} [Client: ${clientId}]`);
 
     // ========== HEALTH CHECK ==========
     
@@ -222,18 +272,17 @@ Deno.serve(async (req) => {
     // GET /commandes - Liste des commandes avec filtres
     if (path === '/commandes' && method === 'GET') {
       const statut = url.searchParams.get('statut');
-      const clientId = url.searchParams.get('client');
       const limit = parseInt(url.searchParams.get('limite') || '50');
       const offset = parseInt(url.searchParams.get('offset') || '0');
 
       let query = supabase
         .from('commande')
         .select('*')
+        .eq('client_id', clientId)  // Filter by authenticated client
         .order('date_creation', { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (statut) query = query.eq('statut_wms', statut);
-      if (clientId) query = query.eq('client_id', clientId);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -251,6 +300,7 @@ Deno.serve(async (req) => {
         .from('commande')
         .select('*, ligne_commande(*)')
         .eq('id', id)
+        .eq('client_id', clientId)  // Filter by authenticated client
         .single();
 
       if (error) throw error;
@@ -421,6 +471,7 @@ Deno.serve(async (req) => {
       const commande = {
         ...commandeData,
         ...expediteurData,
+        client_id: clientId,  // Inject authenticated client_id
         source: commandeData.source || 'n8n-custom',
         statut_wms: 'en_attente_reappro',
         devise: commandeData.devise || 'EUR',
@@ -440,6 +491,7 @@ Deno.serve(async (req) => {
         .from('commande')
         .select('id')
         .eq('numero_commande', commande.numero_commande)
+        .eq('client_id', clientId)  // Filter by authenticated client
         .single();
 
       if (existing) {
@@ -738,6 +790,7 @@ Deno.serve(async (req) => {
         .from('commande')
         .update(body)
         .eq('id', id)
+        .eq('client_id', clientId)  // Filter by authenticated client
         .select()
         .single();
 
@@ -750,16 +803,15 @@ Deno.serve(async (req) => {
 
     // GET /produits - Liste des produits
     if (path === '/produits' && method === 'GET') {
-      const clientId = url.searchParams.get('client');
       const stockBas = url.searchParams.get('stock_bas');
       const limit = parseInt(url.searchParams.get('limite') || '100');
 
       let query = supabase
         .from('produit')
         .select('*')
+        .eq('client_id', clientId)  // Filter by authenticated client
         .limit(limit);
 
-      if (clientId) query = query.eq('client_id', clientId);
       if (stockBas === 'true') {
         query = query.or('stock_actuel.lt.stock_minimum');
       }
@@ -780,6 +832,7 @@ Deno.serve(async (req) => {
         .from('produit')
         .select('*')
         .eq('id', id)
+        .eq('client_id', clientId)  // Filter by authenticated client
         .single();
 
       if (error) throw error;
@@ -795,7 +848,7 @@ Deno.serve(async (req) => {
 
       const { data, error } = await supabase
         .from('produit')
-        .insert(body)
+        .insert({ ...body, client_id: clientId })  // Inject authenticated client_id
         .select()
         .single();
 
@@ -816,6 +869,7 @@ Deno.serve(async (req) => {
         .from('produit')
         .update(body)
         .eq('id', id)
+        .eq('client_id', clientId)  // Filter by authenticated client
         .select()
         .single();
 
@@ -835,6 +889,7 @@ Deno.serve(async (req) => {
       let query = supabase
         .from('mouvement_stock')
         .select('*')
+        .eq('client_id', clientId)  // Filter by authenticated client
         .order('date_mouvement', { ascending: false })
         .limit(limit);
 
@@ -855,7 +910,7 @@ Deno.serve(async (req) => {
 
       const { data, error } = await supabase
         .from('mouvement_stock')
-        .insert(body)
+        .insert({ ...body, client_id: clientId })  // Inject authenticated client_id
         .select()
         .single();
 
@@ -869,17 +924,16 @@ Deno.serve(async (req) => {
 
     // GET /retours - Liste des retours
     if (path === '/retours' && method === 'GET') {
-      const clientId = url.searchParams.get('client');
       const statut = url.searchParams.get('statut');
       const limit = parseInt(url.searchParams.get('limite') || '50');
 
       let query = supabase
         .from('retour_produit')
         .select('*, ligne_retour_produit(*)')
+        .eq('client_id', clientId)  // Filter by authenticated client
         .order('date_creation', { ascending: false })
         .limit(limit);
 
-      if (clientId) query = query.eq('client_id', clientId);
       if (statut) query = query.eq('statut_retour', statut);
 
       const { data, error } = await query;
@@ -896,7 +950,7 @@ Deno.serve(async (req) => {
 
       const { data, error } = await supabase
         .from('retour_produit')
-        .insert(body)
+        .insert({ ...body, client_id: clientId })  // Inject authenticated client_id
         .select()
         .single();
 
@@ -1115,12 +1169,13 @@ Deno.serve(async (req) => {
       }
 
       // Appeler l'orchestrateur
+      const orchestratorApiKey = Deno.env.get('N8N_API_KEY') || '';
       try {
         const orchestratorResponse = await fetch(ORCHESTRATOR_WEBHOOK, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-N8N-API-KEY': N8N_API_KEY,
+            'X-N8N-API-KEY': orchestratorApiKey,
           },
           body: JSON.stringify({
             message,

@@ -2289,6 +2289,51 @@ export type Database = {
           },
         ]
       }
+      n8n_client_keys: {
+        Row: {
+          actif: boolean
+          api_key_hash: string
+          client_id: string
+          date_creation: string
+          derniere_utilisation: string | null
+          description: string | null
+          id: string
+        }
+        Insert: {
+          actif?: boolean
+          api_key_hash: string
+          client_id: string
+          date_creation?: string
+          derniere_utilisation?: string | null
+          description?: string | null
+          id?: string
+        }
+        Update: {
+          actif?: boolean
+          api_key_hash?: string
+          client_id?: string
+          date_creation?: string
+          derniere_utilisation?: string | null
+          description?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "n8n_client_keys_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "n8n_client_keys_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
       n8n_execution_log: {
         Row: {
           date_execution: string | null
@@ -2333,6 +2378,57 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "n8n_workflows"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      n8n_gateway_audit: {
+        Row: {
+          api_key_hash: string | null
+          client_id: string | null
+          endpoint: string
+          error_message: string | null
+          id: string
+          ip_address: string | null
+          method: string
+          success: boolean
+          timestamp: string
+        }
+        Insert: {
+          api_key_hash?: string | null
+          client_id?: string | null
+          endpoint: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          method: string
+          success: boolean
+          timestamp?: string
+        }
+        Update: {
+          api_key_hash?: string | null
+          client_id?: string | null
+          endpoint?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          method?: string
+          success?: boolean
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "n8n_gateway_audit_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "n8n_gateway_audit_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -2778,6 +2874,30 @@ export type Database = {
           nom_complet?: string | null
           tabs_access?: string[] | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      rate_limits: {
+        Row: {
+          blocked_until: string | null
+          identifier: string
+          last_request: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          blocked_until?: string | null
+          identifier: string
+          last_request?: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          blocked_until?: string | null
+          identifier?: string
+          last_request?: string
+          request_count?: number
+          window_start?: string
         }
         Relationships: []
       }
@@ -5079,6 +5199,14 @@ export type Database = {
         Returns: number
       }
       can_client_create_user: { Args: { _client_id: string }; Returns: boolean }
+      check_rate_limit: {
+        Args: {
+          _identifier: string
+          _max_requests: number
+          _window_seconds: number
+        }
+        Returns: Json
+      }
       check_unanimite_suggestion: {
         Args: { p_suggestion_id: string }
         Returns: Json
@@ -5237,6 +5365,7 @@ export type Database = {
         }
         Returns: Json
       }
+      validate_n8n_api_key: { Args: { _api_key: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "operateur" | "gestionnaire" | "client"
