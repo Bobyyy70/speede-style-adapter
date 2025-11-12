@@ -267,6 +267,29 @@ export default function SendCloudSync() {
           <CardContent>
             {syncLogs.length > 0 && (
               <div className="space-y-4">
+                {/* Alerte si 0 commandes trouvées avec erreur API */}
+                {syncLogs[0].nb_commandes_trouvees === 0 && syncLogs[0].statut === 'error' && (
+                  <div className="bg-destructive/10 border border-destructive rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <XCircle className="h-5 w-5 text-destructive mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm text-destructive">Aucune commande trouvée - Erreur API</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {syncLogs[0].erreur_message || 'Erreur inconnue lors de la connexion à SendCloud'}
+                        </p>
+                        <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                          <p><strong>Solutions possibles :</strong></p>
+                          <ul className="list-disc list-inside space-y-1 ml-2">
+                            <li>Vérifiez vos clés API (SENDCLOUD_API_PUBLIC_KEY / SECRET_KEY) dans les paramètres</li>
+                            <li>Assurez-vous que l'API Orders est activée sur votre compte SendCloud</li>
+                            <li>Vérifiez que votre compte SendCloud contient des commandes dans la période recherchée</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
                   <div className="flex-1">
                     <p className="text-sm font-medium">Dernière synchronisation</p>

@@ -30,6 +30,15 @@ interface SendCloudOrder {
   created_at: string;
 }
 
+// Liste des endpoints à tester
+const SENDCLOUD_ENDPOINTS = [
+  'https://panel.sendcloud.sc/api/v3/orders',
+  'https://api.sendcloud.dev/api/v3/orders',
+];
+
+// Liste des syntaxes de paramètre de date à tester
+const DATE_PARAM_VARIANTS = ['updated_at__gte', 'updated_at_min', 'from'];
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -40,8 +49,12 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const sendcloudPublicKey = Deno.env.get('SENDCLOUD_API_PUBLIC_KEY')!;
-    const sendcloudSecretKey = Deno.env.get('SENDCLOUD_API_SECRET_KEY')!;
+    const sendcloudPublicKey = Deno.env.get('SENDCLOUD_API_PUBLIC_KEY');
+    const sendcloudSecretKey = Deno.env.get('SENDCLOUD_API_SECRET_KEY');
+
+    if (!sendcloudPublicKey || !sendcloudSecretKey) {
+      throw new Error('SENDCLOUD_API_PUBLIC_KEY ou SENDCLOUD_API_SECRET_KEY manquant dans les variables d\'environnement');
+    }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -55,100 +68,244 @@ Deno.serve(async (req) => {
     // Calculer la fenêtre temporelle selon le mode
     let dateMin: Date | null = null;
     if (mode === 'full') {
-      // Mode full: 90 jours en arrière
       dateMin = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
       console.log(`[SendCloud Sync] Full scan mode: fetching orders from last 90 days`);
     } else if (customStartDate) {
-      // Date personnalisée fournie (format YYYY-MM-DD)
       dateMin = new Date(customStartDate);
       console.log(`[SendCloud Sync] Using custom start date: ${customStartDate}`);
     } else if (mode === 'incremental') {
-      // Dernières 5 minutes pour sync incrémentale
       dateMin = new Date(Date.now() - 5 * 60 * 1000);
     } else {
-      // Dernières 24h pour sync initiale
       dateMin = new Date(Date.now() - 24 * 60 * 60 * 1000);
     }
     const dateMinISO = dateMin ? dateMin.toISOString() : null;
 
-    // Utiliser l'API v3 de SendCloud (Orders API) avec stratégie multi-critères
     const authHeader = 'Basic ' + btoa(`${sendcloudPublicKey}:${sendcloudSecretKey}`);
     
-    console.log(`[SendCloud Sync] Fetching orders with multi-criteria strategy${dateMinISO ? ` since ${dateMinISO}` : ' (no date filter)'}...`);
+    console.log(`[SendCloud Sync] Fetching orders${dateMinISO ? ` since ${dateMinISO}` : ' (no date filter)'}...`);
+
+    // Helper pour logger les appels API
+    const logApiCall = async (endpoint: string, statusCode: number | null, errorMsg: string | null, duration: number) => {
+      try {
+        await supabase.from('sendcloud_api_log').insert({
+          endpoint,
+          methode: 'GET',
+          statut_http: statusCode,
+          error_message: errorMsg,
+          duree_ms: duration,
+          date_appel: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.error('[SendCloud Sync] Failed to log API call:', e);
+      }
+    };
+
+    // Fonction pour tester un endpoint avec différents paramètres de date
+    const fetchFromEndpoint = async (baseUrl: string, criteria: string, page: number): Promise<{
+      orders: SendCloudOrder[];
+      success: boolean;
+      statusCode: number | null;
+      error: string | null;
+    }> => {
+      // D'abord essayer sans filtre de date pour le critère "all"
+      if (criteria === '') {
+        const url = `${baseUrl}?page=${page}&page_size=100`;
+        const callStart = Date.now();
+        
+        try {
+          console.log(`[SendCloud Sync] API Call [all] page ${page}: ${url}`);
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Authorization': authHeader,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          const callDuration = Date.now() - callStart;
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            await logApiCall(url, response.status, errorText, callDuration);
+            return { orders: [], success: false, statusCode: response.status, error: errorText };
+          }
+
+          const data = await response.json();
+          const orders = data.orders || data.data?.orders || data.results || [];
+          
+          await logApiCall(url, response.status, null, callDuration);
+          console.log(`[SendCloud Sync] [all] page ${page}: ${orders.length} orders received`);
+          
+          return { orders, success: true, statusCode: response.status, error: null };
+        } catch (err) {
+          const callDuration = Date.now() - callStart;
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          await logApiCall(url, null, errorMsg, callDuration);
+          return { orders: [], success: false, statusCode: null, error: errorMsg };
+        }
+      }
+
+      // Pour les critères avec filtres, essayer différentes syntaxes de date
+      for (const dateParam of DATE_PARAM_VARIANTS) {
+        const dateFilter = dateMinISO ? `&${dateParam}=${dateMinISO}` : '';
+        const url = `${baseUrl}?${criteria}${dateFilter}&page=${page}&page_size=100`;
+        const callStart = Date.now();
+        
+        try {
+          console.log(`[SendCloud Sync] API Call [${criteria.split('=')[0]}] page ${page} (${dateParam}): ${url}`);
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Authorization': authHeader,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          const callDuration = Date.now() - callStart;
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            await logApiCall(url, response.status, errorText, callDuration);
+            
+            // Si 400/422, essayer la prochaine syntaxe de date
+            if (response.status === 400 || response.status === 422) {
+              console.log(`[SendCloud Sync] ${dateParam} not accepted, trying next variant...`);
+              continue;
+            }
+            
+            return { orders: [], success: false, statusCode: response.status, error: errorText };
+          }
+
+          const data = await response.json();
+          const orders = data.orders || data.data?.orders || data.results || [];
+          
+          await logApiCall(url, response.status, null, callDuration);
+          console.log(`[SendCloud Sync] [${criteria.split('=')[0]}] page ${page}: ${orders.length} orders received`);
+          
+          return { orders, success: true, statusCode: response.status, error: null };
+        } catch (err) {
+          const callDuration = Date.now() - callStart;
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          await logApiCall(url, null, errorMsg, callDuration);
+          
+          // Essayer la prochaine syntaxe
+          continue;
+        }
+      }
+      
+      return { orders: [], success: false, statusCode: null, error: 'All date parameter variants failed' };
+    };
 
     const allOrders: SendCloudOrder[] = [];
+    let workingEndpoint: string | null = null;
+    let lastError: { statusCode: number | null; message: string } | null = null;
     
-    // Stratégie multi-critères pour capturer toutes les commandes utiles
+    // Stratégies de collecte : d'abord "all" (sans filtres restrictifs), puis critères spécifiques
     const searchCriteria = [
+      { label: 'all', params: '' }, // Nouveau : récupérer TOUTES les commandes
       { label: 'unshipped', params: 'shipment_status=unshipped' },
       { label: 'non-finalisées', params: 'is_fully_created=false' },
       { label: 'avec-erreurs', params: 'contains_errors=true' },
     ];
     
-    for (const criteria of searchCriteria) {
-      let page = 1;
-      let hasMorePages = true;
+    // Tester les endpoints jusqu'à en trouver un qui fonctionne
+    endpointLoop: for (const endpoint of SENDCLOUD_ENDPOINTS) {
+      console.log(`[SendCloud Sync] Testing endpoint: ${endpoint}`);
+      
+      for (const criteria of searchCriteria) {
+        let page = 1;
+        let hasMorePages = true;
+        let criteriaSuccess = false;
 
-      while (hasMorePages) {
-        // Utiliser updated_at au lieu de created_at pour capturer les modifications
-        const dateFilter = dateMinISO ? `&updated_at__gte=${dateMinISO}` : '';
-        const sendcloudUrl = `https://panel.sendcloud.sc/api/v3/orders?${criteria.params}${dateFilter}&page=${page}&page_size=100`;
-        
-        console.log(`[SendCloud Sync] API Call [${criteria.label}] page ${page}: ${sendcloudUrl}`);
-
-        const sendcloudResponse = await fetch(sendcloudUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': authHeader,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!sendcloudResponse.ok) {
-          const errorText = await sendcloudResponse.text();
-          console.error(`[SendCloud Sync] Error fetching ${criteria.label}:`, errorText);
-          break;
-        }
-
-        const sendcloudData = await sendcloudResponse.json();
-        // Parsing robuste: essayer plusieurs chemins
-        const pageOrders = sendcloudData.orders || sendcloudData.data?.orders || sendcloudData.results || [];
-        
-        console.log(`[SendCloud Sync] ${criteria.label} page ${page}: ${pageOrders.length} orders received`);
-        
-        if (pageOrders.length === 0) {
-          hasMorePages = false;
-        } else {
-          allOrders.push(...pageOrders);
-          page++;
+        while (hasMorePages && page <= 50) {
+          const result = await fetchFromEndpoint(endpoint, criteria.params, page);
           
-          if (page > 50) {
-            console.log(`[SendCloud Sync] Safety limit reached for ${criteria.label}`);
+          if (!result.success) {
+            lastError = { statusCode: result.statusCode, message: result.error || 'Unknown error' };
+            
+            // Si 401/403, cet endpoint ne fonctionne pas du tout, passer au suivant
+            if (result.statusCode === 401 || result.statusCode === 403) {
+              console.log(`[SendCloud Sync] ${endpoint} returned ${result.statusCode}, trying next endpoint...`);
+              continue endpointLoop;
+            }
+            
+            // Si 404, essayer le prochain critère
+            if (result.statusCode === 404) {
+              console.log(`[SendCloud Sync] 404 on ${criteria.label}, trying next criteria...`);
+              break;
+            }
+            
+            // Autres erreurs : continuer quand même avec les autres critères
+            break;
+          }
+          
+          criteriaSuccess = true;
+          workingEndpoint = endpoint;
+          
+          if (result.orders.length === 0) {
             hasMorePages = false;
+          } else {
+            allOrders.push(...result.orders);
+            page++;
           }
         }
+        
+        // Si un critère a fonctionné, on sait que cet endpoint est bon
+        if (criteriaSuccess) {
+          workingEndpoint = endpoint;
+        }
+      }
+      
+      // Si on a trouvé un endpoint qui fonctionne, ne pas essayer les autres
+      if (workingEndpoint) {
+        break;
       }
     }
 
-    // Dédupliquer par order.id en mémoire (au cas où)
+    // Si aucun endpoint n'a fonctionné, retourner une erreur explicite
+    if (!workingEndpoint && allOrders.length === 0) {
+      const errorMessage = lastError 
+        ? `SendCloud API Error (${lastError.statusCode || 'Network'}): ${lastError.message}. Vérifiez vos clés API (SENDCLOUD_API_PUBLIC_KEY / SECRET_KEY) et que l'API Orders est activée sur votre compte SendCloud.`
+        : 'Impossible de se connecter à l\'API SendCloud. Tous les endpoints ont échoué.';
+      
+      console.error(`[SendCloud Sync] ${errorMessage}`);
+      
+      await supabase.from('sendcloud_sync_log').insert({
+        statut: 'error',
+        nb_commandes_trouvees: 0,
+        nb_commandes_creees: 0,
+        nb_commandes_existantes: 0,
+        nb_erreurs: 1,
+        duree_ms: Date.now() - startTime,
+        mode_sync: mode,
+        erreur_message: errorMessage,
+      });
+
+      return new Response(
+        JSON.stringify({ success: false, error: errorMessage }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    // Dédupliquer par order.id
     const uniqueOrders = Array.from(
       new Map(allOrders.map(o => [o.id, o])).values()
     );
 
     const orders: SendCloudOrder[] = uniqueOrders;
 
-    console.log(`[SendCloud Sync] Found ${orders.length} orders from SendCloud`);
+    console.log(`[SendCloud Sync] Found ${orders.length} orders from SendCloud (endpoint: ${workingEndpoint})`);
 
     if (orders.length === 0) {
       const duration = Date.now() - startTime;
       
-      // Log success avec 0 commandes
       await supabase.from('sendcloud_sync_log').insert({
         statut: 'success',
         nb_commandes_trouvees: 0,
         nb_commandes_creees: 0,
         nb_commandes_existantes: 0,
         duree_ms: duration,
+        mode_sync: mode,
       });
 
       return new Response(
@@ -163,7 +320,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Vérifier quelles commandes existent déjà avec deux requêtes séparées
+    // Vérifier quelles commandes existent déjà
     const sendcloudIds = orders.map(o => o.id.toString());
     const orderNumbers = orders.map(o => o.order_number);
 
@@ -183,7 +340,7 @@ Deno.serve(async (req) => {
       ...(byOrderNumbers.data || []).map((c: any) => c.numero_commande),
     ]);
 
-    // Récupérer les commandes déjà expédiées/archivées/préparées à exclure
+    // Récupérer les commandes finales à exclure
     const { data: excludedCommandes } = await supabase
       .from('commande')
       .select('sendcloud_id, numero_commande')
@@ -194,7 +351,7 @@ Deno.serve(async (req) => {
       ...(excludedCommandes || []).map((c: any) => c.numero_commande),
     ].filter(Boolean));
 
-    // Filtrer les nouvelles commandes (non existantes et non exclues)
+    // Filtrer les nouvelles commandes
     const newOrders = orders.filter(order => 
       !existingSet.has(order.id.toString()) && 
       !existingSet.has(order.order_number) &&
@@ -209,7 +366,6 @@ Deno.serve(async (req) => {
     const errors: string[] = [];
 
     if (newOrders.length > 0) {
-      // Appeler la fonction batch pour créer les commandes
       const { data: batchResult, error: batchError } = await supabase.functions.invoke('sendcloud-orders-batch', {
         body: { orders: newOrders }
       });
@@ -230,7 +386,6 @@ Deno.serve(async (req) => {
     const duration = Date.now() - startTime;
     const statut = nbErrors > 0 ? (nbCreated > 0 ? 'partial' : 'error') : 'success';
 
-    // Logger le résultat avec les nouveaux champs
     await supabase.from('sendcloud_sync_log').insert({
       statut,
       nb_commandes_trouvees: orders.length,
@@ -242,6 +397,7 @@ Deno.serve(async (req) => {
       erreur_message: errors.length > 0 ? errors.join('; ') : null,
       details: {
         mode: mode,
+        endpoint_used: workingEndpoint,
         orders_found: orders.length,
         orders_new: newOrders.length,
         orders_existing: orders.length - newOrders.length,
@@ -261,6 +417,7 @@ Deno.serve(async (req) => {
         existing: orders.length - newOrders.length,
         errors: nbErrors,
         duration_ms: duration,
+        endpoint_used: workingEndpoint,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
@@ -274,7 +431,6 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Logger l'erreur
     await supabase.from('sendcloud_sync_log').insert({
       statut: 'error',
       nb_commandes_trouvees: 0,
@@ -282,6 +438,7 @@ Deno.serve(async (req) => {
       nb_commandes_existantes: 0,
       nb_erreurs: 1,
       duree_ms: duration,
+      mode_sync: 'unknown',
       erreur_message: errorMessage,
     });
 
