@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Package } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 
@@ -33,6 +33,7 @@ export default function MesMouvements() {
   const { user, getViewingClientId } = useAuth();
   const [mouvements, setMouvements] = useState<Mouvement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [noClientId, setNoClientId] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("tous");
 
@@ -56,7 +57,8 @@ export default function MesMouvements() {
       }
 
       if (!clientId) {
-        toast.error("Client non identifié");
+        setNoClientId(true);
+        setLoading(false);
         return;
       }
 
@@ -106,6 +108,40 @@ export default function MesMouvements() {
     const config = variants[type] || { variant: "outline", label: type };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
+
+  // If no client_id, show error message
+  if (noClientId) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Mes Mouvements de Stock</h1>
+            <p className="text-muted-foreground">
+              Consultez l'historique des mouvements de vos produits
+            </p>
+          </div>
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center justify-center text-center space-y-4 py-8">
+                <div className="rounded-full bg-red-100 p-3">
+                  <Package className="h-8 w-8 text-red-600" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold text-red-900">Compte Non Configuré</h2>
+                  <p className="text-red-700 max-w-md">
+                    Votre compte n'est pas encore lié à un client. Vous ne pouvez pas accéder à vos mouvements pour le moment.
+                  </p>
+                  <p className="text-sm text-red-600 mt-4">
+                    Veuillez contacter l'administrateur à <strong>admin@speedelog.net</strong> pour configurer votre compte.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

@@ -29,6 +29,7 @@ export default function MesCommandes() {
   const { user, getViewingClientId } = useAuth();
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
+  const [noClientId, setNoClientId] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     enAttente: 0,
@@ -56,7 +57,8 @@ export default function MesCommandes() {
       }
 
       if (!clientId) {
-        toast.error("Client non identifié");
+        setNoClientId(true);
+        setLoading(false);
         return;
       }
 
@@ -95,6 +97,42 @@ export default function MesCommandes() {
     };
     return <Badge variant={variants[statut] || "outline"}>{label}</Badge>;
   };
+
+  // If no client_id, show error message
+  if (noClientId) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Mes Commandes</h1>
+              <p className="text-muted-foreground">
+                Consultez toutes vos commandes et leur statut
+              </p>
+            </div>
+          </div>
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center justify-center text-center space-y-4 py-8">
+                <div className="rounded-full bg-red-100 p-3">
+                  <Package className="h-8 w-8 text-red-600" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold text-red-900">Compte Non Configuré</h2>
+                  <p className="text-red-700 max-w-md">
+                    Votre compte n'est pas encore lié à un client. Vous ne pouvez pas accéder à vos commandes pour le moment.
+                  </p>
+                  <p className="text-sm text-red-600 mt-4">
+                    Veuillez contacter l'administrateur à <strong>admin@speedelog.net</strong> pour configurer votre compte.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
