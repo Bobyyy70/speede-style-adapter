@@ -15,6 +15,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Truck, Package, Shield, FileSignature, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { RelayPointSelector } from "./RelayPointSelector";
 
 interface SelectTransportServiceProps {
   commandeId: string;
@@ -34,6 +35,7 @@ export function SelectTransportService({
   const [insuranceAmount, setInsuranceAmount] = useState<number>(0);
   const [withSignature, setWithSignature] = useState(false);
   const [relayPointId, setRelayPointId] = useState<string>("");
+  const [showRelaySelector, setShowRelaySelector] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Fetch available transport services
@@ -198,21 +200,55 @@ export function SelectTransportService({
 
         {/* Relay Point Option */}
         <div className="space-y-2">
-          <Label htmlFor="relay" className="flex items-center gap-2">
+          <Label className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-muted-foreground" />
             Point relais (optionnel)
           </Label>
-          <Input
-            id="relay"
-            type="text"
-            value={relayPointId}
-            onChange={(e) => setRelayPointId(e.target.value)}
-            placeholder="ID du point relais"
-          />
+          {relayPointId ? (
+            <div className="flex items-center gap-2">
+              <Input
+                type="text"
+                value={relayPointId}
+                disabled
+                className="flex-1"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setRelayPointId("");
+                  setShowRelaySelector(false);
+                }}
+              >
+                Retirer
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setShowRelaySelector(!showRelaySelector)}
+            >
+              <MapPin className="h-4 w-4 mr-2" />
+              Choisir un point relais
+            </Button>
+          )}
           <p className="text-xs text-muted-foreground">
             Laissez vide pour une livraison à domicile
           </p>
         </div>
+
+        {/* Relay Point Selector */}
+        {showRelaySelector && (
+          <RelayPointSelector
+            onSelect={(point) => {
+              setRelayPointId(point.id);
+              setShowRelaySelector(false);
+            }}
+            selectedPointId={relayPointId}
+            defaultPostalCode={paysDestination === "FR" ? "" : ""}
+          />
+        )}
 
         {/* Info Box */}
         {poidsTotal > 0 && (
