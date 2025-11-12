@@ -321,8 +321,61 @@ Deno.serve(async (req) => {
           }
         }
 
+        // ============================================================
+        // ✅ ENRICHMENT: Fetch full details for each parcel
+        // ============================================================
         if (allParcels.length > 0) {
-          console.log(`✓ V2 Parcels: ${allParcels.length} found`);
+          console.log(`✓ V2 Parcels: ${allParcels.length} found, enriching with full details...`);
+          
+          const enrichedParcels: SendCloudParcel[] = [];
+          let enrichedCount = 0;
+          let enrichErrors = 0;
+          
+          for (const parcel of allParcels) {
+            try {
+              const detailUrl = `${SENDCLOUD_V2_PARCELS_ENDPOINT}/${parcel.id}`;
+              const detailCallStart = Date.now();
+              
+              const detailResponse = await fetch(detailUrl, {
+                method: 'GET',
+                headers: { 'Authorization': authHeader, 'Accept': 'application/json' }
+              });
+              
+              const detailDuration = Date.now() - detailCallStart;
+              
+              if (detailResponse.ok) {
+                const detailData = await detailResponse.json();
+                const fullParcel = detailData.parcel;
+                
+                // Log detailed info
+                console.log(`[Parcel ${parcel.id}] ✓ Enriched:`);
+                console.log(`  Carrier: ${fullParcel.carrier?.name || 'N/A'}`);
+                console.log(`  Shipment: ${fullParcel.shipment?.name || 'N/A'}`);
+                console.log(`  Weight: ${fullParcel.weight || 'N/A'}kg`);
+                console.log(`  Items: ${fullParcel.parcel_items?.length || 0}`);
+                console.log(`  Sender: ${fullParcel.sender_address?.company_name || fullParcel.sender_address?.name || 'N/A'}`);
+                
+                await logApiCall(detailUrl, 200, null, detailDuration, { parcel_id: parcel.id, strategy: 'parcel_detail' });
+                
+                enrichedParcels.push(fullParcel);
+                enrichedCount++;
+              } else {
+                const errorText = await detailResponse.text();
+                console.warn(`[Parcel ${parcel.id}] ⚠️ Detail fetch failed (${detailResponse.status}), using summary data`);
+                await logApiCall(detailUrl, detailResponse.status, errorText, detailDuration, { parcel_id: parcel.id, strategy: 'parcel_detail' });
+                
+                enrichedParcels.push(parcel); // Fallback to summary
+                enrichErrors++;
+              }
+            } catch (error: any) {
+              console.warn(`[Parcel ${parcel.id}] ⚠️ Detail fetch error: ${error.message}, using summary data`);
+              enrichedParcels.push(parcel); // Fallback to summary
+              enrichErrors++;
+            }
+          }
+          
+          allParcels = enrichedParcels;
+          console.log(`✓ Enrichment complete: ${enrichedCount} fully enriched, ${enrichErrors} fallback to summary`);
         }
       } catch (error: any) {
         const errMsg = error?.message || String(error);
@@ -453,6 +506,9 @@ Deno.serve(async (req) => {
           
           // ✅ Sender address
           sender_address: parcel.sender_address,
+          
+          // ✅ POIDS RÉEL ET VOLUMÉTRIQUE
+          weight: parcel.weight,
           
           // ✅ Enriched products with customs data
           order_products: (parcel.parcel_items || []).map((item: any) => ({

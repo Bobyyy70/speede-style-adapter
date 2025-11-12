@@ -242,6 +242,9 @@ Deno.serve(async (req) => {
             label_url: (sendcloudData as any).label_url || null,
             sendcloud_shipment_id: String(sendcloudData.id),
             
+            // ✅ POIDS RÉEL (depuis parcel.weight)
+            poids_reel_kg: (sendcloudData as any).weight ? parseFloat(String((sendcloudData as any).weight)) : null,
+            
             // ✅ Expéditeur (depuis sender_address du parcel OU config par défaut)
             expediteur_nom: (sendcloudData as any).sender_address?.name || expediteurDefault?.nom || null,
             expediteur_entreprise: (sendcloudData as any).sender_address?.company_name || expediteurDefault?.entreprise || null,
