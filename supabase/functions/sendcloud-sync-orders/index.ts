@@ -327,53 +327,76 @@ Deno.serve(async (req) => {
         // ✅ ENRICHMENT: Fetch full details for each parcel
         // ============================================================
         if (allParcels.length > 0) {
-          console.log(`✓ V2 Parcels: ${allParcels.length} found, enriching with full details...`);
+          console.log(`✓ V2 Parcels: ${allParcels.length} found, enriching with full details in parallel...`);
           
           const enrichedParcels: SendCloudParcel[] = [];
           let enrichedCount = 0;
           let enrichErrors = 0;
           
-          for (const parcel of allParcels) {
-            try {
-              const detailUrl = `${SENDCLOUD_V2_PARCELS_ENDPOINT}/${parcel.id}`;
-              const detailCallStart = Date.now();
-              
-              const detailResponse = await fetch(detailUrl, {
-                method: 'GET',
-                headers: { 'Authorization': authHeader, 'Accept': 'application/json' }
-              });
-              
-              const detailDuration = Date.now() - detailCallStart;
-              
-              if (detailResponse.ok) {
-                const detailData = await detailResponse.json();
-                const fullParcel = detailData.parcel;
+          // Process in parallel batches of 10 to avoid timeout
+          const BATCH_SIZE = 10;
+          const batches = [];
+          for (let i = 0; i < allParcels.length; i += BATCH_SIZE) {
+            batches.push(allParcels.slice(i, i + BATCH_SIZE));
+          }
+          
+          console.log(`Processing ${batches.length} batches of up to ${BATCH_SIZE} parcels`);
+          
+          for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+            const batch = batches[batchIndex];
+            console.log(`[Batch ${batchIndex + 1}/${batches.length}] Processing ${batch.length} parcels...`);
+            
+            const batchPromises = batch.map(async (parcel) => {
+              try {
+                const detailUrl = `${SENDCLOUD_V2_PARCELS_ENDPOINT}/${parcel.id}`;
+                const detailCallStart = Date.now();
                 
-                // Log detailed info
-                console.log(`[Parcel ${parcel.id}] ✓ Enriched:`);
-                console.log(`  Carrier: ${fullParcel.carrier?.name || 'N/A'}`);
-                console.log(`  Shipment: ${fullParcel.shipment?.name || 'N/A'}`);
-                console.log(`  Weight: ${fullParcel.weight || 'N/A'}kg`);
-                console.log(`  Items: ${fullParcel.parcel_items?.length || 0}`);
-                console.log(`  Sender: ${fullParcel.sender_address?.company_name || fullParcel.sender_address?.name || 'N/A'}`);
+                const detailResponse = await fetch(detailUrl, {
+                  method: 'GET',
+                  headers: { 'Authorization': authHeader, 'Accept': 'application/json' }
+                });
                 
-                await logApiCall(detailUrl, 200, null, detailDuration, { parcel_id: parcel.id, strategy: 'parcel_detail' });
+                const detailDuration = Date.now() - detailCallStart;
                 
-                enrichedParcels.push(fullParcel);
+                if (detailResponse.ok) {
+                  const detailData = await detailResponse.json();
+                  const fullParcel = detailData.parcel;
+                  
+                  console.log(`[Parcel ${parcel.id}] ✓ Enriched:`);
+                  console.log(`  Carrier: ${fullParcel.carrier?.name || 'N/A'}`);
+                  console.log(`  Shipment: ${fullParcel.shipment?.name || 'N/A'}`);
+                  console.log(`  Weight: ${fullParcel.weight || 'N/A'}kg`);
+                  console.log(`  Items: ${fullParcel.parcel_items?.length || 0}`);
+                  console.log(`  Sender: ${fullParcel.sender_address?.company_name || fullParcel.sender_address?.name || 'N/A'}`);
+                  
+                  await logApiCall(detailUrl, 200, null, detailDuration, { parcel_id: parcel.id, strategy: 'parcel_detail' });
+                  
+                  return { success: true, parcel: fullParcel };
+                } else {
+                  const errorText = await detailResponse.text();
+                  console.warn(`[Parcel ${parcel.id}] ⚠️ Detail fetch failed (${detailResponse.status}), using summary data`);
+                  await logApiCall(detailUrl, detailResponse.status, errorText, detailDuration, { parcel_id: parcel.id, strategy: 'parcel_detail' });
+                  
+                  return { success: false, parcel }; // Fallback to summary
+                }
+              } catch (error: any) {
+                console.warn(`[Parcel ${parcel.id}] ⚠️ Detail fetch error: ${error.message}, using summary data`);
+                return { success: false, parcel }; // Fallback to summary
+              }
+            });
+            
+            const batchResults = await Promise.all(batchPromises);
+            
+            batchResults.forEach(result => {
+              if (result.success) {
                 enrichedCount++;
               } else {
-                const errorText = await detailResponse.text();
-                console.warn(`[Parcel ${parcel.id}] ⚠️ Detail fetch failed (${detailResponse.status}), using summary data`);
-                await logApiCall(detailUrl, detailResponse.status, errorText, detailDuration, { parcel_id: parcel.id, strategy: 'parcel_detail' });
-                
-                enrichedParcels.push(parcel); // Fallback to summary
                 enrichErrors++;
               }
-            } catch (error: any) {
-              console.warn(`[Parcel ${parcel.id}] ⚠️ Detail fetch error: ${error.message}, using summary data`);
-              enrichedParcels.push(parcel); // Fallback to summary
-              enrichErrors++;
-            }
+              enrichedParcels.push(result.parcel);
+            });
+            
+            console.log(`[Batch ${batchIndex + 1}/${batches.length}] Complete: ${enrichedCount} enriched, ${enrichErrors} errors so far`);
           }
           
           allParcels = enrichedParcels;
