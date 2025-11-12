@@ -147,16 +147,26 @@ export default function SendCloudSync() {
   const handleBackfill = async () => {
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sendcloud-backfill-products', {
-        body: { limit: 200 }
+      toast.info("Démarrage de la réparation des produits...", {
+        description: "Récupération depuis SendCloud en cours",
       });
+
+      const { data, error } = await supabase.functions.invoke('sendcloud-backfill-orderlines');
 
       if (error) throw error;
 
-      toast.success(`Backfill réussi : ${data.linesCreated} lignes créées pour ${data.ordersProcessed} commandes`);
+      toast.success("Réparation terminée", {
+        description: `${data.success_count} commandes réparées avec succès`,
+      });
+
+      // Rafraîchir après quelques secondes
+      setTimeout(() => {
+        fetchSyncLogs();
+        toast.info("Actualisez vos commandes pour voir les produits");
+      }, 2000);
     } catch (error: any) {
       console.error('Erreur backfill:', error);
-      toast.error(`Erreur lors du backfill : ${error.message}`);
+      toast.error(`Erreur lors de la réparation : ${error.message}`);
     } finally {
       setSyncing(false);
     }
@@ -377,11 +387,11 @@ export default function SendCloudSync() {
                 <Button 
                   onClick={handleBackfill} 
                   disabled={syncing}
-                  variant="secondary"
-                  className="w-full"
+                  variant="outline"
+                  className="w-full border-orange-200 hover:bg-orange-50 dark:border-orange-900 dark:hover:bg-orange-950/30"
                 >
                   <Download className="mr-2 h-4 w-4" />
-                  Backfill produits
+                  🔧 Réparer les produits manquants
                 </Button>
 
                 <Button 
