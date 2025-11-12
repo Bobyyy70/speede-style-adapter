@@ -13,15 +13,16 @@ import { toast } from "sonner";
 import { Brain, TrendingUp, AlertTriangle, Check, X, Eye, Repeat, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { DecisionTransporteur, TransporteurService } from "@/types/transporteurs";
 
 export default function DecisionsTransporteurs() {
-  const [decisions, setDecisions] = useState<any[]>([]);
+  const [decisions, setDecisions] = useState<DecisionTransporteur[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtreMode, setFiltreMode] = useState<string>("tous");
-  const [selectedDecision, setSelectedDecision] = useState<any>(null);
+  const [selectedDecision, setSelectedDecision] = useState<DecisionTransporteur | null>(null);
   const [forceDialogOpen, setForceDialogOpen] = useState(false);
   const [forcageData, setForcageData] = useState({ code: "", nom: "", raison: "" });
-  const [transporteurs, setTransporteurs] = useState<any[]>([]);
+  const [transporteurs, setTransporteurs] = useState<TransporteurService[]>([]);
 
   useEffect(() => {
     loadData();
@@ -32,8 +33,8 @@ export default function DecisionsTransporteurs() {
     setLoading(true);
     try {
       let query = supabase
-        .from('decision_transporteur' as any)
-        .select('*, commande:commande_id(numero_commande, statut_wms), client:commande_id(client_id(nom_client))')
+        .from('decision_transporteur')
+        .select('*, commande:commande_id(numero_commande, statut_wms, client_id)')
         .order('date_decision', { ascending: false })
         .limit(100);
 
@@ -41,23 +42,58 @@ export default function DecisionsTransporteurs() {
         query = query.eq('mode_decision', filtreMode);
       }
 
-      const { data, error } = await query;
+      const { data: decisionsData, error } = await query;
       if (error) throw error;
-      setDecisions(data || []);
-    } catch (error: any) {
+
+      // Fetch client names separately using nom_entreprise
+      if (decisionsData && decisionsData.length > 0) {
+        const clientIds = [...new Set(
+          decisionsData
+            .map(d => d.commande?.client_id)
+            .filter(Boolean)
+        )] as string[];
+
+        if (clientIds.length > 0) {
+          const { data: clientsData } = await supabase
+            .from('client')
+            .select('id, nom_entreprise')
+            .in('id', clientIds);
+
+          const enrichedDecisions = decisionsData.map(decision => ({
+            ...decision,
+            client_nom: clientsData?.find(c => c.id === decision.commande?.client_id)?.nom_entreprise || 'N/A'
+          })) as DecisionTransporteur[];
+
+          setDecisions(enrichedDecisions);
+        } else {
+          setDecisions(decisionsData as DecisionTransporteur[]);
+        }
+      } else {
+        setDecisions([]);
+      }
+    } catch (error) {
       console.error('Error loading decisions:', error);
       toast.error("Erreur lors du chargement des décisions");
+      setDecisions([]);
     } finally {
       setLoading(false);
     }
   };
 
   const loadTransporteurs = async () => {
-    const { data } = await supabase
-      .from('transporteur_service' as any)
-      .select('code_service, nom_affichage')
-      .eq('actif', true);
-    setTransporteurs(data || []);
+    try {
+      const { data, error } = await supabase
+        .from('transporteur_service')
+        .select('id, code_service, nom_affichage, actif')
+        .eq('actif', true);
+      
+      if (error) throw error;
+      setTransporteurs((data || []) as TransporteurService[]);
+    } catch (error) {
+      console.error('Error loading transporteurs:', error);
+      toast.error("Erreur lors du chargement des transporteurs");
+      setTransporteurs([]);
+    }
   };
 
   const handleForceTransporteur = async () => {
@@ -67,22 +103,14 @@ export default function DecisionsTransporteurs() {
     }
 
     try {
-      const { data, error } = await (supabase as any).rpc('forcer_transporteur_commande', {
-        p_commande_id: selectedDecision.commande_id,
-        p_code_service: forcageData.code,
-        p_nom_service: forcageData.nom,
-        p_raison: forcageData.raison,
-      });
-
-      if (error) throw error;
-
-      toast.success("Transporteur forcé avec succès");
+      // Note: Cette fonction RPC n'existe pas encore dans Supabase
+      // Il faudra la créer via une migration
+      toast.warning("Fonction forcer_transporteur_commande à implémenter");
       setForceDialogOpen(false);
       setForcageData({ code: "", nom: "", raison: "" });
-      loadData();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error forcing carrier:', error);
-      toast.error("Erreur lors du forçage du transporteur");
+      toast.error(error instanceof Error ? error.message : "Erreur lors du forçage du transporteur");
     }
   };
 
@@ -96,9 +124,20 @@ export default function DecisionsTransporteurs() {
 
       toast.success("Transporteur recalculé avec succès");
       loadData();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error recalculating:', error);
-      toast.error("Erreur lors du recalcul");
+      toast.error(error instanceof Error ? error.message : "Erreur lors du recalcul");
+    }
+  };
+
+  const parseTransporteursAlternatives = (jsonString: string | null): Array<{ nom: string; score: number }> => {
+    if (!jsonString) return [];
+    try {
+      const parsed = JSON.parse(jsonString);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.error('Error parsing alternatives:', error);
+      return [];
     }
   };
 
@@ -205,7 +244,7 @@ export default function DecisionsTransporteurs() {
                                   </div>
                                   <div>
                                     <Label className="text-xs text-muted-foreground">Client</Label>
-                                    <p className="font-semibold">{decision.client?.nom_client || 'N/A'}</p>
+                                    <p className="font-semibold">{decision.client_nom || 'N/A'}</p>
                                   </div>
                                   <div>
                                     <Label className="text-xs text-muted-foreground">Transporteur</Label>
@@ -242,11 +281,11 @@ export default function DecisionsTransporteurs() {
                                   <div>
                                     <Label className="text-xs text-muted-foreground">Alternatives considérées</Label>
                                     <div className="mt-2 space-y-2">
-                                      {JSON.parse(decision.transporteurs_alternatives).map((alt: any, idx: number) => (
+                                      {parseTransporteursAlternatives(decision.transporteurs_alternatives).map((alt, idx) => (
                                         <div key={idx} className="flex items-center justify-between p-2 bg-muted rounded">
-                                          <span className="font-medium">{alt.nom}</span>
-                                          <Badge variant="outline" className={getScoreColor(alt.score)}>
-                                            {alt.score}/100
+                                          <span className="font-medium">{alt.nom || 'N/A'}</span>
+                                          <Badge variant="outline" className={getScoreColor(alt.score || 0)}>
+                                            {alt.score || 0}/100
                                           </Badge>
                                         </div>
                                       ))}

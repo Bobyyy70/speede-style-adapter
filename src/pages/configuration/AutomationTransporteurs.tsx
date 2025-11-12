@@ -14,14 +14,21 @@ import { toast } from "sonner";
 import { Settings, Zap, Activity, AlertCircle, CheckCircle, XCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { ConfigAutoSelection, LogAutoSelection, Client, AutomationStats } from "@/types/transporteurs";
 
 export default function AutomationTransporteurs() {
-  const [configs, setConfigs] = useState<any[]>([]);
-  const [logs, setLogs] = useState<any[]>([]);
+  const [configs, setConfigs] = useState<ConfigAutoSelection[]>([]);
+  const [logs, setLogs] = useState<LogAutoSelection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [clients, setClients] = useState<any[]>([]);
-  const [editingConfig, setEditingConfig] = useState<any>(null);
-  const [stats, setStats] = useState<any>({});
+  const [clients, setClients] = useState<Client[]>([]);
+  const [editingConfig, setEditingConfig] = useState<Partial<ConfigAutoSelection> | null>(null);
+  const [stats, setStats] = useState<AutomationStats>({
+    total: 0,
+    success: 0,
+    skipped: 0,
+    error: 0,
+    rate: 0
+  });
 
   useEffect(() => {
     loadData();
@@ -32,71 +39,162 @@ export default function AutomationTransporteurs() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [configsRes, logsRes] = await Promise.all([
-        (supabase as any).from('config_auto_selection_transporteur').select('*, client:client_id(nom_client)').order('created_at', { ascending: false }),
-        (supabase as any).from('log_auto_selection_transporteur').select('*, commande:commande_id(numero_commande), client:client_id(nom_client)').order('date_declenchement', { ascending: false }).limit(100)
-      ]);
+      // Query configs
+      const { data: configsData, error: configsError } = await supabase
+        .from('config_auto_selection_transporteur')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      if (configsRes.error) throw configsRes.error;
-      if (logsRes.error) throw logsRes.error;
+      if (configsError) throw configsError;
 
-      setConfigs(configsRes.data || []);
-      setLogs(logsRes.data || []);
-    } catch (error: any) {
+      // Fetch client names separately
+      const clientIds = (configsData || [])
+        .map(c => c.client_id)
+        .filter(Boolean) as string[];
+
+      let clientsMap: Record<string, string> = {};
+      if (clientIds.length > 0) {
+      const { data: clientsData } = await supabase
+        .from('client')
+        .select('id, nom_entreprise')
+        .in('id', clientIds);
+        
+        clientsMap = Object.fromEntries(
+          (clientsData || []).map(c => [c.id, c.nom_entreprise])
+        );
+      }
+
+      // Enrich configs with client names
+      const enrichedConfigs = (configsData || []).map(config => ({
+        ...config,
+        client_nom: config.client_id ? clientsMap[config.client_id] : null
+      })) as ConfigAutoSelection[];
+
+      // Query logs
+      const { data: logsData, error: logsError } = await supabase
+        .from('log_auto_selection_transporteur')
+        .select('*, commande:commande_id(numero_commande, client_id)')
+        .order('date_declenchement', { ascending: false })
+        .limit(100);
+
+      if (logsError) throw logsError;
+
+      // Enrich logs with client names
+      const logClientIds = (logsData || [])
+        .map(l => l.commande?.client_id)
+        .filter(Boolean) as string[];
+
+      let logClientsMap: Record<string, string> = {};
+      if (logClientIds.length > 0) {
+        const { data: logClientsData } = await supabase
+          .from('client')
+          .select('id, nom_entreprise')
+          .in('id', logClientIds);
+        
+        logClientsMap = Object.fromEntries(
+          (logClientsData || []).map(c => [c.id, c.nom_entreprise])
+        );
+      }
+
+      const enrichedLogs = (logsData || []).map(log => ({
+        ...log,
+        client_nom: log.commande?.client_id ? logClientsMap[log.commande.client_id] : null
+      })) as LogAutoSelection[];
+
+      setConfigs(enrichedConfigs);
+      setLogs(enrichedLogs);
+    } catch (error) {
       console.error('Error loading data:', error);
       toast.error("Erreur lors du chargement");
+      setConfigs([]);
+      setLogs([]);
     } finally {
       setLoading(false);
     }
   };
 
   const loadClients = async () => {
-    const { data } = await (supabase as any).from('client').select('id, nom_client').eq('statut', 'Actif');
-    setClients(data || []);
+    try {
+      const { data, error } = await supabase
+        .from('client')
+        .select('id, nom_entreprise, actif')
+        .eq('actif', true);
+      
+      if (error) throw error;
+      setClients(data || []);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+      setClients([]);
+    }
   };
 
   const loadStats = async () => {
-    const { data } = await (supabase as any).from('log_auto_selection_transporteur').select('statut');
-    if (data) {
-      const total = data.length;
-      const success = data.filter((l: any) => l.statut === 'success').length;
-      const skipped = data.filter((l: any) => l.statut === 'skipped').length;
-      const error = data.filter((l: any) => l.statut === 'error').length;
-      setStats({ total, success, skipped, error, rate: total > 0 ? ((success / total) * 100).toFixed(1) : 0 });
+    try {
+      const { data, error } = await supabase
+        .from('log_auto_selection_transporteur')
+        .select('statut');
+      
+      if (error) throw error;
+
+      const stats = (data || []).reduce((acc, log) => {
+        acc.total++;
+        if (log.succes === true) acc.success++;
+        if (log.erreur) acc.error++;
+        return acc;
+      }, { total: 0, success: 0, error: 0, rate: 0 });
+
+      stats.rate = stats.total > 0 ? (stats.success / stats.total) * 100 : 0;
+      setStats(stats);
+    } catch (error) {
+      console.error('Error loading stats:', error);
+      setStats({ total: 0, success: 0, error: 0, rate: 0 });
     }
   };
 
   const handleToggleGlobal = async (actif: boolean) => {
     try {
       const globalConfig = configs.find(c => c.client_id === null);
+      
       if (globalConfig) {
-        await (supabase as any)
+        const { error } = await supabase
           .from('config_auto_selection_transporteur')
-          .update({ actif, updated_at: new Date().toISOString() })
+          .update({ 
+            actif, 
+            updated_at: new Date().toISOString() 
+          })
           .eq('id', globalConfig.id);
+        
+        if (error) throw error;
       } else {
-        await (supabase as any).from('config_auto_selection_transporteur').insert({ client_id: null, actif });
+        const { error } = await supabase
+          .from('config_auto_selection_transporteur')
+          .insert({ 
+            client_id: null, 
+            actif,
+            mode_selection: 'automatique',
+            forcer_selection: false,
+            notifier_selection: false
+          });
+        
+        if (error) throw error;
       }
+
       toast.success(`Automatisation globale ${actif ? 'activée' : 'désactivée'}`);
       loadData();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error toggling:', error);
-      toast.error("Erreur lors de la mise à jour");
+      toast.error(error instanceof Error ? error.message : "Erreur lors de la mise à jour");
     }
   };
 
   const handleToggleClient = async (clientId: string, actif: boolean) => {
     try {
-      const { error } = await (supabase as any).rpc('toggle_auto_selection_client', {
-        p_client_id: clientId,
-        p_actif: actif
-      });
-      if (error) throw error;
-      toast.success(`Automatisation ${actif ? 'activée' : 'désactivée'} pour le client`);
+      // Cette fonction RPC n'existe pas encore - à implémenter via migration
+      toast.warning("Fonction à implémenter via migration");
       loadData();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error toggling client:', error);
-      toast.error("Erreur lors de la mise à jour");
+      toast.error(error instanceof Error ? error.message : "Erreur lors de la mise à jour");
     }
   };
 
@@ -104,31 +202,34 @@ export default function AutomationTransporteurs() {
     if (!editingConfig) return;
 
     try {
+      const payload = {
+        mode_selection: editingConfig.mode_selection || 'automatique',
+        utiliser_ia: editingConfig.utiliser_ia || false,
+        metadata: editingConfig.metadata || null,
+        date_modification: new Date().toISOString()
+      };
+
       if (editingConfig.id) {
-        await (supabase as any)
+        const { error } = await supabase
           .from('config_auto_selection_transporteur')
-          .update({
-            appliquer_si_statut: editingConfig.appliquer_si_statut,
-            exclure_pays: editingConfig.exclure_pays,
-            poids_min: editingConfig.poids_min || null,
-            poids_max: editingConfig.poids_max || null,
-            montant_min: editingConfig.montant_min || null,
-            forcer_selection: editingConfig.forcer_selection,
-            notifier_selection: editingConfig.notifier_selection,
-            mode_selection: editingConfig.mode_selection,
-            remarques: editingConfig.remarques,
-            updated_at: new Date().toISOString()
-          })
+          .update(payload)
           .eq('id', editingConfig.id);
+        
+        if (error) throw error;
       } else {
-        await (supabase as any).from('config_auto_selection_transporteur').insert(editingConfig);
+        const { error } = await supabase
+          .from('config_auto_selection_transporteur')
+          .insert({ ...payload, client_id: editingConfig.client_id || null });
+        
+        if (error) throw error;
       }
+
       toast.success("Configuration enregistrée");
       setEditingConfig(null);
       loadData();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving config:', error);
-      toast.error("Erreur lors de l'enregistrement");
+      toast.error(error instanceof Error ? error.message : "Erreur lors de l'enregistrement");
     }
   };
 
@@ -164,7 +265,7 @@ export default function AutomationTransporteurs() {
         <div className="flex items-center gap-4">
           <div className="text-right">
             <p className="text-sm text-muted-foreground">Taux de succès</p>
-            <p className="text-2xl font-bold">{stats.rate}%</p>
+            <p className="text-2xl font-bold">{stats.rate.toFixed(1)}%</p>
           </div>
           <Badge variant="outline" className="text-lg px-4 py-2">
             <Activity className="h-4 w-4 mr-2" />
@@ -179,7 +280,7 @@ export default function AutomationTransporteurs() {
             <CardTitle className="text-sm font-medium">Total</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total || 0}</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
           </CardContent>
         </Card>
         <Card>
@@ -187,15 +288,7 @@ export default function AutomationTransporteurs() {
             <CardTitle className="text-sm font-medium text-green-600">Succès</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.success || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-yellow-600">Ignorés</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.skipped || 0}</div>
+            <div className="text-2xl font-bold text-green-600">{stats.success}</div>
           </CardContent>
         </Card>
         <Card>
@@ -203,7 +296,7 @@ export default function AutomationTransporteurs() {
             <CardTitle className="text-sm font-medium text-red-600">Erreurs</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.error || 0}</div>
+            <div className="text-2xl font-bold text-red-600">{stats.error}</div>
           </CardContent>
         </Card>
       </div>
@@ -230,18 +323,14 @@ export default function AutomationTransporteurs() {
             </CardHeader>
             {globalConfig && (
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-xs text-muted-foreground">Mode</Label>
-                    <p className="font-semibold">{globalConfig.mode_selection}</p>
+                    <p className="font-semibold">{globalConfig.mode_selection || 'N/A'}</p>
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Forcer sélection</Label>
-                    <p className="font-semibold">{globalConfig.forcer_selection ? 'Oui' : 'Non'}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Notifications</Label>
-                    <p className="font-semibold">{globalConfig.notifier_selection ? 'Activées' : 'Désactivées'}</p>
+                    <Label className="text-xs text-muted-foreground">Utiliser IA</Label>
+                    <p className="font-semibold">{globalConfig.utiliser_ia ? 'Oui' : 'Non'}</p>
                   </div>
                 </div>
                 <Button onClick={() => setEditingConfig(globalConfig)} variant="outline" size="sm">
@@ -265,10 +354,10 @@ export default function AutomationTransporteurs() {
                     return (
                       <div key={client.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex-1">
-                          <p className="font-semibold">{client.nom_client}</p>
+                          <p className="font-semibold">{client.nom_entreprise}</p>
                           {config && (
                             <p className="text-sm text-muted-foreground">
-                              Mode: {config.mode_selection} • {config.appliquer_si_statut?.length || 0} statuts
+                              Mode: {config.mode_selection || 'N/A'}
                             </p>
                           )}
                         </div>
@@ -300,15 +389,17 @@ export default function AutomationTransporteurs() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {getStatutIcon(log.statut)}
+                        {getStatutIcon(log.succes ? 'success' : 'error')}
                         <div>
                           <CardTitle className="text-sm">{log.commande?.numero_commande || 'N/A'}</CardTitle>
                           <CardDescription className="text-xs">
-                            {format(new Date(log.date_declenchement), "dd MMM yyyy 'à' HH:mm:ss", { locale: fr })}
+                            {log.date_log && format(new Date(log.date_log), "dd MMM yyyy 'à' HH:mm:ss", { locale: fr })}
                           </CardDescription>
                         </div>
                       </div>
-                      <Badge className={getStatutBadge(log.statut)}>{log.statut}</Badge>
+                      <Badge className={getStatutBadge(log.succes ? 'success' : 'error')}>
+                        {log.succes ? 'success' : 'error'}
+                      </Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -316,33 +407,22 @@ export default function AutomationTransporteurs() {
                       <div className="grid grid-cols-3 gap-4 text-sm">
                         <div>
                           <Label className="text-xs text-muted-foreground">Client</Label>
-                          <p className="font-medium">{log.client?.nom_client || 'N/A'}</p>
+                          <p className="font-medium">{log.client_nom || 'N/A'}</p>
                         </div>
-                        {log.transporteur_selectionne_nom && (
-                          <>
-                            <div>
-                              <Label className="text-xs text-muted-foreground">Transporteur</Label>
-                              <p className="font-medium">{log.transporteur_selectionne_nom}</p>
-                            </div>
-                            <div>
-                              <Label className="text-xs text-muted-foreground">Score</Label>
-                              <p className="font-bold text-green-600">{log.score_selection}/100</p>
-                            </div>
-                          </>
+                        {log.transporteur_selectionne && (
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Transporteur</Label>
+                            <p className="font-medium">{log.transporteur_selectionne}</p>
+                          </div>
                         )}
                         <div>
                           <Label className="text-xs text-muted-foreground">Durée</Label>
                           <p className="font-medium">{log.duree_ms}ms</p>
                         </div>
                       </div>
-                      {log.raison_skip && (
-                        <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-sm">
-                          <strong>Ignoré:</strong> {log.raison_skip}
-                        </div>
-                      )}
-                      {log.erreur_details && (
+                      {log.erreur && (
                         <div className="p-2 bg-red-500/10 border border-red-500/20 rounded text-sm">
-                          <strong>Erreur:</strong> {log.erreur_details}
+                          <strong>Erreur:</strong> {log.erreur}
                         </div>
                       )}
                     </div>
@@ -367,7 +447,7 @@ export default function AutomationTransporteurs() {
               <div className="space-y-2">
                 <Label>Mode de sélection</Label>
                 <Select
-                  value={editingConfig.mode_selection}
+                  value={editingConfig.mode_selection || ''}
                   onValueChange={(v) => setEditingConfig({ ...editingConfig, mode_selection: v })}
                 >
                   <SelectTrigger>
@@ -380,66 +460,18 @@ export default function AutomationTransporteurs() {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label>Poids min (kg)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={editingConfig.poids_min || ''}
-                  onChange={(e) => setEditingConfig({ ...editingConfig, poids_min: parseFloat(e.target.value) || null })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Poids max (kg)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={editingConfig.poids_max || ''}
-                  onChange={(e) => setEditingConfig({ ...editingConfig, poids_max: parseFloat(e.target.value) || null })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Montant min (€)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={editingConfig.montant_min || ''}
-                  onChange={(e) => setEditingConfig({ ...editingConfig, montant_min: parseFloat(e.target.value) || null })}
-                />
-              </div>
             </div>
 
             <div className="flex items-center justify-between p-3 border rounded">
-              <Label>Forcer la sélection même si transporteur déjà défini</Label>
+              <Label>Utiliser l'IA pour suggestions</Label>
               <Switch
-                checked={editingConfig.forcer_selection}
-                onCheckedChange={(v) => setEditingConfig({ ...editingConfig, forcer_selection: v })}
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-3 border rounded">
-              <Label>Envoyer notifications après sélection</Label>
-              <Switch
-                checked={editingConfig.notifier_selection}
-                onCheckedChange={(v) => setEditingConfig({ ...editingConfig, notifier_selection: v })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Remarques</Label>
-              <Textarea
-                value={editingConfig.remarques || ''}
-                onChange={(e) => setEditingConfig({ ...editingConfig, remarques: e.target.value })}
-                rows={3}
+                checked={editingConfig.utiliser_ia || false}
+                onCheckedChange={(checked) => setEditingConfig({ ...editingConfig, utiliser_ia: checked })}
               />
             </div>
 
             <div className="flex gap-2">
               <Button onClick={handleSaveConfig} className="flex-1">
-                <CheckCircle className="h-4 w-4 mr-2" />
                 Enregistrer
               </Button>
               <Button variant="outline" onClick={() => setEditingConfig(null)} className="flex-1">
