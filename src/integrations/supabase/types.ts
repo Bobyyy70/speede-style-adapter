@@ -62,6 +62,138 @@ export type Database = {
         }
         Relationships: []
       }
+      alerte_poids_volumetrique: {
+        Row: {
+          client_id: string | null
+          commande_id: string
+          date_creation: string | null
+          date_traitement: string | null
+          ecart_kg: number
+          ecart_pourcentage: number
+          facteur_division_utilise: number | null
+          id: string
+          notes_traitement: string | null
+          numero_commande: string
+          poids_reel_kg: number
+          poids_volumetrique_kg: number
+          recommandations: Json | null
+          statut: string | null
+          traite_par: string | null
+          transporteur_code: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          commande_id: string
+          date_creation?: string | null
+          date_traitement?: string | null
+          ecart_kg: number
+          ecart_pourcentage: number
+          facteur_division_utilise?: number | null
+          id?: string
+          notes_traitement?: string | null
+          numero_commande: string
+          poids_reel_kg: number
+          poids_volumetrique_kg: number
+          recommandations?: Json | null
+          statut?: string | null
+          traite_par?: string | null
+          transporteur_code?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          commande_id?: string
+          date_creation?: string | null
+          date_traitement?: string | null
+          ecart_kg?: number
+          ecart_pourcentage?: number
+          facteur_division_utilise?: number | null
+          id?: string
+          notes_traitement?: string | null
+          numero_commande?: string
+          poids_reel_kg?: number
+          poids_volumetrique_kg?: number
+          recommandations?: Json | null
+          statut?: string | null
+          traite_par?: string | null
+          transporteur_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerte_poids_volumetrique_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerte_poids_volumetrique_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "alerte_poids_volumetrique_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerte_poids_volumetrique_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerte_poids_volumetrique_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alerte_poids_volumetrique_config: {
+        Row: {
+          actif: boolean | null
+          date_creation: string | null
+          date_modification: string | null
+          description: string | null
+          emails_notification: string[] | null
+          frequence_verification: string | null
+          id: string
+          notification_email: boolean | null
+          seuil_ecart_pourcentage: number
+          seuil_poids_minimum_kg: number | null
+        }
+        Insert: {
+          actif?: boolean | null
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          emails_notification?: string[] | null
+          frequence_verification?: string | null
+          id?: string
+          notification_email?: boolean | null
+          seuil_ecart_pourcentage?: number
+          seuil_poids_minimum_kg?: number | null
+        }
+        Update: {
+          actif?: boolean | null
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          emails_notification?: string[] | null
+          frequence_verification?: string | null
+          id?: string
+          notification_email?: boolean | null
+          seuil_ecart_pourcentage?: number
+          seuil_poids_minimum_kg?: number | null
+        }
+        Relationships: []
+      }
       analyse_optimisation_couts: {
         Row: {
           cout_total_actuel: number | null
@@ -4977,6 +5109,15 @@ export type Database = {
           p_positions?: string
         }
         Returns: number
+      }
+      generer_recommandations_optimisation: {
+        Args: {
+          p_commande_id: string
+          p_ecart_pourcentage: number
+          p_poids_reel_kg: number
+          p_poids_volumetrique_kg: number
+        }
+        Returns: Json
       }
       get_commande_historique: {
         Args: { p_commande_id: string }

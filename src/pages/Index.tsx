@@ -9,6 +9,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { format, subDays } from "date-fns";
 import { DashboardAIAssistant } from "@/components/DashboardAIAssistant";
 import { AlertesDegradationTransporteur } from "@/components/AlertesDegradationTransporteur";
+import { AlertesOptimisationWidget } from "@/components/AlertesOptimisationWidget";
 import { useAuth } from "@/hooks/useAuth";
 import { ORDER_STATUSES } from "@/lib/orderStatuses";
 const Index = () => {
@@ -192,7 +193,10 @@ const Index = () => {
 
         {/* Alertes Dégradation Transporteurs */}
         {(userRole === 'admin' || userRole === 'gestionnaire') && (
-          <AlertesDegradationTransporteur limit={3} />
+          <div className="grid gap-4 md:grid-cols-2">
+            <AlertesDegradationTransporteur limit={3} />
+            <AlertesOptimisationWidget />
+          </div>
         )}
 
         <div className="grid gap-4 lg:grid-cols-2 mx-0 px-0 py-0 my-0">
