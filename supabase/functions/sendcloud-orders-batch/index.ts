@@ -267,7 +267,31 @@ Deno.serve(async (req) => {
           .single();
 
         if (commandeError) {
-          console.error(`❌ Error inserting commande:`, commandeError.message);
+          // ✅ Détecter spécifiquement les doublons (code PostgreSQL 23505)
+          if (commandeError.code === '23505' || commandeError.message?.includes('duplicate key')) {
+            console.log(`⚠️ DOUBLON DÉTECTÉ (contrainte unique PostgreSQL): ${orderNumber}`);
+            
+            // Récupérer la commande existante pour les stats
+            const { data: existing } = await supabase
+              .from('commande')
+              .select('id, statut_wms, date_creation')
+              .or(`sendcloud_id.eq.${String(sendcloudData.id)},numero_commande.eq.${orderNumber}`)
+              .maybeSingle();
+            
+            results.push({
+              order_number: orderNumber,
+              success: false,
+              already_exists: true,
+              commande_id: existing?.id,
+              error: 'Doublon détecté (protection PostgreSQL)',
+              details: `Créée le ${existing?.date_creation}, statut: ${existing?.statut_wms}`
+            });
+            existingCount++; // ✅ Stats correctes (pas errorCount)
+            continue;
+          }
+          
+          // ❌ Vraie erreur (pas un doublon)
+          console.error(`❌ ERREUR RÉELLE lors insertion commande:`, commandeError.message);
           results.push({ 
             order_number: orderNumber, 
             success: false, 
