@@ -25,6 +25,7 @@ import Expedition from "./pages/Expedition";
 import Utilisateurs from "./pages/Utilisateurs";
 import GestionClients from "./pages/GestionClients";
 import SendCloudSync from "./pages/SendCloudSync";
+import SendCloudWebhook from "./pages/SendCloudWebhook";
 import Transporteurs from "./pages/Transporteurs";
 
 import NotFound from "./pages/NotFound";
@@ -272,6 +273,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'client']}>
                   <Transporteurs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/integrations/sendcloud-webhook"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <SendCloudWebhook />
                 </ProtectedRoute>
               }
             />
