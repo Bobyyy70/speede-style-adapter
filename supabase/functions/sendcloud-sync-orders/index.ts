@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// V2 Parcels interface (official SendCloud API v2)
+// V2 Parcels interface (official SendCloud API v2) - ENRICHED
 interface SendCloudParcel {
   id: number;
   order_number?: string;
@@ -17,10 +17,39 @@ interface SendCloudParcel {
   };
   created_at?: string;
   updated_at?: string;
+  
+  // ✅ Carrier (transporteur)
+  carrier?: {
+    code?: string;
+    name?: string;
+  };
+  
+  // ✅ Shipment method (service transport)
   shipment?: {
     id?: number;
     name?: string;
   };
+  
+  // ✅ Sender address (expéditeur)
+  sender_address?: {
+    name?: string;
+    company_name?: string;
+    address?: string;
+    address_2?: string;
+    city?: string;
+    postal_code?: string;
+    country?: string;
+    email?: string;
+    telephone?: string;
+  };
+  
+  // ✅ Label URLs
+  label?: {
+    label_printer?: string;
+    normal_printer?: string[];
+  };
+  
+  // Recipient address
   name?: string;
   company_name?: string;
   address?: string;
@@ -31,13 +60,21 @@ interface SendCloudParcel {
   email?: string;
   telephone?: string;
   weight?: string;
+  
+  // ✅ Enriched parcel items
   parcel_items?: Array<{
     sku?: string;
     description?: string;
     quantity?: number;
     weight?: string;
     value?: string;
+    hs_code?: string;        // Code douanier
+    origin_country?: string; // Pays origine
+    properties?: {
+      ean?: string;
+    };
   }>;
+  
   external_reference?: string;
   external_shipment_id?: string;
 }
@@ -384,34 +421,65 @@ Deno.serve(async (req) => {
         new Map(allParcels.map(p => [p.id, p])).values()
       );
       
-      // Convert parcels to order format
-      itemsForBatch = uniqueParcels.map((parcel: SendCloudParcel) => ({
-        id: parcel.id,
-        order_number: parcel.order_number || `PARCEL-${parcel.id}`,
-        created_at: parcel.created_at,
-        updated_at: parcel.updated_at,
-        email: parcel.email,
-        name: parcel.name || parcel.company_name,
-        address: parcel.address,
-        address_2: parcel.address_2,
-        city: parcel.city,
-        postal_code: parcel.postal_code,
-        country: parcel.country,
-        telephone: parcel.telephone,
-        shipment: { status: parcel.status },
-        external_order_id: parcel.external_reference,
-        external_shipment_id: parcel.external_shipment_id,
-        order_products: (parcel.parcel_items || []).map((item: any) => ({
-          sku: item.sku || '',
-          name: item.description || 'Produit SendCloud',
-          quantity: item.quantity || 1,
-          weight: item.weight,
-          price: item.value
-        })),
-        tracking_number: parcel.tracking_number,
-        tracking_url: parcel.tracking_url,
-        _source: 'sendcloud_parcels_v2'
-      }));
+      // Convert parcels to order format - ENRICHED WITH ALL DATA
+      itemsForBatch = uniqueParcels.map((parcel: SendCloudParcel) => {
+        const enrichedOrder = {
+          id: parcel.id,
+          order_number: parcel.order_number || `PARCEL-${parcel.id}`,
+          created_at: parcel.created_at,
+          updated_at: parcel.updated_at,
+          
+          // Recipient address
+          email: parcel.email,
+          name: parcel.name || parcel.company_name,
+          address: parcel.address,
+          address_2: parcel.address_2,
+          city: parcel.city,
+          postal_code: parcel.postal_code,
+          country: parcel.country,
+          telephone: parcel.telephone,
+          
+          // Status
+          shipment: { status: parcel.status },
+          
+          // ✅ Carrier & Tracking
+          carrier: parcel.carrier,
+          tracking_number: parcel.tracking_number,
+          tracking_url: parcel.tracking_url,
+          label_url: parcel.label?.label_printer,
+          
+          // ✅ Shipping method
+          shipping_method: parcel.shipment,
+          
+          // ✅ Sender address
+          sender_address: parcel.sender_address,
+          
+          // ✅ Enriched products with customs data
+          order_products: (parcel.parcel_items || []).map((item: any) => ({
+            sku: item.sku || '',
+            name: item.description || 'Produit SendCloud',
+            quantity: item.quantity || 1,
+            weight: item.weight,
+            price: item.value,
+            hs_code: item.hs_code,
+            origin_country: item.origin_country,
+            ean: item.properties?.ean
+          })),
+          
+          external_order_id: parcel.external_reference,
+          external_shipment_id: parcel.external_shipment_id,
+          _source: 'sendcloud_parcels_v2'
+        };
+        
+        // Log enriched data
+        console.log(`[Parcel ${parcel.id}] Carrier: ${parcel.carrier?.name || 'N/A'}, Method: ${parcel.shipment?.name || 'N/A'}`);
+        console.log(`[Parcel ${parcel.id}] Tracking: ${parcel.tracking_number || 'N/A'}, Items: ${parcel.parcel_items?.length || 0}`);
+        if (parcel.sender_address) {
+          console.log(`[Parcel ${parcel.id}] Sender: ${parcel.sender_address.company_name || parcel.sender_address.name || 'N/A'}`);
+        }
+        
+        return enrichedOrder;
+      });
       
       console.log(`[V2] ${itemsForBatch.length} unique parcels converted to orders`);
     }

@@ -214,40 +214,54 @@ Deno.serve(async (req) => {
         const priorite = (sendcloudData as any).shipment?.method === 'express' ? 'express' : 'standard';
         const incoterm = paysCode === 'FR' ? 'DDP' : 'DAP'; // DDP pour France, DAP pour international
 
-        // ✅ PAS DE DOUBLON, INSERTION NORMALE avec données expéditeur
+        // ✅ INSERTION avec TOUTES les données (carrier, tracking, sender, etc.)
         const { data: commande, error: commandeError } = await supabase
           .from('commande')
           .insert({
             sendcloud_id: String(sendcloudData.id),
             numero_commande: orderNumber,
+            
+            // Client
             nom_client: clientName,
             email_client: sendcloudData.email || null,
             telephone_client: sendcloudData.telephone || null,
+            
+            // Adresse livraison
             adresse_nom: clientName,
             adresse_ligne_1: address1,
             adresse_ligne_2: address2,
             ville: city,
             code_postal: postalCode,
             pays_code: paysCode,
+            
+            // ✅ Carrier & Tracking (depuis parcel v2)
+            transporteur: (sendcloudData as any).carrier?.name || null,
+            methode_expedition: (sendcloudData as any).shipping_method?.name || null,
+            tracking_number: (sendcloudData as any).tracking_number || null,
+            tracking_url: (sendcloudData as any).tracking_url || null,
+            label_url: (sendcloudData as any).label_url || null,
+            sendcloud_shipment_id: String(sendcloudData.id),
+            
+            // ✅ Expéditeur (depuis sender_address du parcel OU config par défaut)
+            expediteur_nom: (sendcloudData as any).sender_address?.name || expediteurDefault?.nom || null,
+            expediteur_entreprise: (sendcloudData as any).sender_address?.company_name || expediteurDefault?.entreprise || null,
+            expediteur_email: (sendcloudData as any).sender_address?.email || expediteurDefault?.email || null,
+            expediteur_telephone: (sendcloudData as any).sender_address?.telephone || expediteurDefault?.telephone || null,
+            expediteur_adresse_ligne_1: (sendcloudData as any).sender_address?.address || expediteurDefault?.adresse_ligne_1 || null,
+            expediteur_adresse_ligne_2: (sendcloudData as any).sender_address?.address_2 || expediteurDefault?.adresse_ligne_2 || null,
+            expediteur_code_postal: (sendcloudData as any).sender_address?.postal_code || expediteurDefault?.code_postal || null,
+            expediteur_ville: (sendcloudData as any).sender_address?.city || expediteurDefault?.ville || null,
+            expediteur_pays_code: (sendcloudData as any).sender_address?.country || expediteurDefault?.pays_code || 'FR',
+            
+            // Autres champs
             valeur_totale: sendcloudData.total_order_value || 0,
             devise: sendcloudData.currency || 'EUR',
             statut_wms: 'en_attente_reappro',
             source: 'sendcloud',
-            // Données expéditeur depuis config
-            expediteur_nom: expediteurDefault?.nom || null,
-            expediteur_entreprise: expediteurDefault?.entreprise || null,
-            expediteur_email: expediteurDefault?.email || null,
-            expediteur_telephone: expediteurDefault?.telephone || null,
-            expediteur_adresse_ligne_1: expediteurDefault?.adresse_ligne_1 || null,
-            expediteur_adresse_ligne_2: expediteurDefault?.adresse_ligne_2 || null,
-            expediteur_code_postal: expediteurDefault?.code_postal || null,
-            expediteur_ville: expediteurDefault?.ville || null,
-            expediteur_pays_code: expediteurDefault?.pays_code || 'FR',
-            // Valeurs par défaut intelligentes
             incoterm: incoterm,
             priorite_expedition: priorite,
             date_expedition_demandee: new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0],
-            pays_origine_marchandise: expediteurDefault?.pays_code || 'FR'
+            pays_origine_marchandise: (sendcloudData as any).sender_address?.country || expediteurDefault?.pays_code || 'FR'
           })
           .select()
           .single();
@@ -264,64 +278,8 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        console.log(`✅ Commande inserted: ${commande.id}`);
-
-        // Enrichir avec tracking si un parcel existe déjà
-        try {
-          const publicKey = Deno.env.get('SENDCLOUD_API_PUBLIC_KEY');
-          const secretKey = Deno.env.get('SENDCLOUD_API_SECRET_KEY');
-
-          if (publicKey && secretKey) {
-            const basicAuth = btoa(`${publicKey}:${secretKey}`);
-            const parcelResponse = await fetch(
-              `https://panel.sendcloud.sc/api/v2/parcels?external_order_id=${commande.sendcloud_id}`,
-              {
-                headers: {
-                  'Authorization': `Basic ${basicAuth}`,
-                  'Content-Type': 'application/json',
-                },
-              }
-            );
-
-            if (parcelResponse.ok) {
-              const parcelData = await parcelResponse.json();
-              if (parcelData.parcels && parcelData.parcels.length > 0) {
-                const parcel = parcelData.parcels[0];
-                
-                let statutWms = 'en_attente_reappro';
-                if (parcel.status) {
-                  const statusId = parcel.status.id;
-                  if (statusId >= 1000 && statusId < 2000) {
-                    statutWms = 'en_preparation';
-                  } else if (statusId >= 2000 && statusId < 3000) {
-                    statutWms = 'en_transit';
-                  } else if (statusId >= 3000) {
-                    statutWms = 'livre';
-                  }
-                }
-
-                await supabase
-                  .from('commande')
-                  .update({
-                    transporteur: parcel.carrier?.name || null,
-                    methode_expedition: parcel.shipping_method?.name || null,
-                    tracking_number: parcel.tracking_number || null,
-                    tracking_url: parcel.tracking_url || null,
-                    label_url: parcel.label?.label_printer || null,
-                    sendcloud_shipment_id: parcel.id?.toString() || null,
-                    statut_wms: statutWms,
-                  })
-                  .eq('id', commande.id);
-
-                console.log(`🔄 Enriched order ${commande.numero_commande} with tracking`);
-              }
-            }
-          }
-        } catch (enrichError: any) {
-          console.error(`⚠️ Error enriching order:`, enrichError.message);
-        }
-
-        console.log(`✅ Commande créée: ${commande.id}`);
+        // ✅ Commande créée avec TOUTES les données déjà mappées
+        console.log(`✅ Commande créée: ${commande.id} | Transporteur: ${commande.transporteur || 'N/A'} | Tracking: ${commande.tracking_number || 'N/A'}`);
 
         // Traiter les produits
         let tousProduitsStockOk = true;
@@ -380,30 +338,30 @@ Deno.serve(async (req) => {
                     .eq('nom_entreprise', 'HEFAGROUP OÜ')
                     .maybeSingle();
 
-                  // Créer le produit dans notre base
+                  // ✅ Créer le produit avec HS code, pays origine et EAN
                   const { data: newProduit, error: createError } = await supabase
                     .from('produit')
                     .insert({
                       reference: product.sku,
                       nom: scProduct.description || product.name,
-                      code_barre_ean: scProduct.ean || product.ean || null,
+                      code_barre_ean: (product as any).ean || scProduct.ean || product.ean || null,
                       poids_unitaire: scProduct.weight?.value || 0.1,
                       prix_unitaire: product.unit_price?.value || 0,
                       client_id: defaultClient?.id,
                       stock_actuel: 0,
                       stock_minimum: 0,
                       statut_actif: true,
-                      pays_origine: scProduct.origin_country || 'FR',
-                      code_sh: scProduct.hs_code || null,
+                      pays_origine: (product as any).origin_country || scProduct.origin_country || 'FR',
+                      code_sh: (product as any).hs_code || scProduct.hs_code || null,
                       marque: 'SendCloud Import',
                     })
-                    .select('id, nom, reference, marque, client_id, stock_actuel, poids_unitaire, prix_unitaire')
+                    .select('id, nom, reference, marque, client_id, stock_actuel, poids_unitaire, prix_unitaire, pays_origine, code_sh')
                     .single();
 
-                  if (createError) {
+                   if (createError) {
                     console.error(`❌ Erreur création produit ${product.sku}:`, createError);
                   } else {
-                    console.log(`✅ Produit ${product.sku} créé automatiquement`);
+                    console.log(`✅ Produit ${product.sku} créé | HS: ${newProduit.code_sh || 'N/A'} | Origine: ${newProduit.pays_origine}`);
                     produit = newProduit;
                   }
                 }
@@ -436,7 +394,7 @@ Deno.serve(async (req) => {
             tousProduitsStockOk = false;
           }
 
-          // Créer la ligne de commande
+          // ✅ Créer la ligne de commande avec données enrichies
           await supabase
             .from('ligne_commande')
             .insert({
@@ -450,6 +408,8 @@ Deno.serve(async (req) => {
               poids_unitaire: produit.poids_unitaire,
               statut_ligne: 'en_attente'
             });
+          
+          console.log(`📦 Ligne créée: ${product.sku} x${product.quantity}`);
 
           // Réserver le stock si disponible
           if (stockDisponible >= product.quantity) {
