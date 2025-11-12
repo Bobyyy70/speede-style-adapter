@@ -25,7 +25,6 @@ export default function AutomationTransporteurs() {
   const [stats, setStats] = useState<AutomationStats>({
     total: 0,
     success: 0,
-    skipped: 0,
     error: 0,
     rate: 0
   });
@@ -117,11 +116,10 @@ export default function AutomationTransporteurs() {
     try {
       const { data, error } = await supabase
         .from('client')
-        .select('id, nom_entreprise, actif')
-        .eq('actif', true);
+        .select('id, nom_entreprise, actif');
       
       if (error) throw error;
-      setClients(data || []);
+      setClients((data || []) as Client[]);
     } catch (error) {
       console.error('Error loading clients:', error);
       setClients([]);
@@ -132,7 +130,7 @@ export default function AutomationTransporteurs() {
     try {
       const { data, error } = await supabase
         .from('log_auto_selection_transporteur')
-        .select('statut');
+        .select('succes, erreur');
       
       if (error) throw error;
 

@@ -75,11 +75,8 @@ export interface LogAutoSelection {
 
 export interface Client {
   id: string;
-  nom_entreprise: string; // Vrai nom dans Supabase
-  actif: boolean | null; // Vrai nom dans Supabase
-  adresse: string | null;
-  email_contact: string | null;
-  telephone: string | null;
+  nom_entreprise: string;
+  actif: boolean | null;
 }
 
 export interface AutomationStats {
