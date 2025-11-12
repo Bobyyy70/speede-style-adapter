@@ -150,6 +150,14 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Créer une commande",
         href: "/client/commandes/creer",
         icon: PlusCircle
+      }, {
+        name: "Règles de validation",
+        href: "/commandes/regles-validation",
+        icon: Shield
+      }, {
+        name: "Règles de filtrage",
+        href: "/commandes/regles-filtrage",
+        icon: Filter
       }]
     }, {
       name: "Préparation",
@@ -164,24 +172,8 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/commandes/reappro",
         icon: RefreshCw
       }, {
-        name: "Règles de filtrage",
-        href: "/commandes/regles-filtrage",
-        icon: Filter
-      }, {
         name: "Règles d'emballage",
         href: "/preparation/regles-emballages",
-        icon: Shield
-      }]
-    }, {
-      name: "Commandes",
-      icon: ClipboardList,
-      children: [{
-        name: "Gestion des commandes",
-        href: "/commandes",
-        icon: ClipboardList
-      }, {
-        name: "Règles de validation",
-        href: "/commandes/regles-validation",
         icon: Shield
       }]
     }, {
