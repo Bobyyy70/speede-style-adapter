@@ -38,6 +38,7 @@ import { HistoireTimeline } from "./expedition/HistoireTimeline";
 import { FicheCommandeComplete } from "./FicheCommandeComplete";
 import { CreerRetourDialog } from "./CreerRetourDialog";
 import { SendCloudActions } from "./SendCloudActions";
+import { SelectTransportService } from "./SelectTransportService";
 import { ORDER_STATUS_LABELS, getStatutBadgeVariant } from "@/lib/orderStatuses";
 import {
   Package,
@@ -55,6 +56,7 @@ import {
   Clock,
   User,
   MapPin,
+  Truck,
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -541,9 +543,13 @@ export const CommandeDetailDialog = ({
 
           {/* TABS */}
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
               <TabsTrigger value="products">Produits</TabsTrigger>
+              <TabsTrigger value="transport">
+                <Truck className="h-4 w-4 mr-2" />
+                Transport
+              </TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
               <TabsTrigger value="history">Historique</TabsTrigger>
             </TabsList>
@@ -579,6 +585,18 @@ export const CommandeDetailDialog = ({
                   </p>
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="transport" className="mt-4">
+              <SelectTransportService
+                commandeId={commandeId}
+                poidsTotal={commande?.poids_total || 0}
+                paysDestination={commande?.pays_code}
+                onServiceSelected={() => {
+                  queryClient.invalidateQueries({ queryKey: ["commande", commandeId] });
+                  toast({ title: "Service de transport mis à jour" });
+                }}
+              />
             </TabsContent>
 
             <TabsContent value="documents" className="mt-4">

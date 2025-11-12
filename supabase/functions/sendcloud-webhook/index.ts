@@ -2,1012 +2,552 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-token',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Constant-time string comparison to prevent timing attacks
+// Security utilities
 function constantTimeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  
+  if (a.length !== b.length) return false;
   let result = 0;
   for (let i = 0; i < a.length; i++) {
     result |= a.charCodeAt(i) ^ b.charCodeAt(i);
   }
-  
   return result === 0;
 }
 
-// Rate limiting: max 100 requests per minute per IP
-async function checkRateLimit(
-  supabase: any, 
-  ipAddress: string, 
-  endpoint: string
-): Promise<{ allowed: boolean; reason?: string }> {
-  const now = new Date();
-  const oneMinuteAgo = new Date(now.getTime() - 60000);
-  
-  // Get or create rate limit entry
-  const { data: existing } = await supabase
+async function checkRateLimit(supabase: any, ipAddress: string, endpoint: string): Promise<{ allowed: boolean; reason?: string }> {
+  const { data, error } = await supabase
     .from('webhook_rate_limit')
     .select('*')
     .eq('ip_address', ipAddress)
     .eq('endpoint', endpoint)
-    .gte('last_request_at', oneMinuteAgo.toISOString())
-    .single();
-  
-  if (existing) {
-    // Check if blocked
-    if (existing.blocked_until && new Date(existing.blocked_until) > now) {
-      return { 
-        allowed: false, 
-        reason: `Blocked until ${existing.blocked_until}` 
-      };
-    }
-    
-    // Check rate limit (100 req/min)
-    if (existing.request_count >= 100) {
-      // Block for 5 minutes
-      const blockedUntil = new Date(now.getTime() + 300000);
-      
-      await supabase
-        .from('webhook_rate_limit')
-        .update({ 
-          blocked_until: blockedUntil.toISOString(),
-          last_request_at: now.toISOString()
-        })
-        .eq('id', existing.id);
-      
-      return { 
-        allowed: false, 
-        reason: 'Rate limit exceeded (100 req/min)' 
-      };
-    }
-    
-    // Increment counter
-    await supabase
-      .from('webhook_rate_limit')
-      .update({ 
-        request_count: existing.request_count + 1,
-        last_request_at: now.toISOString()
-      })
-      .eq('id', existing.id);
-  } else {
-    // Create new entry
-    await supabase
-      .from('webhook_rate_limit')
-      .insert({
-        ip_address: ipAddress,
-        endpoint: endpoint,
-        request_count: 1,
-        first_request_at: now.toISOString(),
-        last_request_at: now.toISOString()
-      });
+    .gte('created_at', new Date(Date.now() - 60000).toISOString());
+
+  if (error) {
+    console.error('Rate limit check error:', error);
+    return { allowed: true };
   }
-  
+
+  if (data && data.length >= 100) {
+    return { allowed: false, reason: 'Rate limit exceeded (100 requests per minute)' };
+  }
+
+  await supabase.from('webhook_rate_limit').insert({
+    ip_address: ipAddress,
+    endpoint: endpoint,
+    created_at: new Date().toISOString(),
+  });
+
   return { allowed: true };
 }
 
-// Log security events
-async function logSecurityEvent(
-  supabase: any,
-  ipAddress: string | null,
-  endpoint: string,
-  eventType: string,
-  userAgent: string | null,
-  details: any
-): Promise<void> {
-  await supabase
-    .from('webhook_security_log')
-    .insert({
-      ip_address: ipAddress,
-      endpoint: endpoint,
-      event_type: eventType,
-      user_agent: userAgent,
-      details: details
-    });
+async function logSecurityEvent(supabase: any, ipAddress: string | null, endpoint: string, eventType: string, userAgent: string | null, details: any): Promise<void> {
+  await supabase.from('webhook_security_log').insert({
+    endpoint,
+    event_type: eventType,
+    ip_address: ipAddress,
+    user_agent: userAgent,
+    details,
+    created_at: new Date().toISOString(),
+  });
 }
 
+// Data structures
 interface SendCloudProduct {
   sku: string;
   name: string;
   quantity: number;
-  weight?: number;
+  weight?: string | number;
   price?: number;
+  hs_code?: string;
+  origin_country?: string;
 }
 
 interface SendCloudOrder {
-  id: string | number;
-  order_number?: string;
-  order_id?: string;
-  name: string;
+  id: number | string;
+  order_number: string;
   email?: string;
-  telephone?: string;
-  address: string;
+  name?: string;
+  phone_number?: string;
+  address?: string;
   address_2?: string;
-  city: string;
-  postal_code: string;
-  country: string;
-  order_products: SendCloudProduct[];
+  city?: string;
+  postal_code?: string;
+  country_code?: string;
+  order_items?: SendCloudProduct[];
   total_order_value?: number;
   currency?: string;
-  shipment?: {
-    name?: string;
-  };
+  external_reference?: string;
+  integration?: number;
 }
 
-// SendCloud webhook event types
 interface SendCloudWebhookEvent {
   action: string;
-  timestamp: string;
+  timestamp: number;
   integration?: number;
-  parcel?: SendCloudParcel;
+  parcel?: any;
   order?: SendCloudOrder;
+  external_order_id?: string;
+  external_reference?: string;
 }
 
 interface SendCloudParcel {
   id: number;
-  external_order_id?: string;
-  external_reference?: string;
   tracking_number?: string;
   tracking_url?: string;
-  carrier?: {
-    code?: string;
-    name?: string;
-  };
-  status?: {
-    id: number;
-    message: string;
-  };
-  shipment?: {
-    id: number;
-    name?: string;
-  };
-  label?: {
-    label_printer?: string;
-    normal_printer?: string[];
-  };
-  to_address?: {
-    name: string;
-    country: string;
-    city: string;
-  };
+  status?: { id: number; message: string };
+  carrier?: { name: string; code: string };
+  label?: { label_printer?: string };
+  external_order_id?: string;
+  external_reference?: string;
 }
 
-// Map SendCloud status IDs to WMS statuses
+// Mapping SendCloud → WMS
 function mapSendcloudStatusToWMS(statusId: number): string {
-  // SendCloud status mappings based on documentation
-  if (statusId >= 2000 && statusId < 3000) return 'livre'; // Delivered
-  if (statusId >= 1000 && statusId < 2000) return 'expedie'; // In transit
-  if (statusId >= 13 && statusId < 1000) return 'en_preparation'; // Ready for shipping
-  if (statusId >= 3000) return 'annule'; // Cancelled/Error
-  return 'en_attente_reappro'; // Unknown/pending
+  const statusMap: Record<number, string> = {
+    1: 'en_preparation',
+    2: 'en_preparation',
+    3: 'pret_expedition',
+    4: 'pret_expedition',
+    5: 'expedie',
+    6: 'expedie',
+    7: 'expedie',
+    8: 'expedie',
+    11: 'livre',
+    12: 'expedie',
+    13: 'expedie',
+    80: 'erreur',
+    91: 'annule',
+    93: 'erreur',
+    94: 'erreur',
+    99: 'annule',
+  };
+  return statusMap[statusId] || 'expedie';
+}
+
+// Auto-detect client_id from SendCloud data
+async function detectClientId(supabase: any, event: SendCloudWebhookEvent, sendcloudData: SendCloudOrder): Promise<string | null> {
+  console.log('🔍 Detecting client_id for order:', sendcloudData.order_number);
+
+  // 1. Try by integration_id
+  if (event.integration || sendcloudData.integration) {
+    const integrationId = event.integration || sendcloudData.integration;
+    const { data } = await supabase
+      .from('sendcloud_client_mapping')
+      .select('client_id')
+      .eq('integration_id', integrationId)
+      .eq('actif', true)
+      .single();
+    
+    if (data) {
+      console.log(`✅ Client found by integration_id ${integrationId}:`, data.client_id);
+      return data.client_id;
+    }
+  }
+
+  // 2. Try by email domain
+  const email = sendcloudData.email;
+  if (email && email.includes('@')) {
+    const domain = email.split('@')[1];
+    const { data } = await supabase
+      .from('sendcloud_client_mapping')
+      .select('client_id')
+      .eq('email_domain', domain)
+      .eq('actif', true)
+      .single();
+    
+    if (data) {
+      console.log(`✅ Client found by email domain ${domain}:`, data.client_id);
+      return data.client_id;
+    }
+  }
+
+  console.warn('⚠️ No client mapping found. Order will be created without client_id.');
+  return null;
+}
+
+// Apply sender configuration
+async function applySenderConfig(supabase: any, commandeId: string, clientId: string | null): Promise<void> {
+  if (!clientId) {
+    console.log('⚠️ No client_id, skipping sender config application');
+    return;
+  }
+
+  console.log('📮 Applying sender config for client:', clientId);
+
+  // Get default sender config from mapping
+  const { data: mapping } = await supabase
+    .from('sendcloud_client_mapping')
+    .select('config_expediteur_defaut_id')
+    .eq('client_id', clientId)
+    .eq('actif', true)
+    .single();
+
+  if (mapping?.config_expediteur_defaut_id) {
+    const { data: config } = await supabase
+      .from('configuration_expediteur')
+      .select('*')
+      .eq('id', mapping.config_expediteur_defaut_id)
+      .single();
+
+    if (config) {
+      await supabase.from('commande').update({
+        expediteur_nom: config.nom,
+        expediteur_entreprise: config.entreprise,
+        expediteur_email: config.email,
+        expediteur_telephone: config.telephone,
+        expediteur_adresse_ligne_1: config.adresse_ligne_1,
+        expediteur_adresse_ligne_2: config.adresse_ligne_2,
+        expediteur_code_postal: config.code_postal,
+        expediteur_ville: config.ville,
+        expediteur_pays_code: config.pays_code,
+      }).eq('id', commandeId);
+
+      console.log('✅ Default sender config applied');
+      return;
+    }
+  }
+
+  // Fallback: call apply-expediteur-rules edge function
+  try {
+    const { data: commande } = await supabase
+      .from('commande')
+      .select('numero_commande, tags')
+      .eq('id', commandeId)
+      .single();
+
+    const functionUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apply-expediteur-rules`;
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        commandeId,
+        clientId,
+        tagsCommande: commande?.tags || [],
+      }),
+    });
+
+    if (response.ok) {
+      console.log('✅ Sender rules applied via edge function');
+    }
+  } catch (error) {
+    console.error('❌ Error applying sender rules:', error);
+  }
+}
+
+// Apply carrier selection
+async function applyCarrierSelection(supabase: any, commandeId: string): Promise<void> {
+  console.log('🚚 Applying carrier selection for:', commandeId);
+
+  try {
+    const functionUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apply-automatic-carrier-selection`;
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ commande_id: commandeId }),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('✅ Carrier selected:', result.transporteur_choisi?.nom);
+    } else {
+      console.warn('⚠️ Carrier selection failed:', await response.text());
+    }
+  } catch (error) {
+    console.error('❌ Error applying carrier selection:', error);
+  }
+}
+
+// Find or create product
+async function findOrCreateProduct(supabase: any, productData: SendCloudProduct, clientId: string | null): Promise<string | null> {
+  console.log('🔍 Finding/creating product:', productData.sku);
+
+  // Try to find by SKU
+  let { data: produit } = await supabase
+    .from('produit')
+    .select('id')
+    .eq('reference', productData.sku)
+    .maybeSingle();
+
+  if (produit) {
+    console.log('✅ Product found:', produit.id);
+    return produit.id;
+  }
+
+  // Create minimal product
+  console.log('➕ Creating minimal product for SKU:', productData.sku);
+  
+  const weight = typeof productData.weight === 'string' 
+    ? parseFloat(productData.weight) 
+    : (productData.weight || 0.5);
+
+  const { data: newProduit, error } = await supabase
+    .from('produit')
+    .insert({
+      reference: productData.sku,
+      nom: productData.name || productData.sku,
+      poids_unitaire: weight,
+      prix_unitaire: productData.price || 0,
+      client_id: clientId,
+      code_ean: productData.sku,
+      actif: true,
+      stock_actuel: 0,
+      source: 'sendcloud_webhook',
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('❌ Error creating product:', error);
+    return null;
+  }
+
+  console.log('✅ Product created:', newProduit.id);
+  return newProduit.id;
 }
 
 // Event handlers
-async function handleParcelStatusChanged(supabase: any, event: SendCloudWebhookEvent) {
-  if (!event.parcel) return { success: false, error: 'No parcel data' };
-  
-  const { parcel } = event;
-  const externalRef = parcel.external_reference || parcel.external_order_id;
-  
-  if (!externalRef) {
-    console.warn('⚠️ No external reference in parcel status changed event');
-    return { success: false, error: 'No external reference' };
+async function handleOrderImport(supabase: any, event: SendCloudWebhookEvent, sendcloudData: SendCloudOrder): Promise<void> {
+  console.log('📦 Import order:', sendcloudData.order_number);
+
+  // Check if order already exists
+  const { data: existing } = await supabase
+    .from('commande')
+    .select('id')
+    .or(`numero_commande.eq.${sendcloudData.order_number},sendcloud_id.eq.${sendcloudData.id}`)
+    .maybeSingle();
+
+  if (existing) {
+    console.log('⚠️ Order already exists:', existing.id);
+    return;
   }
-  
-  // Find order by external reference or sendcloud_shipment_id
-  const { data: commande } = await supabase
-    .from('commande')
-    .select('id, numero_commande, statut_wms')
-    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
-    .maybeSingle();
-  
-  if (!commande) {
-    console.warn(`⚠️ Order not found for reference: ${externalRef}`);
-    return { success: false, error: 'Order not found' };
-  }
-  
-  const newStatus = mapSendcloudStatusToWMS(parcel.status?.id || 0);
-  
-  await supabase
-    .from('commande')
-    .update({
-      statut_wms: newStatus,
-      tracking_number: parcel.tracking_number || undefined,
-      tracking_url: parcel.tracking_url || undefined,
-      transporteur: parcel.carrier?.code || parcel.carrier?.name || undefined,
-      date_modification: new Date().toISOString(),
-    })
-    .eq('id', commande.id);
-  
-  console.log(`✅ Status updated: ${commande.numero_commande} -> ${newStatus}`);
-  
-  return { 
-    success: true, 
-    commande_id: commande.id,
-    old_status: commande.statut_wms,
-    new_status: newStatus,
-  };
-}
 
-async function handleTrackingUpdated(supabase: any, event: SendCloudWebhookEvent) {
-  if (!event.parcel) return { success: false, error: 'No parcel data' };
-  
-  const { parcel } = event;
-  const externalRef = parcel.external_reference || parcel.external_order_id;
-  
-  if (!externalRef) return { success: false, error: 'No external reference' };
-  
-  const { data: commande } = await supabase
-    .from('commande')
-    .select('id, numero_commande')
-    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
-    .maybeSingle();
-  
-  if (!commande) return { success: false, error: 'Order not found' };
-  
-  await supabase
-    .from('commande')
-    .update({
-      tracking_number: parcel.tracking_number,
-      tracking_url: parcel.tracking_url,
-      date_modification: new Date().toISOString(),
-    })
-    .eq('id', commande.id);
-  
-  console.log(`✅ Tracking updated: ${commande.numero_commande}`);
-  
-  return { success: true, commande_id: commande.id };
-}
+  // Detect client_id
+  const clientId = await detectClientId(supabase, event, sendcloudData);
 
-async function handleLabelCreated(supabase: any, event: SendCloudWebhookEvent) {
-  if (!event.parcel) return { success: false, error: 'No parcel data' };
-  
-  const { parcel } = event;
-  const externalRef = parcel.external_reference || parcel.external_order_id;
-  
-  if (!externalRef) return { success: false, error: 'No external reference' };
-  
-  const { data: commande } = await supabase
-    .from('commande')
-    .select('id, numero_commande')
-    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
-    .maybeSingle();
-  
-  if (!commande) return { success: false, error: 'Order not found' };
-  
-  // Get label URLs from parcel data
-  const labelUrl = parcel.label?.label_printer || parcel.label?.normal_printer?.[0];
-  
-  await supabase
-    .from('commande')
-    .update({
-      label_url: labelUrl,
-      label_source: 'sendcloud',
-      sendcloud_shipment_id: String(parcel.id),
-      date_modification: new Date().toISOString(),
-    })
-    .eq('id', commande.id);
-  
-  console.log(`✅ Label created: ${commande.numero_commande}`);
-  
-  return { success: true, commande_id: commande.id, label_url: labelUrl };
-}
+  // Calculate total weight
+  const products = sendcloudData.order_items || [];
+  const poidsTotal = products.reduce((sum, p) => {
+    const weight = typeof p.weight === 'string' ? parseFloat(p.weight) : (p.weight || 0.5);
+    return sum + (weight * p.quantity);
+  }, 0);
 
-async function handleShipmentDelayed(supabase: any, event: SendCloudWebhookEvent) {
-  if (!event.parcel) return { success: false, error: 'No parcel data' };
-  
-  const { parcel } = event;
-  const externalRef = parcel.external_reference || parcel.external_order_id;
-  
-  if (!externalRef) return { success: false, error: 'No external reference' };
-  
-  const { data: commande } = await supabase
+  // Insert order
+  const { data: commande, error: insertError } = await supabase
     .from('commande')
-    .select('id, numero_commande, remarques')
-    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
-    .maybeSingle();
-  
-  if (!commande) return { success: false, error: 'Order not found' };
-  
-  const delayNote = `[${new Date().toISOString()}] Expédition retardée - Statut: ${parcel.status?.message || 'Unknown'}`;
-  const updatedRemarks = commande.remarques ? `${commande.remarques}\n${delayNote}` : delayNote;
-  
-  await supabase
-    .from('commande')
-    .update({
-      remarques: updatedRemarks,
-      date_modification: new Date().toISOString(),
-    })
-    .eq('id', commande.id);
-  
-  console.log(`⚠️ Shipment delayed: ${commande.numero_commande}`);
-  
-  return { success: true, commande_id: commande.id };
-}
-
-async function handleDeliveryFailed(supabase: any, event: SendCloudWebhookEvent) {
-  if (!event.parcel) return { success: false, error: 'No parcel data' };
-  
-  const { parcel } = event;
-  const externalRef = parcel.external_reference || parcel.external_order_id;
-  
-  if (!externalRef) return { success: false, error: 'No external reference' };
-  
-  const { data: commande } = await supabase
-    .from('commande')
-    .select('id, numero_commande, remarques')
-    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
-    .maybeSingle();
-  
-  if (!commande) return { success: false, error: 'Order not found' };
-  
-  const failNote = `[${new Date().toISOString()}] ❌ Échec de livraison - ${parcel.status?.message || 'Unknown reason'}`;
-  const updatedRemarks = commande.remarques ? `${commande.remarques}\n${failNote}` : failNote;
-  
-  await supabase
-    .from('commande')
-    .update({
-      statut_wms: 'probleme',
-      remarques: updatedRemarks,
-      date_modification: new Date().toISOString(),
-    })
-    .eq('id', commande.id);
-  
-  console.log(`❌ Delivery failed: ${commande.numero_commande}`);
-  
-  return { success: true, commande_id: commande.id };
-}
-
-async function handleReturnInitiated(supabase: any, event: SendCloudWebhookEvent) {
-  if (!event.parcel) return { success: false, error: 'No parcel data' };
-  
-  const { parcel } = event;
-  const externalRef = parcel.external_reference || parcel.external_order_id;
-  
-  if (!externalRef) return { success: false, error: 'No external reference' };
-  
-  const { data: commande } = await supabase
-    .from('commande')
-    .select('id, numero_commande, client_id, remarques')
-    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
-    .maybeSingle();
-  
-  if (!commande) return { success: false, error: 'Order not found' };
-  
-  // Create return record
-  const { data: retour } = await supabase
-    .from('retour_produit')
     .insert({
-      client_id: commande.client_id,
-      commande_origine_id: commande.id,
-      statut: 'en_transit',
-      raison_retour: ['retour_client'],
-      tracking_number: parcel.tracking_number,
-      remarques: `Retour initié depuis SendCloud - Parcel ID: ${parcel.id}`,
+      numero_commande: sendcloudData.order_number,
+      sendcloud_id: String(sendcloudData.id),
+      sendcloud_reference: sendcloudData.external_reference || String(sendcloudData.id),
+      client_id: clientId,
+      nom_client: sendcloudData.name || 'Client SendCloud',
+      email_client: sendcloudData.email,
+      telephone_client: sendcloudData.phone_number,
+      adresse_nom: sendcloudData.name || 'Client',
+      adresse_ligne_1: sendcloudData.address || 'N/A',
+      adresse_ligne_2: sendcloudData.address_2,
+      code_postal: sendcloudData.postal_code || '00000',
+      ville: sendcloudData.city || 'N/A',
+      pays_code: sendcloudData.country_code || 'FR',
+      valeur_totale: sendcloudData.total_order_value || 0,
+      devise: sendcloudData.currency || 'EUR',
+      poids_total: poidsTotal,
+      poids_reel_kg: poidsTotal,
+      statut_wms: 'stock_reserve',
+      source: 'sendcloud',
+      date_creation: new Date().toISOString(),
     })
-    .select()
+    .select('id')
     .single();
-  
-  const returnNote = `[${new Date().toISOString()}] 🔄 Retour initié - Retour ID: ${retour?.id || 'N/A'}`;
-  const updatedRemarks = commande.remarques ? `${commande.remarques}\n${returnNote}` : returnNote;
-  
-  await supabase
-    .from('commande')
-    .update({
-      remarques: updatedRemarks,
-      date_modification: new Date().toISOString(),
-    })
-    .eq('id', commande.id);
-  
-  console.log(`🔄 Return initiated: ${commande.numero_commande}`);
-  
-  return { success: true, commande_id: commande.id, retour_id: retour?.id };
+
+  if (insertError) {
+    console.error('❌ Error creating order:', insertError);
+    throw insertError;
+  }
+
+  console.log('✅ Order created:', commande.id);
+
+  // Create product lines
+  for (const productData of products) {
+    const produitId = await findOrCreateProduct(supabase, productData, clientId);
+    
+    if (produitId) {
+      const weight = typeof productData.weight === 'string' ? parseFloat(productData.weight) : (productData.weight || 0.5);
+      
+      await supabase.from('ligne_commande').insert({
+        commande_id: commande.id,
+        produit_id: produitId,
+        produit_reference: productData.sku,
+        produit_nom: productData.name || productData.sku,
+        quantite_commandee: productData.quantity,
+        poids_unitaire: weight,
+        prix_unitaire: productData.price || 0,
+        valeur_totale: (productData.price || 0) * productData.quantity,
+      });
+    }
+  }
+
+  // Apply sender config
+  await applySenderConfig(supabase, commande.id, clientId);
+
+  // Apply carrier selection
+  await applyCarrierSelection(supabase, commande.id);
+
+  console.log('✅ Order fully processed:', commande.id);
 }
 
-async function handleCancellationRequested(supabase: any, event: SendCloudWebhookEvent) {
-  if (!event.parcel) return { success: false, error: 'No parcel data' };
-  
-  const { parcel } = event;
-  const externalRef = parcel.external_reference || parcel.external_order_id;
-  
-  if (!externalRef) return { success: false, error: 'No external reference' };
-  
+async function handleParcelStatusChanged(supabase: any, parcel: SendCloudParcel): Promise<void> {
+  console.log('📊 Status changed:', parcel.tracking_number);
+
   const { data: commande } = await supabase
     .from('commande')
-    .select('id, numero_commande')
-    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
+    .select('id')
+    .or(`sendcloud_shipment_id.eq.${parcel.id},sendcloud_id.eq.${parcel.external_order_id},sendcloud_reference.eq.${parcel.external_reference},tracking_number.eq.${parcel.tracking_number}`)
     .maybeSingle();
-  
-  if (!commande) return { success: false, error: 'Order not found' };
-  
-  await supabase
-    .from('commande')
-    .update({
-      statut_wms: 'annule',
-      date_modification: new Date().toISOString(),
-    })
-    .eq('id', commande.id);
-  
-  console.log(`🚫 Cancellation requested: ${commande.numero_commande}`);
-  
-  return { success: true, commande_id: commande.id };
+
+  if (!commande) {
+    console.warn('⚠️ Order not found for parcel:', parcel.id);
+    return;
+  }
+
+  const newStatus = mapSendcloudStatusToWMS(parcel.status?.id || 5);
+
+  await supabase.from('commande').update({
+    statut_wms: newStatus,
+    tracking_number: parcel.tracking_number,
+    tracking_url: parcel.tracking_url,
+    transporteur: parcel.carrier?.name,
+    date_modification: new Date().toISOString(),
+  }).eq('id', commande.id);
+
+  console.log(`✅ Status updated to ${newStatus}`);
 }
 
-// Generic handler for status-only updates
-async function handleGenericStatusUpdate(supabase: any, event: SendCloudWebhookEvent, action: string) {
-  if (!event.parcel) return { success: false, error: 'No parcel data' };
-  
-  const { parcel } = event;
-  const externalRef = parcel.external_reference || parcel.external_order_id;
-  
-  if (!externalRef) return { success: false, error: 'No external reference' };
-  
+async function handleLabelCreated(supabase: any, parcel: SendCloudParcel): Promise<void> {
+  console.log('🏷️ Label created:', parcel.tracking_number);
+
   const { data: commande } = await supabase
     .from('commande')
-    .select('id, numero_commande')
-    .or(`sendcloud_reference.eq.${externalRef},sendcloud_shipment_id.eq.${parcel.id}`)
+    .select('id')
+    .or(`sendcloud_shipment_id.eq.${parcel.id},sendcloud_id.eq.${parcel.external_order_id},sendcloud_reference.eq.${parcel.external_reference}`)
     .maybeSingle();
-  
-  if (!commande) return { success: false, error: 'Order not found' };
-  
-  console.log(`ℹ️ Generic event handled: ${action} for ${commande.numero_commande}`);
-  
-  return { success: true, commande_id: commande.id, action };
+
+  if (!commande) {
+    console.warn('⚠️ Order not found for label:', parcel.id);
+    return;
+  }
+
+  await supabase.from('commande').update({
+    label_url: parcel.label?.label_printer,
+    tracking_number: parcel.tracking_number,
+    tracking_url: parcel.tracking_url,
+    statut_wms: 'etiquette_generee',
+    date_modification: new Date().toISOString(),
+  }).eq('id', commande.id);
+
+  console.log('✅ Label attached to order');
 }
 
+// Main handler
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
-
-  // Get IP address and user agent for rate limiting and logging
-  const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-                   req.headers.get('x-real-ip') || 
-                   'unknown';
+  const startTime = Date.now();
+  const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0] || req.headers.get('x-real-ip') || 'unknown';
   const userAgent = req.headers.get('user-agent');
-  const endpoint = '/sendcloud-webhook';
 
-  let logId: string | null = null;
-  
   try {
-    console.log('📦 Webhook SendCloud reçu from', ipAddress);
-    console.log('Method:', req.method);
-    console.log('Content-Type:', req.headers.get('content-type'));
-
-    // 🛡️ 1. CHECK RATE LIMITING FIRST
-    const rateLimitCheck = await checkRateLimit(supabase, ipAddress, endpoint);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const webhookSecret = Deno.env.get('SENDCLOUD_WEBHOOK_SECRET');
     
-    if (!rateLimitCheck.allowed) {
-      await logSecurityEvent(
-        supabase,
-        ipAddress,
-        endpoint,
-        'rate_limit_exceeded',
-        userAgent,
-        { reason: rateLimitCheck.reason }
-      );
-      
-      console.error(`❌ Rate limit exceeded for ${ipAddress}`);
-      
-      return new Response(
-        JSON.stringify({ 
-          error: 'Too many requests', 
-          message: rateLimitCheck.reason 
-        }),
-        { 
-          status: 429, 
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json',
-            'Retry-After': '300' // 5 minutes
-          } 
-        }
-      );
-    }
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 🔒 2. SECURITY CHECK: Validate webhook token (HEADER ONLY)
-    const receivedToken = req.headers.get('x-webhook-token');
-
-    if (!receivedToken) {
-      await logSecurityEvent(
-        supabase,
-        ipAddress,
-        endpoint,
-        'missing_token_header',
-        userAgent,
-        { message: 'X-Webhook-Token header missing' }
-      );
-      
-      console.error('❌ Missing X-Webhook-Token header');
-      
-      return new Response(
-        JSON.stringify({ 
-          error: 'Unauthorized', 
-          message: 'X-Webhook-Token header is required' 
-        }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // Get expected token from environment
-    const expectedToken = Deno.env.get('SENDCLOUD_WEBHOOK_SECRET');
-    
-    if (!expectedToken) {
-      console.error('❌ SENDCLOUD_WEBHOOK_SECRET not configured');
-      
-      return new Response(
-        JSON.stringify({ 
-          error: 'Configuration error', 
-          message: 'Webhook not properly configured' 
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    // 🔐 3. CONSTANT-TIME COMPARISON to prevent timing attacks
-    if (!constantTimeCompare(receivedToken, expectedToken)) {
-      await logSecurityEvent(
-        supabase,
-        ipAddress,
-        endpoint,
-        'invalid_token',
-        userAgent,
-        { message: 'Invalid webhook token provided' }
-      );
-      
-      console.error('❌ Invalid webhook token');
-      
-      return new Response(
-        JSON.stringify({ 
-          error: 'Unauthorized', 
-          message: 'Invalid webhook token' 
-        }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    console.log('✅ Token validé - IP:', ipAddress);
-
-    // Lire le body brut d'abord
-    const rawBody = await req.text();
-    console.log('Raw body length:', rawBody.length);
-
-    // Vérifier si le body est vide
-    if (!rawBody || rawBody.trim() === '') {
-      console.error('❌ Body vide reçu');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Body vide - veuillez envoyer des données JSON',
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
-    // Parser le JSON
-    let webhookEvent: SendCloudWebhookEvent | SendCloudOrder;
-    try {
-      webhookEvent = JSON.parse(rawBody);
-    } catch (parseError) {
-      console.error('❌ Erreur parsing JSON:', parseError);
-      
-      // Logger l'erreur de parsing
-      await supabase.from('webhook_sendcloud_log').insert({
-        payload: { raw: rawBody.substring(0, 1000), error: 'JSON invalide' },
-        statut: 'erreur',
-        erreur: parseError instanceof Error ? parseError.message : 'Unknown parsing error',
+    // Rate limiting
+    const rateLimitResult = await checkRateLimit(supabase, ipAddress, '/sendcloud-webhook');
+    if (!rateLimitResult.allowed) {
+      await logSecurityEvent(supabase, ipAddress, '/sendcloud-webhook', 'rate_limit_exceeded', userAgent, { reason: rateLimitResult.reason });
+      return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-      
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'JSON invalide',
-          details: parseError instanceof Error ? parseError.message : 'Unknown parsing error',
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
     }
 
-    console.log('📦 Webhook data received');
-    
-    // Detect event type
-    const eventType = 'action' in webhookEvent ? webhookEvent.action : 'order_import';
-    console.log('📋 Event type:', eventType);
-
-    // Log event to history
-    const { data: historyLog } = await supabase
-      .from('sendcloud_event_history')
-      .insert({
-        event_type: eventType,
-        direction: 'incoming',
-        entity_type: 'action' in webhookEvent ? 'parcel' : 'order',
-        success: false, // Will update later
-        metadata: webhookEvent,
-      })
-      .select()
-      .single();
-
-    const historyId = historyLog?.id;
-
-    // Route to appropriate handler based on event type
-    let result: any;
-    const startTime = Date.now();
-
-    try {
-      switch (eventType) {
-        // === Status & Tracking Events ===
-        case 'parcel_status_changed':
-        case 'status_changed':
-          result = await handleParcelStatusChanged(supabase, webhookEvent as SendCloudWebhookEvent);
-          break;
-
-        case 'tracking_updated':
-        case 'tracking_number_updated':
-          result = await handleTrackingUpdated(supabase, webhookEvent as SendCloudWebhookEvent);
-          break;
-
-        case 'label_created':
-        case 'label_printed':
-          result = await handleLabelCreated(supabase, webhookEvent as SendCloudWebhookEvent);
-          break;
-
-        // === Delivery Events ===
-        case 'shipment_departed':
-        case 'parcel_departed':
-          result = await handleGenericStatusUpdate(supabase, webhookEvent as SendCloudWebhookEvent, 'departed');
-          break;
-
-        case 'shipment_in_transit':
-        case 'parcel_in_transit':
-          result = await handleGenericStatusUpdate(supabase, webhookEvent as SendCloudWebhookEvent, 'in_transit');
-          break;
-
-        case 'shipment_delivered':
-        case 'parcel_delivered':
-          result = await handleParcelStatusChanged(supabase, webhookEvent as SendCloudWebhookEvent);
-          break;
-
-        case 'shipment_delayed':
-        case 'delivery_delayed':
-          result = await handleShipmentDelayed(supabase, webhookEvent as SendCloudWebhookEvent);
-          break;
-
-        case 'delivery_failed':
-        case 'delivery_exception':
-          result = await handleDeliveryFailed(supabase, webhookEvent as SendCloudWebhookEvent);
-          break;
-
-        // === Return Events ===
-        case 'return_initiated':
-        case 'return_requested':
-          result = await handleReturnInitiated(supabase, webhookEvent as SendCloudWebhookEvent);
-          break;
-
-        case 'return_received':
-        case 'return_delivered':
-          result = await handleGenericStatusUpdate(supabase, webhookEvent as SendCloudWebhookEvent, 'return_received');
-          break;
-
-        // === Cancellation Events ===
-        case 'cancellation_requested':
-        case 'parcel_cancelled':
-          result = await handleCancellationRequested(supabase, webhookEvent as SendCloudWebhookEvent);
-          break;
-
-        // === Exception Events ===
-        case 'shipment_exception':
-        case 'customs_delay':
-        case 'address_issue':
-          result = await handleGenericStatusUpdate(supabase, webhookEvent as SendCloudWebhookEvent, eventType);
-          break;
-
-        // === Order Import (Legacy/Default) ===
-        case 'order_import':
-        case 'order_created':
-        default:
-          // Handle as order creation (original logic)
-          result = await handleOrderImport(supabase, webhookEvent as SendCloudOrder);
-          break;
+    // Token validation
+    if (webhookSecret) {
+      const receivedToken = req.headers.get('x-webhook-token');
+      if (!receivedToken || !constantTimeCompare(receivedToken, webhookSecret)) {
+        await logSecurityEvent(supabase, ipAddress, '/sendcloud-webhook', 'invalid_token', userAgent, { received: receivedToken ? 'present' : 'missing' });
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
-
-      const processingTime = Date.now() - startTime;
-
-      // Update history with success
-      if (historyId) {
-        await supabase
-          .from('sendcloud_event_history')
-          .update({
-            success: result.success,
-            processing_time_ms: processingTime,
-            entity_id: result.commande_id || result.retour_id,
-            error_details: result.error || null,
-          })
-          .eq('id', historyId);
-      }
-
-      console.log(`✅ Event processed in ${processingTime}ms:`, eventType);
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          event_type: eventType,
-          result: result,
-          processing_time_ms: processingTime,
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-
-    } catch (handlerError) {
-      const processingTime = Date.now() - startTime;
-      const errorMessage = handlerError instanceof Error ? handlerError.message : 'Unknown handler error';
-
-      // Update history with failure
-      if (historyId) {
-        await supabase
-          .from('sendcloud_event_history')
-          .update({
-            success: false,
-            processing_time_ms: processingTime,
-            error_details: errorMessage,
-          })
-          .eq('id', historyId);
-      }
-
-      throw handlerError;
     }
-  } catch (error) {
-    console.error('❌ Erreur webhook:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    // Parse event
+    const event: SendCloudWebhookEvent = await req.json();
+    console.log('🔔 Webhook received:', event.action);
+
+    // Log event
+    await supabase.from('sendcloud_event_history').insert({
+      event_type: event.action,
+      direction: 'incoming',
+      entity_type: event.parcel ? 'parcel' : 'order',
+      entity_id: event.parcel?.id || event.order?.id || null,
+      success: true,
+      processing_time_ms: 0,
+      metadata: event,
+    });
+
+    // Route event
+    switch (event.action) {
+      case 'order_import':
+      case 'order_created':
+        if (event.order) {
+          await handleOrderImport(supabase, event, event.order);
+        }
+        break;
+
+      case 'parcel_status_changed':
+      case 'tracking_updated':
+        if (event.parcel) {
+          await handleParcelStatusChanged(supabase, event.parcel);
+        }
+        break;
+
+      case 'label_created':
+        if (event.parcel) {
+          await handleLabelCreated(supabase, event.parcel);
+        }
+        break;
+
+      default:
+        console.log('ℹ️ Unhandled event:', event.action);
+    }
+
+    const processingTime = Date.now() - startTime;
+    console.log(`✅ Webhook processed in ${processingTime}ms`);
 
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: errorMessage,
-        stack: errorStack 
-      }),
+      JSON.stringify({ success: true, processing_time_ms: processingTime }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+    );
+
+  } catch (error) {
+    console.error('❌ Webhook error:', error);
+    
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });
-
-// Order import handler (original logic refactored)
-async function handleOrderImport(supabase: any, sendcloudData: SendCloudOrder) {
-  let logId: string | null = null;
-
-  // Logger la réception du webhook
-  const { data: logData } = await supabase
-    .from('webhook_sendcloud_log')
-    .insert({
-      payload: sendcloudData,
-      statut: 'recu',
-    })
-    .select()
-    .single();
-  
-  if (logData) {
-    logId = logData.id;
-  }
-
-  // Normaliser order_number (accepter order_number ou order_id)
-  const orderNumber = sendcloudData.order_number || sendcloudData.order_id || String(sendcloudData.id);
-  console.log('📋 Traitement commande:', orderNumber);
-
-  // 1. Vérifier si la commande existe déjà
-  let existingCommande = null;
-  
-  const { data: foundCommande } = await supabase
-    .from('commande')
-    .select('id, numero_commande, sendcloud_id')
-    .or(`sendcloud_id.eq.${sendcloudData.id},numero_commande.eq.${orderNumber}`)
-    .maybeSingle();
-  
-  existingCommande = foundCommande;
-
-  if (existingCommande) {
-    console.log('⚠️ Commande déjà existante:', existingCommande.numero_commande);
-    
-    if (logId) {
-      await supabase
-        .from('webhook_sendcloud_log')
-        .update({
-          statut: 'deja_existe',
-          commande_id: existingCommande.id,
-          traite_a: new Date().toISOString(),
-        })
-        .eq('id', logId);
-    }
-    
-    return { 
-      success: true,
-      already_exists: true,
-      commande_id: existingCommande.id,
-      numero_commande: existingCommande.numero_commande
-    };
-  }
-
-  // 2. Insérer la commande
-  console.log('➕ Création nouvelle commande:', orderNumber);
-  const { data: commande, error: commandeError } = await supabase
-    .from('commande')
-    .insert({
-      sendcloud_id: String(sendcloudData.id),
-      numero_commande: orderNumber,
-      nom_client: sendcloudData.name,
-      email_client: sendcloudData.email || null,
-      telephone_client: sendcloudData.telephone || null,
-      adresse_nom: sendcloudData.name,
-      adresse_ligne_1: sendcloudData.address,
-      adresse_ligne_2: sendcloudData.address_2 || null,
-      code_postal: sendcloudData.postal_code,
-      ville: sendcloudData.city,
-      pays_code: sendcloudData.country,
-      valeur_totale: sendcloudData.total_order_value || 0,
-      devise: sendcloudData.currency || 'EUR',
-      statut_wms: 'en_attente_reappro',
-      source: 'sendcloud',
-      transporteur: sendcloudData.shipment?.name || null,
-    })
-    .select()
-    .single();
-
-  if (commandeError) {
-    console.error('❌ Erreur insertion commande:', orderNumber, commandeError);
-    throw commandeError;
-  }
-
-  console.log('✅ Commande créée:', commande.id, '- N°:', commande.numero_commande);
-
-  // 3. Traiter chaque produit et créer les lignes
-  const lignesCreees = [];
-  const mouvementsCreees = [];
-  const produitsManquants = [];
-  let peutReserver = true;
-
-  for (const product of sendcloudData.order_products) {
-    console.log(`📦 Traitement produit: ${product.sku} x${product.quantity}`);
-
-    const { data: produit, error: produitError } = await supabase
-      .from('produit')
-      .select('id, reference, nom, stock_actuel, poids_unitaire, prix_unitaire')
-      .eq('reference', product.sku)
-      .eq('statut_actif', true)
-      .single();
-
-    if (produitError || !produit) {
-      console.warn(`⚠️ Produit non trouvé: ${product.sku}`);
-      produitsManquants.push(product.sku);
-      peutReserver = false;
-      
-      const { data: ligne } = await supabase
-        .from('ligne_commande')
-        .insert({
-          commande_id: commande.id,
-          produit_reference: product.sku,
-          produit_nom: product.name,
-          quantite_commandee: product.quantity,
-          quantite_preparee: 0,
-          poids_unitaire: product.weight || null,
-          prix_unitaire: product.price || null,
-          valeur_totale: (product.price || 0) * product.quantity,
-          statut_ligne: 'en_attente',
-        })
-        .select()
-        .single();
-
-      if (ligne) lignesCreees.push(ligne);
-      continue;
-    }
-
-    const { data: stockDispo } = await supabase
-      .from('stock_disponible')
-      .select('stock_disponible')
-      .eq('produit_id', produit.id)
-      .single();
-
-    const stockDisponible = stockDispo?.stock_disponible || produit.stock_actuel;
-
-    if (stockDisponible < product.quantity) {
-      console.warn(`⚠️ Stock insuffisant pour ${product.sku}`);
-      peutReserver = false;
-    }
-
-    const { data: ligne, error: ligneError } = await supabase
-      .from('ligne_commande')
-      .insert({
-        commande_id: commande.id,
-        produit_id: produit.id,
-        produit_reference: product.sku,
-        produit_nom: product.name,
-        quantite_commandee: product.quantity,
-        quantite_preparee: 0,
-        poids_unitaire: product.weight || produit.poids_unitaire,
-        prix_unitaire: product.price || produit.prix_unitaire,
-        valeur_totale: (product.price || produit.prix_unitaire || 0) * product.quantity,
-        statut_ligne: 'en_attente',
-      })
-      .select()
-      .single();
-
-    if (ligneError) {
-      console.error('❌ Erreur création ligne:', ligneError);
-      continue;
-    }
-
-    lignesCreees.push(ligne);
-
-    if (stockDisponible >= product.quantity) {
-      const { data: reservation, error: reservError } = await supabase.rpc('reserver_stock', {
-        p_produit_id: produit.id,
-        p_quantite: product.quantity,
-        p_commande_id: commande.id,
-        p_reference_origine: commande.numero_commande,
-      });
-
-      if (reservError) {
-        console.error('❌ Erreur réservation stock:', reservError);
-      } else if (reservation?.success) {
-        console.log(`✅ Stock réservé: ${product.sku} x${product.quantity}`);
-        mouvementsCreees.push(reservation.mouvement_id);
-        
-        await supabase
-          .from('ligne_commande')
-          .update({ statut_ligne: 'réservé' })
-          .eq('id', ligne.id);
-      }
-    }
-  }
-
-  // 4. Mettre à jour le statut de la commande
-  let nouveauStatut = 'En attente de réappro';
-  if (peutReserver && produitsManquants.length === 0) {
-    nouveauStatut = 'Réservé';
-  } else if (produitsManquants.length > 0) {
-    nouveauStatut = 'En attente de réappro';
-  }
-
-  await supabase
-    .from('commande')
-    .update({ statut_wms: nouveauStatut })
-    .eq('id', commande.id);
-
-  console.log('✅ Traitement terminé -', commande.numero_commande, '- Statut:', nouveauStatut);
-
-  if (logId) {
-    await supabase
-      .from('webhook_sendcloud_log')
-      .update({
-        statut: 'traite',
-        commande_id: commande.id,
-        traite_a: new Date().toISOString(),
-      })
-      .eq('id', logId);
-  }
-
-  return {
-    success: true,
-    commande_id: commande.id,
-    numero_commande: commande.numero_commande,
-    statut: nouveauStatut,
-    lignes_creees: lignesCreees.length,
-    mouvements_crees: mouvementsCreees.length,
-    produits_manquants: produitsManquants,
-  };
-}

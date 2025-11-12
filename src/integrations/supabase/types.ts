@@ -3399,6 +3399,64 @@ export type Database = {
           },
         ]
       }
+      sendcloud_client_mapping: {
+        Row: {
+          actif: boolean | null
+          client_id: string
+          config_expediteur_defaut_id: string | null
+          date_creation: string | null
+          date_modification: string | null
+          email_domain: string | null
+          id: string
+          integration_id: number | null
+          shop_name: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          client_id: string
+          config_expediteur_defaut_id?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          email_domain?: string | null
+          id?: string
+          integration_id?: number | null
+          shop_name?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          client_id?: string
+          config_expediteur_defaut_id?: string | null
+          date_creation?: string | null
+          date_modification?: string | null
+          email_domain?: string | null
+          id?: string
+          integration_id?: number | null
+          shop_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sendcloud_client_mapping_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sendcloud_client_mapping_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "sendcloud_client_mapping_config_expediteur_defaut_id_fkey"
+            columns: ["config_expediteur_defaut_id"]
+            isOneToOne: false
+            referencedRelation: "configuration_expediteur"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sendcloud_event_history: {
         Row: {
           created_at: string | null

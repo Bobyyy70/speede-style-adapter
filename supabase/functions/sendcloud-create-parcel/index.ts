@@ -8,6 +8,10 @@ const corsHeaders = {
 interface SendCloudParcelRequest {
   commande_id: string;
   shipping_method?: string;
+  with_insurance?: boolean;
+  insurance_amount?: number;
+  with_signature?: boolean;
+  relay_point_id?: string;
 }
 
 Deno.serve(async (req) => {
@@ -23,7 +27,14 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { commande_id, shipping_method } = await req.json() as SendCloudParcelRequest;
+    const { 
+      commande_id, 
+      shipping_method,
+      with_insurance = false,
+      insurance_amount = 0,
+      with_signature = false,
+      relay_point_id 
+    } = await req.json() as SendCloudParcelRequest;
 
     console.log('📦 Création parcel SendCloud pour commande:', commande_id);
 
@@ -62,7 +73,7 @@ Deno.serve(async (req) => {
     }
 
     // 3. Construire le payload SendCloud API v3 Orders
-    const sendcloudPayload = {
+    const sendcloudPayload: any = {
       order_number: commande.numero_commande,
       order_date: commande.date_creation,
       shipping_address: {
@@ -96,9 +107,27 @@ Deno.serve(async (req) => {
           currency: commande.devise || 'EUR',
         },
       },
-      shipping_option_code: shipping_method || 'STANDARD',
+      shipping_option_code: shipping_method || commande.transporteur_choisi || 'STANDARD',
       external_reference: commande.id,
     };
+
+    // Add insurance if requested
+    if (with_insurance && insurance_amount > 0) {
+      sendcloudPayload.insured_value = {
+        value: insurance_amount,
+        currency: commande.devise || 'EUR',
+      };
+    }
+
+    // Add signature requirement
+    if (with_signature) {
+      sendcloudPayload.require_signature = true;
+    }
+
+    // Add relay point if specified
+    if (relay_point_id) {
+      sendcloudPayload.to_service_point = relay_point_id;
+    }
 
     console.log('📤 Envoi vers SendCloud API:', JSON.stringify(sendcloudPayload, null, 2));
 
