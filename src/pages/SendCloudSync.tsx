@@ -251,11 +251,15 @@ export default function SendCloudSync() {
               <div className="flex gap-2">
                 <Button onClick={() => handleManualSync()} disabled={syncing} variant="outline">
                   <Play className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                  Sync rapide
+                  Sync rapide (5min)
                 </Button>
                 <Button onClick={() => handleManualSync(undefined, 'full')} disabled={syncing} variant="secondary">
+                  <Download className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                  Scan complet (90j)
+                </Button>
+                <Button onClick={handleBackfill} disabled={syncing} variant="default">
                   <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                  Full scan (90j)
+                  Backfill lignes
                 </Button>
               </div>
             </div>
