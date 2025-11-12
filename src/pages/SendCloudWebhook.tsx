@@ -77,7 +77,7 @@ const SendCloudWebhook = () => {
         <Button
           variant="outline"
           size="icon"
-          onClick={() => navigate('/sendcloud-sync')}
+          onClick={() => navigate('/integrations/sendcloud-sync')}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
