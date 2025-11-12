@@ -39,6 +39,7 @@ import { FicheCommandeComplete } from "./FicheCommandeComplete";
 import { CreerRetourDialog } from "./CreerRetourDialog";
 import { SendCloudActions } from "./SendCloudActions";
 import { SelectTransportService } from "./SelectTransportService";
+import { VolumetricWeightDisplay } from "./VolumetricWeightDisplay";
 import { ORDER_STATUS_LABELS, getStatutBadgeVariant } from "@/lib/orderStatuses";
 import {
   Package,
@@ -588,15 +589,22 @@ export const CommandeDetailDialog = ({
             </TabsContent>
 
             <TabsContent value="transport" className="mt-4">
-              <SelectTransportService
-                commandeId={commandeId}
-                poidsTotal={commande?.poids_total || 0}
-                paysDestination={commande?.pays_code}
-                onServiceSelected={() => {
-                  queryClient.invalidateQueries({ queryKey: ["commande", commandeId] });
-                  toast({ title: "Service de transport mis à jour" });
-                }}
-              />
+              <div className="space-y-4">
+                <SelectTransportService
+                  commandeId={commandeId}
+                  poidsTotal={commande?.poids_total || 0}
+                  paysDestination={commande?.pays_code}
+                  onServiceSelected={() => {
+                    queryClient.invalidateQueries({ queryKey: ["commande", commandeId] });
+                    toast({ title: "Service de transport mis à jour" });
+                  }}
+                />
+                
+                <VolumetricWeightDisplay
+                  commandeId={commandeId}
+                  transporteurCode={commande?.transporteur_choisi || undefined}
+                />
+              </div>
             </TabsContent>
 
             <TabsContent value="documents" className="mt-4">

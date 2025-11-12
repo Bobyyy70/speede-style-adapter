@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, Package } from "lucide-react";
+import { Plus, Trash2, Package, Truck } from "lucide-react";
 
 interface TypeCarton {
   id: string;
@@ -20,8 +21,18 @@ interface TypeCarton {
   actif: boolean;
 }
 
+interface FacteurDivision {
+  id: string;
+  transporteur_code: string;
+  transporteur_nom: string;
+  facteur_division: number;
+  description: string;
+  actif: boolean;
+}
+
 export function CalculateurVolumetrique() {
   const [cartons, setCartons] = useState<TypeCarton[]>([]);
+  const [facteurs, setFacteurs] = useState<FacteurDivision[]>([]);
   const [loading, setLoading] = useState(true);
   const [newCarton, setNewCarton] = useState({
     nom: "",
@@ -33,6 +44,7 @@ export function CalculateurVolumetrique() {
 
   useEffect(() => {
     fetchCartons();
+    fetchFacteurs();
   }, []);
 
   const fetchCartons = async () => {
@@ -49,6 +61,21 @@ export function CalculateurVolumetrique() {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFacteurs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("transporteur_facteur_division")
+        .select("*")
+        .order("transporteur_nom");
+
+      if (error) throw error;
+      setFacteurs(data || []);
+    } catch (error: any) {
+      toast.error("Erreur lors du chargement des facteurs");
+      console.error(error);
     }
   };
 
@@ -95,8 +122,20 @@ export function CalculateurVolumetrique() {
   };
 
   return (
-    <div className="space-y-4">
-      <Card>
+    <Tabs defaultValue="cartons" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="cartons">
+          <Package className="h-4 w-4 mr-2" />
+          Types de Cartons
+        </TabsTrigger>
+        <TabsTrigger value="facteurs">
+          <Truck className="h-4 w-4 mr-2" />
+          Facteurs Transporteurs
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="cartons" className="space-y-4">
+        <Card>
         <CardHeader>
           <CardTitle>Ajouter un type de carton</CardTitle>
           <CardDescription>
@@ -215,6 +254,73 @@ export function CalculateurVolumetrique() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </TabsContent>
+
+      <TabsContent value="facteurs">
+        <Card>
+          <CardHeader>
+            <CardTitle>Facteurs de Division par Transporteur</CardTitle>
+            <CardDescription>
+              Configurez les diviseurs volumétriques utilisés par chaque transporteur pour calculer le poids facturable
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+            ) : facteurs.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Truck className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                Aucun facteur configuré
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Transporteur</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Facteur de Division</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Statut</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {facteurs.map((facteur) => (
+                    <TableRow key={facteur.id}>
+                      <TableCell className="font-medium">{facteur.transporteur_nom}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{facteur.transporteur_code}</Badge>
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        {facteur.facteur_division} cm³/kg
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {facteur.description}
+                      </TableCell>
+                      <TableCell>
+                        {facteur.actif ? (
+                          <Badge variant="secondary">Actif</Badge>
+                        ) : (
+                          <Badge variant="outline">Inactif</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            
+            <div className="mt-6 bg-muted/50 rounded-lg p-4 text-sm space-y-2">
+              <p className="font-medium">Formule de calcul:</p>
+              <code className="block">
+                Poids volumétrique (kg) = (Longueur × Largeur × Hauteur en cm) ÷ Facteur de division
+              </code>
+              <p className="text-muted-foreground mt-2">
+                Le transporteur facture sur la base du <strong>poids le plus élevé</strong> entre le poids réel et le poids volumétrique.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   );
 }

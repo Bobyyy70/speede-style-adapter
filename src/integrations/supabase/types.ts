@@ -2467,6 +2467,7 @@ export type Database = {
           taux_tva: number | null
           temperature_stockage: string | null
           valeur_douaniere: number | null
+          volume_cm3: number | null
           volume_m3: number | null
         }
         Insert: {
@@ -2508,6 +2509,7 @@ export type Database = {
           taux_tva?: number | null
           temperature_stockage?: string | null
           valeur_douaniere?: number | null
+          volume_cm3?: number | null
           volume_m3?: number | null
         }
         Update: {
@@ -2549,6 +2551,7 @@ export type Database = {
           taux_tva?: number | null
           temperature_stockage?: string | null
           valeur_douaniere?: number | null
+          volume_cm3?: number | null
           volume_m3?: number | null
         }
         Relationships: [
@@ -4191,6 +4194,42 @@ export type Database = {
         }
         Relationships: []
       }
+      transporteur_facteur_division: {
+        Row: {
+          actif: boolean | null
+          date_creation: string | null
+          date_modification: string | null
+          description: string | null
+          facteur_division: number
+          id: string
+          transporteur_code: string
+          transporteur_nom: string
+          unite: string
+        }
+        Insert: {
+          actif?: boolean | null
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          facteur_division?: number
+          id?: string
+          transporteur_code: string
+          transporteur_nom: string
+          unite?: string
+        }
+        Update: {
+          actif?: boolean | null
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          facteur_division?: number
+          id?: string
+          transporteur_code?: string
+          transporteur_nom?: string
+          unite?: string
+        }
+        Relationships: []
+      }
       transporteur_service: {
         Row: {
           actif: boolean | null
@@ -4887,6 +4926,25 @@ export type Database = {
       calculate_next_retry: {
         Args: { base_delay_minutes?: number; retry_count: number }
         Returns: string
+      }
+      calculer_poids_volumetrique_commande: {
+        Args: { p_commande_id: string; p_transporteur_code?: string }
+        Returns: {
+          details: Json
+          facteur_utilise: number
+          poids_facturable: number
+          poids_reel_total: number
+          poids_volumetrique_total: number
+        }[]
+      }
+      calculer_poids_volumetrique_produit: {
+        Args: {
+          p_facteur_division?: number
+          p_hauteur_cm: number
+          p_largeur_cm: number
+          p_longueur_cm: number
+        }
+        Returns: number
       }
       can_client_create_user: { Args: { _client_id: string }; Returns: boolean }
       check_unanimite_suggestion: {
