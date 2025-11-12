@@ -275,24 +275,29 @@ export function FicheCommandeComplete({
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm bg-muted/30 p-3 rounded-lg">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Expéditeur:</span>
-              <span className="font-semibold">{commande.expediteur_entreprise || "-"}</span>
+              <span className="font-semibold">{commande.expediteur_entreprise || <span className="text-orange-600 italic">Configuration manquante</span>}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Transporteur:</span>
-              <span className="font-semibold">{commande.transporteur || "-"}</span>
+              <span className="font-semibold">{commande.transporteur || <span className="text-orange-600 italic">Non défini</span>}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Service:</span>
-              <Badge variant="outline" className="text-xs">{commande.service_transport || commande.methode_expedition || "-"}</Badge>
+              <Badge variant="outline" className="text-xs">{commande.methode_expedition || commande.transporteur_choisi || "standard"}</Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Poids réel:</span>
-              <span className="font-semibold">{commande.poids_reel_kg ? `${commande.poids_reel_kg} kg` : "-"}</span>
+              <span className="font-semibold">{commande.poids_reel_kg ? `${commande.poids_reel_kg} kg` : <span className="text-orange-600 italic">À calculer</span>}</span>
             </div>
             <div className="flex justify-between col-span-2">
               <span className="text-muted-foreground">Poids volumétrique:</span>
-              <span className="font-semibold text-orange-600">{commande.poids_volumetrique_kg ? `${commande.poids_volumetrique_kg} kg (taxé)` : "-"}</span>
+              <span className="font-semibold text-orange-600">{commande.poids_volumetrique_kg ? `${commande.poids_volumetrique_kg} kg (taxé)` : <span className="italic">Non calculé</span>}</span>
             </div>
+            {!commande.expediteur_entreprise && (
+              <div className="col-span-2 text-xs text-orange-600 bg-orange-50 dark:bg-orange-950/20 p-2 rounded border border-orange-200 dark:border-orange-900">
+                💡 <strong>Info:</strong> Les données d'expéditeur et de transport seront automatiquement configurées. Actualisez la page dans quelques secondes.
+              </div>
+            )}
             <div className="col-span-2 flex justify-center pt-2 border-t border-border/50">
               <Barcode value={commande.numero_commande} height={35} width={1.3} fontSize={10} />
             </div>

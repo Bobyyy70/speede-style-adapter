@@ -115,22 +115,54 @@ export const CommandeDetailDialog = ({
     return () => unsubscribe();
   }, [commandeId, open]);
 
+  // Fetch lignes de commande
+  const { data: lignes } = useQuery({
+    queryKey: ["lignes_commande", commandeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ligne_commande")
+        .select("*")
+        .eq("commande_id", commandeId)
+        .order("date_creation", { ascending: true });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!commandeId,
+  });
+
   // Appliquer automatiquement les règles si expéditeur/transporteur manquant
   useEffect(() => {
-    if (!open || !commande) return;
+    if (!open || !commande || !lignes) return;
 
     const applyMissingRules = async () => {
       let rulesApplied = false;
+      const updates: any = {};
 
-      // Appliquer règles expéditeur si vide
-      if (!commande.expediteur_entreprise && commande.client_id) {
+      // Calculer poids total depuis lignes si manquant
+      if ((!commande.poids_total || !commande.poids_reel_kg) && lignes.length > 0) {
+        const poidsTotal = lignes.reduce((sum, ligne) => {
+          const poids = ligne.poids_unitaire || 0;
+          const qte = ligne.quantite_commandee || 0;
+          return sum + (poids * qte);
+        }, 0);
+        
+        if (poidsTotal > 0) {
+          updates.poids_total = poidsTotal;
+          updates.poids_reel_kg = poidsTotal;
+          console.log('[Auto] Poids calculé:', poidsTotal, 'kg');
+        }
+      }
+
+      // Appliquer règles expéditeur si vide (même sans client_id)
+      if (!commande.expediteur_entreprise) {
         try {
           const { data, error } = await supabase.functions.invoke('apply-expediteur-rules', {
             body: {
               commandeId,
-              clientId: commande.client_id,
+              clientId: commande.client_id || null,
               nomClient: commande.nom_client,
-              tagsCommande: commande.tags,
+              tagsCommande: commande.tags || [],
               sousClient: commande.sous_client,
             }
           });
@@ -160,29 +192,29 @@ export const CommandeDetailDialog = ({
         }
       }
 
+      // Sauvegarder les updates de poids si calculés
+      if (Object.keys(updates).length > 0) {
+        try {
+          const { error } = await supabase
+            .from('commande')
+            .update(updates)
+            .eq('id', commandeId);
+          
+          if (!error) {
+            rulesApplied = true;
+          }
+        } catch (err) {
+          console.error('[Auto] Erreur mise à jour poids:', err);
+        }
+      }
+
       if (rulesApplied) {
         refetch();
       }
     };
 
     applyMissingRules();
-  }, [open, commande?.id]);
-
-  // Fetch lignes de commande
-  const { data: lignes } = useQuery({
-    queryKey: ["lignes_commande", commandeId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("ligne_commande")
-        .select("*")
-        .eq("commande_id", commandeId)
-        .order("date_creation", { ascending: true });
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: open && !!commandeId,
-  });
+  }, [open, commande?.id, lignes?.length]);
 
   // Calculer les transitions possibles côté client
   const getTransitionsPossibles = (currentStatut: string): string[] => {
@@ -527,13 +559,26 @@ export const CommandeDetailDialog = ({
             </TabsContent>
 
             <TabsContent value="products" className="mt-4">
-              <FicheCommandeComplete
-                commande={commande}
-                lignes={lignes}
-                showTimeline={false}
-                showProducts={true}
-                compact={true}
-              />
+              {lignes && lignes.length > 0 ? (
+                <FicheCommandeComplete
+                  commande={commande}
+                  lignes={lignes}
+                  showTimeline={false}
+                  showProducts={true}
+                  compact={true}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Package className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Aucun produit</h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Cette commande ne contient aucune ligne de produit. 
+                    {userRole === 'admin' && (
+                      <span className="block mt-2">Utilisez les actions pour ajouter des produits à cette commande.</span>
+                    )}
+                  </p>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="documents" className="mt-4">
