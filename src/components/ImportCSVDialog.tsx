@@ -44,6 +44,17 @@ export const ImportCSVDialog = ({ onSuccess }: ImportCSVDialogProps) => {
     }
   };
 
+  // Sanitize CSV values to prevent formula injection
+  const sanitizeCSVValue = (val: any): string => {
+    if (val === null || val === undefined) return '';
+    const str = String(val).trim();
+    // Prefix dangerous characters that could execute as formulas in Excel/Sheets
+    if (str.match(/^[=+\-@\t\r]/)) {
+      return "'" + str;
+    }
+    return str;
+  };
+
   const handleImport = async () => {
     if (!file) return;
 
@@ -69,19 +80,37 @@ export const ImportCSVDialog = ({ onSuccess }: ImportCSVDialogProps) => {
         skipEmptyLines: true,
         complete: async (results) => {
           const rows = (results.data as any[]).filter(r => Object.values(r).some(v => v !== null && v !== undefined && String(v).trim() !== ''));
-          const produits = rows.map((row) => ({
-            reference: String(row.reference || row.Reference || row.SKU || row.sku || '').trim(),
-            nom: row.nom || row.Nom || row.name || row.Name,
-            code_barre_ean: row.ean || row.EAN || row.code_barre || row.barcode || null,
-            prix_unitaire: toNumberOrNull(row.prix ?? row.price ?? row.prix_unitaire),
-            poids_unitaire: toNumberOrNull(row.poids ?? row.weight ?? row.poids_unitaire),
-            stock_minimum: (toIntOrNull(row.stock_min ?? row.min_stock) ?? 0),
-            stock_maximum: toIntOrNull(row.stock_max ?? row.max_stock),
-            description: row.description || row.Description || null,
-            categorie_emballage: (toIntOrNull(row.categorie ?? row.category) ?? 1),
-            statut_actif: true,
-            client_id: clientId, // 🔥 FORCER le client_id du profil connecté
-          }));
+          const produits = rows.map((row) => {
+            const reference = sanitizeCSVValue(row.reference || row.Reference || row.SKU || row.sku);
+            const nom = sanitizeCSVValue(row.nom || row.Nom || row.name || row.Name);
+            const ean = sanitizeCSVValue(row.ean || row.EAN || row.code_barre || row.barcode);
+            const description = sanitizeCSVValue(row.description || row.Description);
+
+            // Validate lengths
+            if (reference.length > 50) {
+              toast.warning(`Référence trop longue (max 50): ${reference.substring(0, 20)}...`);
+            }
+            if (nom.length > 200) {
+              toast.warning(`Nom trop long (max 200): ${nom.substring(0, 20)}...`);
+            }
+            if (ean && ean.length !== 13 && ean.length !== 8) {
+              toast.warning(`EAN invalide (doit être 8 ou 13 chiffres): ${ean}`);
+            }
+
+            return {
+              reference: reference.substring(0, 50),
+              nom: nom.substring(0, 200),
+              code_barre_ean: ean || null,
+              prix_unitaire: Math.max(0, toNumberOrNull(row.prix ?? row.price ?? row.prix_unitaire) ?? 0),
+              poids_unitaire: Math.max(0, toNumberOrNull(row.poids ?? row.weight ?? row.poids_unitaire) ?? 0),
+              stock_minimum: Math.max(0, toIntOrNull(row.stock_min ?? row.min_stock) ?? 0),
+              stock_maximum: toIntOrNull(row.stock_max ?? row.max_stock),
+              description: description ? description.substring(0, 1000) : null,
+              categorie_emballage: Math.min(5, Math.max(1, toIntOrNull(row.categorie ?? row.category) ?? 1)),
+              statut_actif: true,
+              client_id: clientId,
+            };
+          });
 
           // Filtrer les lignes invalides (reference et nom requis)
           const validProduits = produits.filter(p => p.reference && p.nom);

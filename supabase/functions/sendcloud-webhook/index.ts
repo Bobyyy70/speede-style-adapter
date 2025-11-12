@@ -481,16 +481,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Token validation
-    if (webhookSecret) {
-      const receivedToken = req.headers.get('x-webhook-token');
-      if (!receivedToken || !constantTimeCompare(receivedToken, webhookSecret)) {
-        await logSecurityEvent(supabase, ipAddress, '/sendcloud-webhook', 'invalid_token', userAgent, { received: receivedToken ? 'present' : 'missing' });
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    // Token validation - REQUIRED (no default fallback for security)
+    if (!webhookSecret) {
+      await logSecurityEvent(supabase, ipAddress, '/sendcloud-webhook', 'secret_not_configured', userAgent, {});
+      return new Response(JSON.stringify({ error: 'Webhook secret not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Only accept token from secure header (not query parameters)
+    const receivedToken = req.headers.get('x-webhook-token');
+    if (!receivedToken || !constantTimeCompare(receivedToken, webhookSecret)) {
+      await logSecurityEvent(supabase, ipAddress, '/sendcloud-webhook', 'invalid_token', userAgent, { received: receivedToken ? 'present' : 'missing' });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Parse event

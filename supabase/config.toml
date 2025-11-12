@@ -22,7 +22,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.sendcloud-orders-batch]
-verify_jwt = false
+verify_jwt = true
 
 [functions.sendcloud-create-parcel]
 verify_jwt = true
@@ -55,10 +55,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.sendcloud-sync-orders]
-verify_jwt = false
+verify_jwt = true
 
 [functions.update-user-tabs-access]
-verify_jwt = false
+verify_jwt = true
 
 [functions.sendcloud-backfill-products]
 verify_jwt = true
@@ -70,7 +70,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.admin-sql]
-verify_jwt = false
+verify_jwt = true
 
 [functions.chatbot-service-client]
 verify_jwt = true
