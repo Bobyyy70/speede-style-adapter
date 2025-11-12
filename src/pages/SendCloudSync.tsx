@@ -41,6 +41,12 @@ interface SyncLog {
   nb_erreurs: number;
   duree_ms: number;
   erreur_message?: string;
+  details?: {
+    strategy?: string;
+    message?: string;
+    mode?: string;
+    [key: string]: any;
+  };
 }
 
 export default function SendCloudSync() {
@@ -245,17 +251,17 @@ export default function SendCloudSync() {
               <div>
                 <CardTitle>Synchronisation Automatique</CardTitle>
                 <CardDescription>
-                  Les commandes SendCloud sont récupérées automatiquement toutes les 5 minutes
+                  API v3 Orders + fallback v2 Parcels (documentation officielle SendCloud)
                 </CardDescription>
               </div>
               <div className="flex gap-2">
                 <Button onClick={() => handleManualSync()} disabled={syncing} variant="outline">
                   <Play className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                  Sync rapide (5min)
+                  Scan incrémental (5 min)
                 </Button>
                 <Button onClick={() => handleManualSync(undefined, 'full')} disabled={syncing} variant="secondary">
                   <Download className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                  Scan complet (90j)
+                  Scan complet (90 jours)
                 </Button>
                 <Button onClick={handleBackfill} disabled={syncing} variant="default">
                   <RefreshCw className={`mr-2 h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
@@ -273,18 +279,40 @@ export default function SendCloudSync() {
                     <div className="flex items-start gap-3">
                       <XCircle className="h-5 w-5 text-destructive mt-0.5" />
                       <div className="flex-1">
-                        <p className="font-semibold text-sm text-destructive">Aucune commande trouvée - Erreur API</p>
+                        <p className="font-semibold text-sm text-destructive">Erreur de connexion SendCloud</p>
                         <p className="text-sm text-muted-foreground mt-1">
                           {syncLogs[0].erreur_message || 'Erreur inconnue lors de la connexion à SendCloud'}
                         </p>
                         <div className="mt-3 space-y-2 text-xs text-muted-foreground">
-                          <p><strong>Solutions possibles :</strong></p>
+                          <p><strong>Actions recommandées :</strong></p>
                           <ul className="list-disc list-inside space-y-1 ml-2">
-                            <li>Vérifiez vos clés API (SENDCLOUD_API_PUBLIC_KEY / SECRET_KEY) dans les paramètres</li>
-                            <li>Assurez-vous que l'API Orders est activée sur votre compte SendCloud</li>
-                            <li>Vérifiez que votre compte SendCloud contient des commandes dans la période recherchée</li>
+                            <li>Vérifiez vos clés API SendCloud (PUBLIC_KEY et SECRET_KEY)</li>
+                            <li>Assurez-vous que l'API SendCloud est activée dans votre compte SendCloud</li>
+                            <li>Vérifiez qu'au moins une commande ou un parcel existe dans la période ciblée</li>
+                            <li>Testez la connexion avec le bouton "Scan complet (90 jours)" ci-dessus</li>
                           </ul>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Alerte info si 0 commandes mais pas d'erreur */}
+                {syncLogs[0].nb_commandes_trouvees === 0 && syncLogs[0].statut === 'success' && (
+                  <div className="bg-muted/50 border rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm">Aucune commande trouvée</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          La synchronisation a réussi mais n'a trouvé aucune commande pour la période spécifiée.
+                        </p>
+                        {syncLogs[0].details?.message && (
+                          <p className="text-xs text-muted-foreground mt-1">{syncLogs[0].details.message}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-2">
+                          💡 Essayez un "Scan complet (90 jours)" pour élargir la fenêtre de recherche.
+                        </p>
                       </div>
                     </div>
                   </div>

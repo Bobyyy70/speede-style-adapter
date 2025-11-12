@@ -5,39 +5,75 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface SendCloudOrder {
+// V2 Parcels interface (official SendCloud API v2)
+interface SendCloudParcel {
   id: number;
-  order_number: string;
-  name: string;
-  email: string;
-  telephone: string;
-  address: string;
-  address_2?: string;
-  house_number?: string;
-  city: string;
-  postal_code: string;
-  country: string;
+  order_number?: string;
+  tracking_number?: string;
+  tracking_url?: string;
+  status?: {
+    id?: number;
+    message?: string;
+  };
+  created_at?: string;
+  updated_at?: string;
   shipment?: {
     id?: number;
+    name?: string;
   };
-  order_products: Array<{
+  name?: string;
+  company_name?: string;
+  address?: string;
+  address_2?: string;
+  city?: string;
+  postal_code?: string;
+  country?: string;
+  email?: string;
+  telephone?: string;
+  weight?: string;
+  parcel_items?: Array<{
+    sku?: string;
+    description?: string;
+    quantity?: number;
+    weight?: string;
+    value?: string;
+  }>;
+  external_reference?: string;
+  external_shipment_id?: string;
+}
+
+// V3 Orders interface (legacy, mainly for imports)
+interface SendCloudOrder {
+  id: number | string;
+  order_number?: string;
+  name?: string;
+  email?: string;
+  telephone?: string;
+  address?: string;
+  address_2?: string;
+  city?: string;
+  postal_code?: string;
+  country?: string;
+  shipment?: { id?: number; status?: { id?: number; message?: string } };
+  order_products?: Array<{
     sku: string;
     name: string;
     quantity: number;
-    price: string;
-    weight: string;
+    price?: string;
+    weight?: string;
   }>;
-  created_at: string;
+  created_at?: string;
+  updated_at?: string;
+  external_order_id?: string;
+  external_shipment_id?: string;
 }
 
-// Liste des endpoints à tester
-const SENDCLOUD_ENDPOINTS = [
+const SENDCLOUD_V2_PARCELS_ENDPOINT = 'https://panel.sendcloud.sc/api/v2/parcels';
+const SENDCLOUD_V3_ORDERS_ENDPOINTS = [
   'https://panel.sendcloud.sc/api/v3/orders',
-  'https://api.sendcloud.dev/api/v3/orders',
+  'https://api.sendcloud.dev/api/v3/orders'
 ];
-
-// Liste des syntaxes de paramètre de date à tester
-const DATE_PARAM_VARIANTS = ['updated_at__gte', 'updated_at_min', 'from'];
+const V3_DATE_PARAM_VARIANTS = ['updated_at__gte', 'updated_at_min', 'from'];
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -49,43 +85,45 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const sendcloudPublicKey = Deno.env.get('SENDCLOUD_API_PUBLIC_KEY');
-    const sendcloudSecretKey = Deno.env.get('SENDCLOUD_API_SECRET_KEY');
+    const publicKey = Deno.env.get('SENDCLOUD_API_PUBLIC_KEY');
+    const secretKey = Deno.env.get('SENDCLOUD_API_SECRET_KEY');
 
-    if (!sendcloudPublicKey || !sendcloudSecretKey) {
-      throw new Error('SENDCLOUD_API_PUBLIC_KEY ou SENDCLOUD_API_SECRET_KEY manquant dans les variables d\'environnement');
+    if (!publicKey || !secretKey) {
+      throw new Error('SENDCLOUD_API_PUBLIC_KEY ou SENDCLOUD_API_SECRET_KEY manquant');
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Récupérer le mode et la date de début depuis le body
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const mode = body.mode || 'incremental';
-    const customStartDate = body.startDate; // Format YYYY-MM-DD
+    const customStartDate = body.startDate;
 
     console.log(`[SendCloud Sync] Mode: ${mode}`);
 
-    // Calculer la fenêtre temporelle selon le mode
-    let dateMin: Date | null = null;
+    // Calculate time window
+    let dateMin: string;
     if (mode === 'full') {
-      dateMin = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-      console.log(`[SendCloud Sync] Full scan mode: fetching orders from last 90 days`);
+      const d = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      dateMin = d.toISOString();
+      console.log(`[Full] 90 days: ${dateMin}`);
     } else if (customStartDate) {
-      dateMin = new Date(customStartDate);
-      console.log(`[SendCloud Sync] Using custom start date: ${customStartDate}`);
-    } else if (mode === 'incremental') {
-      dateMin = new Date(Date.now() - 5 * 60 * 1000);
+      dateMin = new Date(customStartDate).toISOString();
+      console.log(`[Custom] from: ${dateMin}`);
     } else {
-      dateMin = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const d = new Date(Date.now() - 5 * 60 * 1000);
+      dateMin = d.toISOString();
+      console.log(`[Incremental] 5min: ${dateMin}`);
     }
-    const dateMinISO = dateMin ? dateMin.toISOString() : null;
 
-    const authHeader = 'Basic ' + btoa(`${sendcloudPublicKey}:${sendcloudSecretKey}`);
-    
-    console.log(`[SendCloud Sync] Fetching orders${dateMinISO ? ` since ${dateMinISO}` : ' (no date filter)'}...`);
+    const authHeader = 'Basic ' + btoa(`${publicKey}:${secretKey}`);
 
-    // Helper pour logger les appels API
-    const logApiCall = async (endpoint: string, statusCode: number | null, errorMsg: string | null, duration: number) => {
+    // Helper to log API calls
+    async function logApiCall(
+      endpoint: string,
+      statusCode: number | null,
+      errorMsg: string | null,
+      duration: number,
+      details?: any
+    ) {
       try {
         await supabase.from('sendcloud_api_log').insert({
           endpoint,
@@ -94,332 +132,418 @@ Deno.serve(async (req) => {
           error_message: errorMsg,
           duree_ms: duration,
           date_appel: new Date().toISOString(),
+          details: details || {}
         });
       } catch (e) {
-        console.error('[SendCloud Sync] Failed to log API call:', e);
+        console.error('[Log API] Failed:', e);
       }
-    };
+    }
 
-    // Fonction pour tester un endpoint avec différents paramètres de date
-    const fetchFromEndpoint = async (baseUrl: string, criteria: string, page: number): Promise<{
-      orders: SendCloudOrder[];
-      success: boolean;
-      statusCode: number | null;
-      error: string | null;
-    }> => {
-      // D'abord essayer sans filtre de date pour le critère "all"
-      if (criteria === '') {
-        const url = `${baseUrl}?page=${page}&page_size=100`;
-        const callStart = Date.now();
-        
-        try {
-          console.log(`[SendCloud Sync] API Call [all] page ${page}: ${url}`);
-          const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-              'Authorization': authHeader,
-              'Content-Type': 'application/json',
-            },
-          });
+    // ============================================================
+    // STRATEGY 1: Try V3 Orders API first (for imports/exports)
+    // ============================================================
+    console.log('=== STRATEGY 1: Trying V3 Orders API ===');
+    let allOrders: SendCloudOrder[] = [];
+    let v3Error: string | null = null;
 
-          const callDuration = Date.now() - callStart;
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            await logApiCall(url, response.status, errorText, callDuration);
-            return { orders: [], success: false, statusCode: response.status, error: errorText };
-          }
-
-          const data = await response.json();
-          const orders = data.orders || data.data?.orders || data.results || [];
-          
-          await logApiCall(url, response.status, null, callDuration);
-          console.log(`[SendCloud Sync] [all] page ${page}: ${orders.length} orders received`);
-          
-          return { orders, success: true, statusCode: response.status, error: null };
-        } catch (err) {
-          const callDuration = Date.now() - callStart;
-          const errorMsg = err instanceof Error ? err.message : String(err);
-          await logApiCall(url, null, errorMsg, callDuration);
-          return { orders: [], success: false, statusCode: null, error: errorMsg };
-        }
-      }
-
-      // Pour les critères avec filtres, essayer différentes syntaxes de date
-      for (const dateParam of DATE_PARAM_VARIANTS) {
-        const dateFilter = dateMinISO ? `&${dateParam}=${dateMinISO}` : '';
-        const url = `${baseUrl}?${criteria}${dateFilter}&page=${page}&page_size=100`;
-        const callStart = Date.now();
-        
-        try {
-          console.log(`[SendCloud Sync] API Call [${criteria.split('=')[0]}] page ${page} (${dateParam}): ${url}`);
-          const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-              'Authorization': authHeader,
-              'Content-Type': 'application/json',
-            },
-          });
-
-          const callDuration = Date.now() - callStart;
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            await logApiCall(url, response.status, errorText, callDuration);
-            
-            // Si 400/422, essayer la prochaine syntaxe de date
-            if (response.status === 400 || response.status === 422) {
-              console.log(`[SendCloud Sync] ${dateParam} not accepted, trying next variant...`);
-              continue;
-            }
-            
-            return { orders: [], success: false, statusCode: response.status, error: errorText };
-          }
-
-          const data = await response.json();
-          const orders = data.orders || data.data?.orders || data.results || [];
-          
-          await logApiCall(url, response.status, null, callDuration);
-          console.log(`[SendCloud Sync] [${criteria.split('=')[0]}] page ${page}: ${orders.length} orders received`);
-          
-          return { orders, success: true, statusCode: response.status, error: null };
-        } catch (err) {
-          const callDuration = Date.now() - callStart;
-          const errorMsg = err instanceof Error ? err.message : String(err);
-          await logApiCall(url, null, errorMsg, callDuration);
-          
-          // Essayer la prochaine syntaxe
-          continue;
-        }
-      }
+    for (const endpoint of SENDCLOUD_V3_ORDERS_ENDPOINTS) {
+      console.log(`[V3] Trying: ${endpoint}`);
       
-      return { orders: [], success: false, statusCode: null, error: 'All date parameter variants failed' };
-    };
-
-    const allOrders: SendCloudOrder[] = [];
-    let workingEndpoint: string | null = null;
-    let lastError: { statusCode: number | null; message: string } | null = null;
-    
-    // Stratégies de collecte : d'abord "all" (sans filtres restrictifs), puis critères spécifiques
-    const searchCriteria = [
-      { label: 'all', params: '' }, // Nouveau : récupérer TOUTES les commandes
-      { label: 'unshipped', params: 'shipment_status=unshipped' },
-      { label: 'non-finalisées', params: 'is_fully_created=false' },
-      { label: 'avec-erreurs', params: 'contains_errors=true' },
-    ];
-    
-    // Tester les endpoints jusqu'à en trouver un qui fonctionne
-    endpointLoop: for (const endpoint of SENDCLOUD_ENDPOINTS) {
-      console.log(`[SendCloud Sync] Testing endpoint: ${endpoint}`);
-      
-      for (const criteria of searchCriteria) {
+      for (const dateParam of V3_DATE_PARAM_VARIANTS) {
         let page = 1;
-        let hasMorePages = true;
-        let criteriaSuccess = false;
+        const limit = 100;
+        const maxPages = 50;
+        let foundValidParam = false;
 
-        while (hasMorePages && page <= 50) {
-          const result = await fetchFromEndpoint(endpoint, criteria.params, page);
-          
-          if (!result.success) {
-            lastError = { statusCode: result.statusCode, message: result.error || 'Unknown error' };
-            
-            // Si 401/403, cet endpoint ne fonctionne pas du tout, passer au suivant
-            if (result.statusCode === 401 || result.statusCode === 403) {
-              console.log(`[SendCloud Sync] ${endpoint} returned ${result.statusCode}, trying next endpoint...`);
-              continue endpointLoop;
-            }
-            
-            // Si 404, essayer le prochain critère
-            if (result.statusCode === 404) {
-              console.log(`[SendCloud Sync] 404 on ${criteria.label}, trying next criteria...`);
+        while (page <= maxPages) {
+          const url = `${endpoint}?${dateParam}=${dateMin}&page=${page}&limit=${limit}`;
+          const callStart = Date.now();
+
+          try {
+            const response = await fetch(url, {
+              method: 'GET',
+              headers: { 'Authorization': authHeader, 'Accept': 'application/json' }
+            });
+
+            const duration = Date.now() - callStart;
+            const status = response.status;
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              await logApiCall(url, status, errorText, duration, { page, dateParam, strategy: 'orders_v3' });
+
+              if (status === 400 || status === 422) {
+                console.log(`[V3] ${dateParam} not accepted (${status}), trying next param`);
+                break;
+              }
+
+              if (status === 401 || status === 403) {
+                v3Error = `V3 Orders ${status}: ${errorText}`;
+                console.error(`[V3] Auth error: ${v3Error}`);
+                break; // Try V2 fallback
+              }
+
               break;
             }
-            
-            // Autres erreurs : continuer quand même avec les autres critères
-            break;
-          }
-          
-          criteriaSuccess = true;
-          workingEndpoint = endpoint;
-          
-          if (result.orders.length === 0) {
-            hasMorePages = false;
-          } else {
-            allOrders.push(...result.orders);
+
+            const data = await response.json();
+            await logApiCall(url, status, null, duration, { page, count: data.orders?.length || 0, dateParam, strategy: 'orders_v3' });
+
+            foundValidParam = true;
+            const orders = data.orders || [];
+            console.log(`[V3] Page ${page} with ${dateParam}: ${orders.length} orders`);
+
+            if (orders.length === 0) break;
+
+            allOrders.push(...orders);
+
+            if (orders.length < limit) break;
+
             page++;
+          } catch (error: any) {
+            const duration = Date.now() - callStart;
+            const errMsg = error?.message || String(error);
+            await logApiCall(url, null, errMsg, duration, { page, dateParam, strategy: 'orders_v3' });
+            if (!v3Error) v3Error = errMsg;
+            break; // Stop this endpoint, try V2
           }
         }
-        
-        // Si un critère a fonctionné, on sait que cet endpoint est bon
-        if (criteriaSuccess) {
-          workingEndpoint = endpoint;
-        }
+
+        if (foundValidParam) break;
       }
-      
-      // Si on a trouvé un endpoint qui fonctionne, ne pas essayer les autres
-      if (workingEndpoint) {
+
+      if (allOrders.length > 0) {
+        console.log(`✓ V3 Orders: ${allOrders.length} found`);
         break;
       }
     }
 
-    // Si aucun endpoint n'a fonctionné, retourner une erreur explicite
-    if (!workingEndpoint && allOrders.length === 0) {
-      const errorMessage = lastError 
-        ? `SendCloud API Error (${lastError.statusCode || 'Network'}): ${lastError.message}. Vérifiez vos clés API (SENDCLOUD_API_PUBLIC_KEY / SECRET_KEY) et que l'API Orders est activée sur votre compte SendCloud.`
-        : 'Impossible de se connecter à l\'API SendCloud. Tous les endpoints ont échoué.';
-      
-      console.error(`[SendCloud Sync] ${errorMessage}`);
-      
-      await supabase.from('sendcloud_sync_log').insert({
-        statut: 'error',
-        nb_commandes_trouvees: 0,
-        nb_commandes_creees: 0,
-        nb_commandes_existantes: 0,
-        nb_erreurs: 1,
-        duree_ms: Date.now() - startTime,
-        mode_sync: mode,
-        erreur_message: errorMessage,
-      });
+    // ============================================================
+    // STRATEGY 2: Fallback to V2 Parcels API (official documented method)
+    // ============================================================
+    let allParcels: SendCloudParcel[] = [];
+    let v2Error: string | null = null;
 
-      return new Response(
-        JSON.stringify({ success: false, error: errorMessage }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
+    if (allOrders.length === 0) {
+      console.log('=== STRATEGY 2: Fallback to V2 Parcels API (official) ===');
+
+      try {
+        const dateParam = mode === 'full' ? 'created_at_min' : 'updated_at_min';
+        let page = 1;
+        const perPage = 100;
+        const maxPages = 50;
+
+        console.log(`[V2 Parcels] Using ${dateParam}=${dateMin}`);
+
+        while (page <= maxPages) {
+          const url = `${SENDCLOUD_V2_PARCELS_ENDPOINT}?${dateParam}=${dateMin}&page=${page}&per_page=${perPage}`;
+          const callStart = Date.now();
+
+          try {
+            const response = await fetch(url, {
+              method: 'GET',
+              headers: { 'Authorization': authHeader, 'Accept': 'application/json' }
+            });
+
+            const duration = Date.now() - callStart;
+            const status = response.status;
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              await logApiCall(url, status, errorText, duration, { page, strategy: 'parcels_v2' });
+
+              if (status === 401 || status === 403) {
+                v2Error = `V2 Parcels ${status}: ${errorText}`;
+                console.error(`[V2] Auth error: ${v2Error}`);
+                break; // Stop trying V2
+              }
+
+              console.warn(`[V2 Parcels] Page ${page} returned ${status}, stopping`);
+              break;
+            }
+
+            const data = await response.json();
+            await logApiCall(url, status, null, duration, { page, count: data.parcels?.length || 0, strategy: 'parcels_v2' });
+
+            const parcels = data.parcels || [];
+            console.log(`[V2 Parcels] Page ${page}: ${parcels.length} parcels`);
+
+            if (parcels.length === 0) break;
+
+            allParcels.push(...parcels);
+
+            if (parcels.length < perPage) break;
+
+            page++;
+          } catch (error: any) {
+            const duration = Date.now() - callStart;
+            const errMsg = error?.message || String(error);
+            await logApiCall(url, null, errMsg, duration, { page, strategy: 'parcels_v2' });
+            if (!v2Error) v2Error = errMsg;
+            break; // Stop V2 pagination
+          }
+        }
+
+        if (allParcels.length > 0) {
+          console.log(`✓ V2 Parcels: ${allParcels.length} found`);
+        }
+      } catch (error: any) {
+        const errMsg = error?.message || String(error);
+        console.error('[V2 Parcels] Error:', errMsg);
+        if (!v2Error) v2Error = errMsg;
+      }
     }
 
-    // Dédupliquer par order.id
-    const uniqueOrders = Array.from(
-      new Map(allOrders.map(o => [o.id, o])).values()
-    );
-
-    const orders: SendCloudOrder[] = uniqueOrders;
-
-    console.log(`[SendCloud Sync] Found ${orders.length} orders from SendCloud (endpoint: ${workingEndpoint})`);
-
-    if (orders.length === 0) {
-      const duration = Date.now() - startTime;
+    // ============================================================
+    // ERROR HANDLING: Both strategies failed
+    // ============================================================
+    if (allOrders.length === 0 && allParcels.length === 0) {
+      // Both strategies failed with auth errors
+      const v3HasAuthError = v3Error && (v3Error.includes('401') || v3Error.includes('403'));
+      const v2HasAuthError = v2Error && (v2Error.includes('401') || v2Error.includes('403'));
       
+      if (v3HasAuthError && v2HasAuthError) {
+        const errorMsg = 'SendCloud API Error: 401/403 Unauthorized on both Orders (V3) and Parcels (V2). Vérifiez SENDCLOUD_API_PUBLIC_KEY/SECRET et les droits API dans votre compte SendCloud.';
+
+        await supabase.from('sendcloud_sync_log').insert({
+          statut: 'error',
+          mode_sync: mode,
+          nb_commandes_trouvees: 0,
+          nb_commandes_creees: 0,
+          nb_commandes_existantes: 0,
+          nb_erreurs: 1,
+          date_sync: new Date().toISOString(),
+          duree_ms: Date.now() - startTime,
+          erreur_message: errorMsg,
+          details: { v3_error: v3Error, v2_error: v2Error, date_min: dateMin }
+        });
+
+        return new Response(
+          JSON.stringify({ success: false, error: errorMsg }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // No results but no auth error
+      const message = v3Error
+        ? `Aucune commande trouvée. V3: ${v3Error}. V2 Parcels: 0 résultats.`
+        : 'Aucune commande trouvée dans V3 Orders ni V2 Parcels pour la période spécifiée.';
+
+      console.log(message);
+
       await supabase.from('sendcloud_sync_log').insert({
         statut: 'success',
+        mode_sync: mode,
         nb_commandes_trouvees: 0,
         nb_commandes_creees: 0,
         nb_commandes_existantes: 0,
-        duree_ms: duration,
-        mode_sync: mode,
+        nb_erreurs: 0,
+        date_sync: new Date().toISOString(),
+        duree_ms: Date.now() - startTime,
+        details: {
+          strategy_v3: 'no_results',
+          strategy_v2: 'no_results',
+          v3_error: v3Error,
+          date_min: dateMin,
+          mode: mode,
+          message: 'Vérifiez que des commandes/parcels existent dans SendCloud pour cette période'
+        }
       });
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'No new orders to sync',
+        JSON.stringify({
+          success: true,
+          message: message,
           found: 0,
           created: 0,
           existing: 0,
+          errors: 0,
+          mode: mode,
+          strategy: null
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Vérifier quelles commandes existent déjà
-    const sendcloudIds = orders.map(o => o.id.toString());
-    const orderNumbers = orders.map(o => o.order_number);
+    // ============================================================
+    // PROCESSING: Convert to unified format & deduplicate
+    // ============================================================
+    let strategy: 'orders_v3' | 'parcels_v2';
+    let itemsForBatch: any[] = [];
 
-    const [bySendcloudIds, byOrderNumbers] = await Promise.all([
-      supabase
-        .from('commande')
-        .select('sendcloud_id')
-        .in('sendcloud_id', sendcloudIds),
-      supabase
-        .from('commande')
-        .select('numero_commande')
-        .in('numero_commande', orderNumbers)
-    ]);
-
-    const existingSet = new Set([
-      ...(bySendcloudIds.data || []).map((c: any) => c.sendcloud_id),
-      ...(byOrderNumbers.data || []).map((c: any) => c.numero_commande),
-    ]);
-
-    // Récupérer les commandes finales à exclure
-    const { data: excludedCommandes } = await supabase
-      .from('commande')
-      .select('sendcloud_id, numero_commande')
-      .in('statut_wms', ['Expédiée', 'Livré', 'Archivé', 'Préparée', 'Prête à expédier']);
-    
-    const excludedSet = new Set([
-      ...(excludedCommandes || []).map((c: any) => c.sendcloud_id),
-      ...(excludedCommandes || []).map((c: any) => c.numero_commande),
-    ].filter(Boolean));
-
-    // Filtrer les nouvelles commandes
-    const newOrders = orders.filter(order => 
-      !existingSet.has(order.id.toString()) && 
-      !existingSet.has(order.order_number) &&
-      !excludedSet.has(order.id.toString()) &&
-      !excludedSet.has(order.order_number)
-    );
-
-    console.log(`[SendCloud Sync] ${newOrders.length} new orders to create, ${orders.length - newOrders.length} already exist`);
-
-    let nbCreated = 0;
-    let nbErrors = 0;
-    const errors: string[] = [];
-
-    if (newOrders.length > 0) {
-      const { data: batchResult, error: batchError } = await supabase.functions.invoke('sendcloud-orders-batch', {
-        body: { orders: newOrders }
-      });
-
-      if (batchError) {
-        console.error('[SendCloud Sync] Batch creation error:', batchError);
-        errors.push(batchError.message);
-        nbErrors = newOrders.length;
-      } else {
-        nbCreated = batchResult?.summary?.created || 0;
-        nbErrors = batchResult?.summary?.errored || 0;
-        if (batchResult?.summary?.errors) {
-          errors.push(...batchResult.summary.errors);
-        }
-      }
+    if (allOrders.length > 0) {
+      strategy = 'orders_v3';
+      const uniqueOrders = Array.from(
+        new Map(allOrders.map(o => [o.id, o])).values()
+      );
+      itemsForBatch = uniqueOrders;
+      console.log(`[V3] ${itemsForBatch.length} unique orders after dedup`);
+    } else {
+      strategy = 'parcels_v2';
+      const uniqueParcels = Array.from(
+        new Map(allParcels.map(p => [p.id, p])).values()
+      );
+      
+      // Convert parcels to order format
+      itemsForBatch = uniqueParcels.map((parcel: SendCloudParcel) => ({
+        id: parcel.id,
+        order_number: parcel.order_number || `PARCEL-${parcel.id}`,
+        created_at: parcel.created_at,
+        updated_at: parcel.updated_at,
+        email: parcel.email,
+        name: parcel.name || parcel.company_name,
+        address: parcel.address,
+        address_2: parcel.address_2,
+        city: parcel.city,
+        postal_code: parcel.postal_code,
+        country: parcel.country,
+        telephone: parcel.telephone,
+        shipment: { status: parcel.status },
+        external_order_id: parcel.external_reference,
+        external_shipment_id: parcel.external_shipment_id,
+        order_products: (parcel.parcel_items || []).map((item: any) => ({
+          sku: item.sku || '',
+          name: item.description || 'Produit SendCloud',
+          quantity: item.quantity || 1,
+          weight: item.weight,
+          price: item.value
+        })),
+        tracking_number: parcel.tracking_number,
+        tracking_url: parcel.tracking_url,
+        _source: 'sendcloud_parcels_v2'
+      }));
+      
+      console.log(`[V2] ${itemsForBatch.length} unique parcels converted to orders`);
     }
 
-    const duration = Date.now() - startTime;
-    const statut = nbErrors > 0 ? (nbCreated > 0 ? 'partial' : 'error') : 'success';
+    // ============================================================
+    // CHECK EXISTING ORDERS
+    // ============================================================
+    const itemIds = itemsForBatch.map(item => String(item.id));
+    const itemNumbers = itemsForBatch.map(item => item.order_number).filter(Boolean);
 
-    await supabase.from('sendcloud_sync_log').insert({
-      statut,
-      nb_commandes_trouvees: orders.length,
-      nb_commandes_creees: nbCreated,
-      nb_commandes_existantes: orders.length - newOrders.length,
-      nb_erreurs: nbErrors,
-      duree_ms: duration,
-      mode_sync: mode,
-      erreur_message: errors.length > 0 ? errors.join('; ') : null,
-      details: {
-        mode: mode,
-        endpoint_used: workingEndpoint,
-        orders_found: orders.length,
-        orders_new: newOrders.length,
-        orders_existing: orders.length - newOrders.length,
-        orders_created: nbCreated,
-        errors: errors,
-      },
+    let existingQuery = supabase
+      .from('commande')
+      .select('sendcloud_id, numero_commande, statut_wms');
+
+    if (itemIds.length > 0 && itemNumbers.length > 0) {
+      existingQuery = existingQuery.or(`sendcloud_id.in.(${itemIds.join(',')}),numero_commande.in.(${itemNumbers.join(',')})`);
+    } else if (itemIds.length > 0) {
+      existingQuery = existingQuery.in('sendcloud_id', itemIds);
+    } else if (itemNumbers.length > 0) {
+      existingQuery = existingQuery.in('numero_commande', itemNumbers);
+    }
+
+    const existingResult = await existingQuery;
+    const existingItems = existingResult.data || [];
+    const existingIds = new Set(existingItems.map(o => o.sendcloud_id));
+    const existingNumbers = new Set(existingItems.map(o => o.numero_commande));
+
+    const finalStatuses = ['Livré', 'Annulé', 'Archivé'];
+    const itemsToProcess = itemsForBatch.filter(item => {
+      const itemId = String(item.id);
+      const itemNumber = item.order_number;
+
+      const exists = existingIds.has(itemId) || (itemNumber && existingNumbers.has(itemNumber));
+
+      if (exists) {
+        const existingItem = existingItems.find(
+          ei => ei.sendcloud_id === itemId || ei.numero_commande === itemNumber
+        );
+
+        if (existingItem && finalStatuses.includes(existingItem.statut_wms)) {
+          return false;
+        }
+      }
+
+      return !exists;
     });
 
-    console.log(`[SendCloud Sync] Mode: ${mode} - Completed in ${duration}ms`);
-    console.log(`[SendCloud Sync] Found: ${orders.length}, New: ${newOrders.length}, Created: ${nbCreated}, Errors: ${nbErrors}`);
+    console.log(`${itemsToProcess.length} new items to process (${existingItems.length} already exist)`);
+
+    if (itemsToProcess.length === 0) {
+      await supabase.from('sendcloud_sync_log').insert({
+        statut: 'success',
+        mode_sync: mode,
+        nb_commandes_trouvees: itemsForBatch.length,
+        nb_commandes_creees: 0,
+        nb_commandes_existantes: existingItems.length,
+        nb_erreurs: 0,
+        date_sync: new Date().toISOString(),
+        duree_ms: Date.now() - startTime,
+        details: { strategy, date_min: dateMin }
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `All ${strategy === 'orders_v3' ? 'orders' : 'parcels'} already exist`,
+          found: itemsForBatch.length,
+          created: 0,
+          existing: existingItems.length,
+          errors: 0,
+          strategy
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ============================================================
+    // BATCH CREATE
+    // ============================================================
+    const batchResult = await supabase.functions.invoke('sendcloud-orders-batch', {
+      body: { orders: itemsToProcess }
+    });
+
+    if (batchResult.error) {
+      console.error('Batch error:', batchResult.error);
+
+      await supabase.from('sendcloud_sync_log').insert({
+        statut: 'error',
+        mode_sync: mode,
+        nb_commandes_trouvees: itemsForBatch.length,
+        nb_commandes_creees: 0,
+        nb_commandes_existantes: existingItems.length,
+        nb_erreurs: 1,
+        date_sync: new Date().toISOString(),
+        duree_ms: Date.now() - startTime,
+        erreur_message: batchResult.error.message || 'Batch processing failed',
+        details: { strategy, date_min: dateMin }
+      });
+
+      return new Response(
+        JSON.stringify({ success: false, error: batchResult.error.message || 'Failed to process batch' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const batchData = batchResult.data || {};
+
+    await supabase.from('sendcloud_sync_log').insert({
+      statut: batchData.errors > 0 ? 'partial' : 'success',
+      mode_sync: mode,
+      nb_commandes_trouvees: itemsForBatch.length,
+      nb_commandes_creees: batchData.created || 0,
+      nb_commandes_existantes: existingItems.length + (batchData.existing || 0),
+      nb_erreurs: batchData.errors || 0,
+      date_sync: new Date().toISOString(),
+      duree_ms: Date.now() - startTime,
+      erreur_message: batchData.errors > 0 ? 'Some items failed to process' : null,
+      details: { strategy, date_min: dateMin, mode, batch_summary: batchData }
+    });
 
     return new Response(
       JSON.stringify({
         success: true,
-        found: orders.length,
-        created: nbCreated,
-        existing: orders.length - newOrders.length,
-        errors: nbErrors,
-        duration_ms: duration,
-        endpoint_used: workingEndpoint,
+        message: `Sync completed via ${strategy}: ${batchData.created} created, ${batchData.existing} existing, ${batchData.errors} errors`,
+        found: itemsForBatch.length,
+        created: batchData.created || 0,
+        existing: existingItems.length + (batchData.existing || 0),
+        errors: batchData.errors || 0,
+        mode,
+        strategy
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
@@ -433,18 +557,19 @@ Deno.serve(async (req) => {
 
     await supabase.from('sendcloud_sync_log').insert({
       statut: 'error',
+      mode_sync: 'unknown',
       nb_commandes_trouvees: 0,
       nb_commandes_creees: 0,
       nb_commandes_existantes: 0,
       nb_erreurs: 1,
+      date_sync: new Date().toISOString(),
       duree_ms: duration,
-      mode_sync: 'unknown',
-      erreur_message: errorMessage,
+      erreur_message: errorMessage
     });
 
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
