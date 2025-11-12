@@ -273,6 +273,14 @@ export default function SendCloudSync() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              onClick={() => window.location.href = '/integrations/sendcloud-enrichment-test'} 
+              variant="secondary"
+              size="sm"
+            >
+              <Activity className="mr-2 h-4 w-4" />
+              Test Enrichissement
+            </Button>
             <Button onClick={handleTestConnection} disabled={testing} variant="outline">
               <Plug className={`mr-2 h-4 w-4 ${testing ? "animate-spin" : ""}`} />
               Test connexion

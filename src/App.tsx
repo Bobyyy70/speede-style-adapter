@@ -25,6 +25,7 @@ import Expedition from "./pages/Expedition";
 import Utilisateurs from "./pages/Utilisateurs";
 import GestionClients from "./pages/GestionClients";
 import SendCloudSync from "./pages/SendCloudSync";
+import SendCloudEnrichmentTest from "./pages/SendCloudEnrichmentTest";
 import SendCloudWebhook from "./pages/SendCloudWebhook";
 import Transporteurs from "./pages/Transporteurs";
 
@@ -290,6 +291,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <SendCloudSync />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/integrations/sendcloud-enrichment-test"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <SendCloudEnrichmentTest />
                 </ProtectedRoute>
               }
             />
