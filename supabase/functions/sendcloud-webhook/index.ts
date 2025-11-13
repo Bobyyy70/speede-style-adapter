@@ -125,6 +125,61 @@ function mapSendcloudStatusToWMS(statusId: number): string {
   return statusMap[statusId] || 'expedie';
 }
 
+// Enregistrer ou mettre à jour un colis dans la base
+async function upsertParcel(supabase: any, parcel: SendCloudParcel): Promise<void> {
+  const reference = parcel.external_order_id || parcel.external_reference;
+  const { error } = await supabase
+    .from('sendcloud_parcels')
+    .upsert({
+      parcel_id: parcel.id.toString(),
+      commande_id: reference ? await getCommandeIdFromReference(supabase, reference) : null,
+      tracking_number: parcel.tracking_number,
+      tracking_url: parcel.tracking_url,
+      carrier_code: parcel.carrier?.code,
+      carrier_name: parcel.carrier?.name,
+      status_id: parcel.status?.id,
+      status_message: parcel.status?.message,
+      updated_at: new Date().toISOString()
+    }, {
+      onConflict: 'parcel_id'
+    });
+
+  if (error) {
+    console.error('❌ Erreur upsert parcel:', error);
+  }
+}
+
+// Enregistrer un événement de tracking
+async function addTrackingEvent(supabase: any, parcelId: string, status: any, metadata: any = {}): Promise<void> {
+  const { error } = await supabase
+    .from('sendcloud_tracking_events')
+    .insert({
+      parcel_id: parcelId,
+      event_timestamp: new Date().toISOString(),
+      status_id: status.id,
+      status_message: status.message,
+      location: metadata.location,
+      carrier_message: metadata.carrier_message,
+      metadata: metadata
+    });
+
+  if (error) {
+    console.error('❌ Erreur insert tracking event:', error);
+  }
+}
+
+// Récupérer l'ID de commande depuis une référence
+async function getCommandeIdFromReference(supabase: any, reference: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('commande')
+    .select('id')
+    .eq('id', reference)
+    .single();
+
+  if (error || !data) return null;
+  return data.id;
+}
+
 // Auto-detect client_id from SendCloud data
 async function detectClientId(supabase: any, event: SendCloudWebhookEvent, sendcloudData: SendCloudOrder): Promise<string | null> {
   console.log('🔍 Detecting client_id for order:', sendcloudData.order_number);
@@ -405,6 +460,15 @@ async function handleOrderImport(supabase: any, event: SendCloudWebhookEvent, se
 async function handleParcelStatusChanged(supabase: any, parcel: SendCloudParcel): Promise<void> {
   console.log('📊 Status changed:', parcel.tracking_number);
 
+  // Enregistrer/mettre à jour le colis
+  await upsertParcel(supabase, parcel);
+
+  // Enregistrer l'événement de tracking
+  await addTrackingEvent(supabase, parcel.id.toString(), parcel.status || { id: 5, message: 'En transit' }, {
+    carrier: parcel.carrier?.name,
+    tracking_number: parcel.tracking_number
+  });
+
   const { data: commande } = await supabase
     .from('commande')
     .select('id')
@@ -431,6 +495,17 @@ async function handleParcelStatusChanged(supabase: any, parcel: SendCloudParcel)
 
 async function handleLabelCreated(supabase: any, parcel: SendCloudParcel): Promise<void> {
   console.log('🏷️ Label created:', parcel.tracking_number);
+
+  // Enregistrer/mettre à jour le colis
+  await upsertParcel(supabase, parcel);
+
+  // Enregistrer l'événement
+  await addTrackingEvent(supabase, parcel.id.toString(), {
+    id: 2,
+    message: 'Étiquette générée'
+  }, {
+    label_url: parcel.label?.label_printer
+  });
 
   const { data: commande } = await supabase
     .from('commande')

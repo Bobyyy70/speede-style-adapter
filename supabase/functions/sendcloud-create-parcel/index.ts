@@ -174,6 +174,47 @@ Deno.serve(async (req) => {
 
     console.log(`✅ Tracking créé: Commande ${commande.numero_commande} (${commande.id}) → SendCloud ID ${sendcloudData.id} → Tracking ${sendcloudData.tracking_number}`);
 
+    // 6. Enregistrer le colis dans sendcloud_parcels
+    const parcel = sendcloudData.parcel;
+    if (parcel) {
+      const { error: parcelError } = await supabase
+        .from('sendcloud_parcels')
+        .upsert({
+          parcel_id: parcel.id.toString(),
+          commande_id: commande_id,
+          shipment_id: sendcloudData.id?.toString(),
+          tracking_number: parcel.tracking_number,
+          tracking_url: parcel.tracking_url,
+          carrier_code: parcel.carrier?.code,
+          carrier_name: parcel.carrier?.name,
+          service_name: parcel.shipment?.name,
+          status_id: parcel.status?.id || 1,
+          status_message: parcel.status?.message || 'Créé',
+          weight: parcel.weight,
+          country: parcel.country,
+          postal_code: parcel.postal_code,
+          city: parcel.city,
+          label_url: parcel.label?.label_printer,
+        }, {
+          onConflict: 'parcel_id'
+        });
+
+      if (parcelError) {
+        console.error('⚠️ Erreur enregistrement parcel:', parcelError);
+      }
+
+      // Enregistrer l'événement initial
+      await supabase
+        .from('sendcloud_tracking_events')
+        .insert({
+          parcel_id: parcel.id.toString(),
+          event_timestamp: new Date().toISOString(),
+          status_id: parcel.status?.id || 1,
+          status_message: parcel.status?.message || 'Colis créé',
+          metadata: { created_via: 'api' }
+        });
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
