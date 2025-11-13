@@ -13,6 +13,7 @@ import "leaflet/dist/leaflet.css";
 
 interface RelayPoint {
   id: string;
+  service_point_id?: string;
   name: string;
   address: string;
   city: string;
