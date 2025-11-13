@@ -201,6 +201,11 @@ export function RelayPointSelector({
                       <Popup>
                         <div className="space-y-1 text-sm">
                           <p className="font-semibold">{point.name}</p>
+                          {point.service_point_id && (
+                            <p className="text-xs bg-muted px-2 py-1 rounded font-mono">
+                              ID: {point.service_point_id}
+                            </p>
+                          )}
                           <p className="text-xs text-muted-foreground">
                             {point.address}
                           </p>
@@ -256,6 +261,12 @@ export function RelayPointSelector({
                         </div>
                         
                         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          {point.service_point_id && (
+                            <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded">
+                              <MapPin className="h-3 w-3" />
+                              <span className="font-mono">{point.service_point_id}</span>
+                            </div>
+                          )}
                           {point.phone && (
                             <div className="flex items-center gap-1">
                               <Phone className="h-3 w-3" />
