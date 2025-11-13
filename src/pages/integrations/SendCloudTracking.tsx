@@ -98,7 +98,7 @@ export default function SendCloudTracking() {
         .order('event_timestamp', { ascending: false });
 
       if (error) throw error;
-      return data as TrackingEvent[];
+      return data as any as TrackingEvent[];
     },
   });
 
