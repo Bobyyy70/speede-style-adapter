@@ -54,6 +54,7 @@ import DecisionsTransporteurs from "./pages/commandes/DecisionsTransporteurs";
 import SendCloudDocuments from "./pages/integrations/SendCloudDocuments";
 import SendCloudProducts from "./pages/integrations/SendCloudProducts";
 import SendCloudEvents from "./pages/integrations/SendCloudEvents";
+import SendCloudTracking from "./pages/integrations/SendCloudTracking";
 import ReglesTransporteurs from "./pages/configuration/ReglesTransporteurs";
 import AutomationTransporteurs from "./pages/configuration/AutomationTransporteurs";
 import ScoringPredictif from "./pages/analytics/ScoringPredictif";
@@ -341,6 +342,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
                   <SendCloudDocuments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/integrations/sendcloud-tracking"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <SendCloudTracking />
                 </ProtectedRoute>
               }
             />
