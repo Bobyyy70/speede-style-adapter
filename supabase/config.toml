@@ -1,5 +1,8 @@
 project_id = "tggdjeoxvpzbigbikpfy"
 
+[functions.sendcloud-import-senders]
+verify_jwt = true
+
 [functions.check-validation-rules]
 verify_jwt = true
 

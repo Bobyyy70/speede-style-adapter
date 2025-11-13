@@ -3799,6 +3799,69 @@ export type Database = {
         }
         Relationships: []
       }
+      sendcloud_sender_address: {
+        Row: {
+          bank_account_number: string | null
+          city: string
+          company_name: string | null
+          contact_name: string
+          country: string
+          date_creation: string | null
+          date_modification: string | null
+          email: string
+          eori_number: string | null
+          house_number: string
+          id: string
+          is_default: boolean | null
+          postal_code: string
+          raw_data: Json | null
+          sendcloud_id: number
+          street: string
+          telephone: string | null
+          vat_number: string | null
+        }
+        Insert: {
+          bank_account_number?: string | null
+          city: string
+          company_name?: string | null
+          contact_name: string
+          country: string
+          date_creation?: string | null
+          date_modification?: string | null
+          email: string
+          eori_number?: string | null
+          house_number: string
+          id?: string
+          is_default?: boolean | null
+          postal_code: string
+          raw_data?: Json | null
+          sendcloud_id: number
+          street: string
+          telephone?: string | null
+          vat_number?: string | null
+        }
+        Update: {
+          bank_account_number?: string | null
+          city?: string
+          company_name?: string | null
+          contact_name?: string
+          country?: string
+          date_creation?: string | null
+          date_modification?: string | null
+          email?: string
+          eori_number?: string | null
+          house_number?: string
+          id?: string
+          is_default?: boolean | null
+          postal_code?: string
+          raw_data?: Json | null
+          sendcloud_id?: number
+          street?: string
+          telephone?: string | null
+          vat_number?: string | null
+        }
+        Relationships: []
+      }
       sendcloud_status_tracking: {
         Row: {
           carrier: string | null
