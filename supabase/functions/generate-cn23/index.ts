@@ -31,6 +31,40 @@ serve(async (req) => {
 
     if (commandeError) throw commandeError;
 
+    // Validation des informations requises pour CN23
+    const errors: string[] = [];
+    
+    if (!commande.adresse_nom) errors.push("Nom du destinataire manquant");
+    if (!commande.adresse_ligne_1) errors.push("Adresse du destinataire manquante");
+    if (!commande.code_postal) errors.push("Code postal manquant");
+    if (!commande.ville) errors.push("Ville manquante");
+    if (!commande.pays_code) errors.push("Code pays manquant");
+    if (!commande.valeur_totale || commande.valeur_totale <= 0) errors.push("Valeur totale manquante ou invalide");
+    if (!commande.poids_total || commande.poids_total <= 0) errors.push("Poids total manquant ou invalide");
+    
+    // Vérifier que toutes les lignes ont un poids et une valeur
+    const lignesInvalides = commande.lignes.filter((l: any) => 
+      !l.poids_unitaire || l.poids_unitaire <= 0 || !l.prix_unitaire || l.prix_unitaire <= 0
+    );
+    
+    if (lignesInvalides.length > 0) {
+      errors.push(`${lignesInvalides.length} ligne(s) sans poids ou prix unitaire`);
+    }
+
+    if (errors.length > 0) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Informations manquantes pour générer le CN23",
+          details: errors,
+          status: "validation_failed"
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+
     // Générer le PDF (HTML simple pour l'instant)
     const htmlContent = `
       <!DOCTYPE html>

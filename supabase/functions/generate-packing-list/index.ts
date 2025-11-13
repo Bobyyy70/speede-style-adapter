@@ -30,6 +30,31 @@ serve(async (req) => {
 
     if (commandeError) throw commandeError;
 
+    // Validation des informations requises pour Packing List
+    const errors: string[] = [];
+    
+    if (!commande.numero_commande) errors.push("Numéro de commande manquant");
+    if (!commande.adresse_nom) errors.push("Nom du destinataire manquant");
+    if (!commande.adresse_ligne_1) errors.push("Adresse du destinataire manquante");
+    if (!commande.code_postal) errors.push("Code postal manquant");
+    if (!commande.ville) errors.push("Ville manquante");
+    if (!commande.pays_code) errors.push("Code pays manquant");
+    if (!commande.lignes || commande.lignes.length === 0) errors.push("Aucune ligne de commande");
+
+    if (errors.length > 0) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Informations manquantes pour générer le Packing List",
+          details: errors,
+          status: "validation_failed"
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+
     const htmlContent = `
       <!DOCTYPE html>
       <html>

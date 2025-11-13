@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FileText, Download, ChevronDown, Loader2, Package, Archive } from "lucide-react";
+import { FileText, Download, ChevronDown, Loader2, Package, Archive, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { CustomsValidation } from "./CustomsValidation";
 
 interface DocumentsSectionProps {
   commandeId: string;
@@ -21,6 +22,7 @@ const COUNTRIES_UE = [
 export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps) => {
   const { toast } = useToast();
   const [generating, setGenerating] = useState<string | null>(null);
+  const [autoGenerating, setAutoGenerating] = useState(false);
 
   // Fetch documents existants
   const { data: documents, refetch } = useQuery({
@@ -62,6 +64,59 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
 
   const isHorsUE = commande?.pays_code && !COUNTRIES_UE.includes(commande.pays_code.toUpperCase());
 
+  // Auto-génération des documents douaniers pour les expéditions internationales
+  useEffect(() => {
+    const autoGenerateCustomsDocs = async () => {
+      if (!isHorsUE || autoGenerating) return;
+      
+      // Vérifier si CN23 et packing list existent déjà
+      const hasCN23 = documents?.some(d => d.type_document === 'cn23');
+      const hasPackingList = documents?.some(d => d.type_document === 'packing_list');
+      
+      if (hasCN23 && hasPackingList) return;
+
+      // Vérifier que toutes les infos sont présentes
+      const isValid = 
+        commande.adresse_nom &&
+        commande.adresse_ligne_1 &&
+        commande.code_postal &&
+        commande.ville &&
+        commande.pays_code &&
+        commande.valeur_totale > 0 &&
+        commande.poids_total > 0 &&
+        commande.lignes?.every((l: any) => l.poids_unitaire > 0 && l.prix_unitaire > 0);
+
+      if (!isValid) return;
+
+      setAutoGenerating(true);
+      
+      try {
+        const docsToGenerate = [];
+        if (!hasPackingList) docsToGenerate.push('packing-list');
+        if (!hasCN23) docsToGenerate.push('cn23');
+
+        for (const docType of docsToGenerate) {
+          await supabase.functions.invoke(`generate-${docType}`, {
+            body: { commandeId },
+          });
+        }
+
+        toast({
+          title: "Documents générés automatiquement",
+          description: `${docsToGenerate.length} document(s) douanier(s) créé(s)`,
+        });
+
+        refetch();
+      } catch (error: any) {
+        console.error('Auto-generation error:', error);
+      } finally {
+        setAutoGenerating(false);
+      }
+    };
+
+    autoGenerateCustomsDocs();
+  }, [commandeId, isHorsUE, documents, commande, autoGenerating]);
+
   const documentTypes = [
     {
       categorie: "interne",
@@ -100,6 +155,16 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
       });
 
       if (error) throw error;
+
+      // Vérifier si c'est une erreur de validation
+      if (data?.status === 'validation_failed') {
+        toast({
+          title: "Validation échouée",
+          description: data.details?.join(', ') || data.error,
+          variant: "destructive",
+        });
+        return;
+      }
 
       toast({
         title: "Document généré",
@@ -181,6 +246,12 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Documents logistiques
+            {autoGenerating && (
+              <Badge variant="outline" className="ml-2">
+                <Sparkles className="h-3 w-3 mr-1 animate-pulse" />
+                Génération auto...
+              </Badge>
+            )}
           </CardTitle>
           {documents && documents.length > 0 && (
             <Button 
@@ -226,13 +297,8 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
           </div>
         )}
 
-        {isHorsUE && (
-          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-            <p className="text-sm text-amber-800 dark:text-amber-200">
-              ⚠️ Commande hors UE - Documents douaniers obligatoires
-            </p>
-          </div>
-        )}
+        {/* Validation douanière */}
+        <CustomsValidation commande={commande} isHorsUE={isHorsUE} />
 
         {documentTypes.map((category) => (
           <Collapsible key={category.categorie} defaultOpen>
