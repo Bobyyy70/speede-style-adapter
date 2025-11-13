@@ -95,18 +95,15 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
         if (!hasPackingList) docsToGenerate.push('packing-list');
         if (!hasCN23) docsToGenerate.push('cn23');
 
+        // Générer avec envoi automatique des emails
         for (const docType of docsToGenerate) {
-          await supabase.functions.invoke(`generate-${docType}`, {
-            body: { commandeId },
-          });
+          await handleGenerateDocument(docType, true);
         }
 
         toast({
           title: "Documents générés automatiquement",
-          description: `${docsToGenerate.length} document(s) douanier(s) créé(s)`,
+          description: `${docsToGenerate.length} document(s) douanier(s) créé(s) et envoyé(s) par email`,
         });
-
-        refetch();
       } catch (error: any) {
         console.error('Auto-generation error:', error);
       } finally {
@@ -147,11 +144,14 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
     },
   ];
 
-  const handleGenerateDocument = async (type: string) => {
+  const handleGenerateDocument = async (type: string, autoSendEmail = false) => {
     setGenerating(type);
     try {
       const { data, error } = await supabase.functions.invoke(`generate-${type}`, {
-        body: { commandeId },
+        body: { 
+          commandeId,
+          auto_send_email: autoSendEmail 
+        },
       });
 
       if (error) throw error;
@@ -166,10 +166,17 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
         return;
       }
 
-      toast({
-        title: "Document généré",
-        description: `Le document ${type} a été créé avec succès`,
-      });
+      if (data?.email_scheduled) {
+        toast({
+          title: "Document généré",
+          description: `Le document ${type} a été créé et sera envoyé par email`,
+        });
+      } else {
+        toast({
+          title: "Document généré",
+          description: `Le document ${type} a été créé avec succès`,
+        });
+      }
 
       refetch();
     } catch (error: any) {

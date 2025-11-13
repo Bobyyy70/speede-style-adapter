@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { commandeId } = await req.json();
+    const { commandeId, auto_send_email = false } = await req.json();
     
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -153,8 +153,31 @@ serve(async (req) => {
 
     if (docError) throw docError;
 
+    // Envoyer les documents par email en background si demandé
+    if (auto_send_email) {
+      // Déclencher l'envoi en background sans attendre
+      fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-customs-documents`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({
+          commande_id: commandeId,
+          send_to_client: true,
+          send_to_carrier: false,
+        }),
+      }).catch(err => console.error('Erreur appel send-customs-documents:', err));
+      
+      console.log('📧 Envoi d\'email déclenché en background');
+    }
+
     return new Response(
-      JSON.stringify({ success: true, url: publicUrl }),
+      JSON.stringify({ 
+        success: true, 
+        url: publicUrl,
+        email_scheduled: auto_send_email 
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
