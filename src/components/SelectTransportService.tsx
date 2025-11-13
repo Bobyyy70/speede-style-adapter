@@ -242,7 +242,7 @@ export function SelectTransportService({
         {showRelaySelector && (
           <RelayPointSelector
             onSelect={(point) => {
-              setRelayPointId(point.id);
+              setRelayPointId(point.service_point_id || point.id);
               setShowRelaySelector(false);
             }}
             selectedPointId={relayPointId}
