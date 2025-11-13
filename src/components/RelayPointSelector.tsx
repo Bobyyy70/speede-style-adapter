@@ -78,56 +78,31 @@ export function RelayPointSelector({
 
     setSearchLoading(true);
     try {
-      // TODO: Appeler l'API SendCloud pour récupérer les points relais
-      // Pour l'instant, données de démo
-      const mockPoints: RelayPoint[] = [
-        {
-          id: "relay_1",
-          name: "Point Relais Colis Privé",
-          address: "123 Rue de la République",
-          city: "Paris",
+      const { data, error } = await supabase.functions.invoke('mondial-relay-search-points', {
+        body: {
           postal_code: postalCode,
-          country: "FR",
-          latitude: 48.8566 + Math.random() * 0.02 - 0.01,
-          longitude: 2.3522 + Math.random() * 0.02 - 0.01,
-          phone: "01 23 45 67 89",
-          opening_hours: "Lun-Ven: 9h-18h",
-          distance: Math.round(Math.random() * 5 * 100) / 100,
+          country_code: 'FR',
+          max_results: 20,
         },
-        {
-          id: "relay_2",
-          name: "Mondial Relay Express",
-          address: "45 Avenue des Champs",
-          city: "Paris",
-          postal_code: postalCode,
-          country: "FR",
-          latitude: 48.8566 + Math.random() * 0.02 - 0.01,
-          longitude: 2.3522 + Math.random() * 0.02 - 0.01,
-          phone: "01 98 76 54 32",
-          opening_hours: "Lun-Sam: 8h-19h",
-          distance: Math.round(Math.random() * 5 * 100) / 100,
-        },
-        {
-          id: "relay_3",
-          name: "DPD Pickup",
-          address: "78 Boulevard Saint-Michel",
-          city: "Paris",
-          postal_code: postalCode,
-          country: "FR",
-          latitude: 48.8566 + Math.random() * 0.02 - 0.01,
-          longitude: 2.3522 + Math.random() * 0.02 - 0.01,
-          phone: "01 11 22 33 44",
-          opening_hours: "Lun-Dim: 7h-21h",
-          distance: Math.round(Math.random() * 5 * 100) / 100,
-        },
-      ];
+      });
 
-      setRelayPoints(mockPoints);
-      if (mockPoints.length > 0) {
-        setMapCenter([mockPoints[0].latitude, mockPoints[0].longitude]);
+      if (error) throw error;
+
+      if (data.success && data.points && data.points.length > 0) {
+        setRelayPoints(data.points);
+        
+        // Centrer la carte sur le premier point
+        const firstPoint = data.points[0];
+        setMapCenter([firstPoint.latitude, firstPoint.longitude]);
         setMapZoom(14);
-        toast.success(`${mockPoints.length} points relais trouvés`);
+        
+        if (data.demo_mode) {
+          toast.info("Mode démo: Données Mondial Relay simulées");
+        } else {
+          toast.success(`${data.count} points relais trouvés`);
+        }
       } else {
+        setRelayPoints([]);
         toast.info("Aucun point relais trouvé pour ce code postal");
       }
     } catch (error) {
