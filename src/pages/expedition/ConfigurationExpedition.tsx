@@ -1,10 +1,11 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ConfigWarning } from '@/components/expedition/ConfigWarning';
 import { N8nConnectionForm } from '@/components/expedition/N8nConnectionForm';
 import { TransporteurRulesTable } from '@/components/expedition/TransporteurRulesTable';
 import { validateConfig } from '@/lib/expeditionConfig';
-import { Settings } from 'lucide-react';
+import { Settings, Info } from 'lucide-react';
 
 export default function ConfigurationExpedition() {
   const validation = validateConfig();
@@ -35,6 +36,13 @@ export default function ConfigurationExpedition() {
           </TabsContent>
 
           <TabsContent value="rules">
+            <Alert className="mb-4">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Import automatique disponible :</strong> Cliquez sur "Importer depuis SendCloud" 
+                pour pré-remplir les règles avec vos méthodes d'expédition configurées sur SendCloud.
+              </AlertDescription>
+            </Alert>
             <TransporteurRulesTable />
           </TabsContent>
         </Tabs>

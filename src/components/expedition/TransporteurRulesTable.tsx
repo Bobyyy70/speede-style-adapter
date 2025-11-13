@@ -9,6 +9,7 @@ import { Plus, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTransporteurRules, saveTransporteurRules } from '@/lib/expeditionConfig';
 import { TransporteurRule } from '@/pages/expedition/types';
+import { ImportShippingMethodsButton } from './ImportShippingMethodsButton';
 
 const CARRIERS = ['FedEx', 'Colissimo', 'Mondial Relay', 'Autre'] as const;
 
@@ -36,6 +37,18 @@ export function TransporteurRulesTable() {
         rule.id === id ? { ...rule, [field]: value } : rule
       )
     );
+  };
+
+  const handleImportSuccess = (importedRules: TransporteurRule[]) => {
+    if (rules.length > 0) {
+      const confirmed = window.confirm(
+        `Vous avez déjà ${rules.length} règle(s). Voulez-vous les remplacer par les ${importedRules.length} règles importées ?`
+      );
+      if (!confirmed) return;
+    }
+    
+    setRules(importedRules);
+    toast.success('Règles importées avec succès. Vérifiez et enregistrez.');
   };
 
   const handleSave = () => {
@@ -66,6 +79,19 @@ export function TransporteurRulesTable() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex justify-between items-center gap-2 mb-4">
+            <ImportShippingMethodsButton onImportSuccess={handleImportSuccess} />
+            <div className="flex gap-2">
+              <Button onClick={handleAddRule} variant="outline" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Ajouter une règle
+              </Button>
+              <Button onClick={handleSave} size="lg" disabled={rules.length === 0}>
+                Enregistrer les règles
+              </Button>
+            </div>
+          </div>
+          
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -142,16 +168,6 @@ export function TransporteurRulesTable() {
                 )}
               </TableBody>
             </Table>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <Button onClick={handleAddRule} variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              Ajouter une règle
-            </Button>
-            <Button onClick={handleSave} size="lg" disabled={rules.length === 0}>
-              Enregistrer les règles
-            </Button>
           </div>
         </CardContent>
       </Card>

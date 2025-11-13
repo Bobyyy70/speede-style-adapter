@@ -69,6 +69,7 @@ Deno.serve(async (req) => {
           code_service: method.service_point_input || method.id?.toString() || 'unknown',
           nom_affichage: method.name || 'Unknown Service',
           description: `${method.carrier} - ${method.name}`,
+          sendcloud_shipping_method_id: method.id?.toString() || null,
           delai_min_jours: method.min_delivery_days || null,
           delai_max_jours: method.max_delivery_days || null,
           poids_min_kg: method.min_weight ? method.min_weight / 1000 : null,

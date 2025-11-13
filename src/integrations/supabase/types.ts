@@ -4559,6 +4559,7 @@ export type Database = {
           nom_affichage: string
           poids_max_kg: number | null
           poids_min_kg: number | null
+          sendcloud_shipping_method_id: string | null
           suivi_disponible: boolean | null
           transporteur_id: string | null
         }
@@ -4575,6 +4576,7 @@ export type Database = {
           nom_affichage: string
           poids_max_kg?: number | null
           poids_min_kg?: number | null
+          sendcloud_shipping_method_id?: string | null
           suivi_disponible?: boolean | null
           transporteur_id?: string | null
         }
@@ -4591,6 +4593,7 @@ export type Database = {
           nom_affichage?: string
           poids_max_kg?: number | null
           poids_min_kg?: number | null
+          sendcloud_shipping_method_id?: string | null
           suivi_disponible?: boolean | null
           transporteur_id?: string | null
         }
