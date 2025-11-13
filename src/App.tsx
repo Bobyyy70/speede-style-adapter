@@ -22,6 +22,8 @@ import PreparationDetails from "./pages/PreparationDetails";
 import PickingMobile from "./pages/PickingMobile";
 import BacsAdresses from "./pages/BacsAdresses";
 import Expedition from "./pages/Expedition";
+import ConfigurationExpedition from "./pages/expedition/ConfigurationExpedition";
+import PreparerExpedition from "./pages/expedition/PreparerExpedition";
 import Utilisateurs from "./pages/Utilisateurs";
 import GestionClients from "./pages/GestionClients";
 import SendCloudSync from "./pages/SendCloudSync";
@@ -199,6 +201,22 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur']}>
                   <Expedition />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/expedition/configuration"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ConfigurationExpedition />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/expedition/preparer"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'operateur']}>
+                  <PreparerExpedition />
                 </ProtectedRoute>
               }
             />
