@@ -1248,6 +1248,106 @@ export type Database = {
           },
         ]
       }
+      customs_email_log: {
+        Row: {
+          commande_id: string | null
+          date_envoi: string | null
+          destinataire_email: string
+          destinataire_type: string
+          documents_joints: string[] | null
+          erreur_message: string | null
+          id: string
+          resend_id: string | null
+          statut: string
+          sujet: string | null
+          template_utilise: string | null
+        }
+        Insert: {
+          commande_id?: string | null
+          date_envoi?: string | null
+          destinataire_email: string
+          destinataire_type: string
+          documents_joints?: string[] | null
+          erreur_message?: string | null
+          id?: string
+          resend_id?: string | null
+          statut?: string
+          sujet?: string | null
+          template_utilise?: string | null
+        }
+        Update: {
+          commande_id?: string | null
+          date_envoi?: string | null
+          destinataire_email?: string
+          destinataire_type?: string
+          documents_joints?: string[] | null
+          erreur_message?: string | null
+          id?: string
+          resend_id?: string | null
+          statut?: string
+          sujet?: string | null
+          template_utilise?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customs_email_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customs_email_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customs_email_log_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customs_email_templates: {
+        Row: {
+          actif: boolean | null
+          corps_html: string
+          date_creation: string | null
+          date_modification: string | null
+          description: string | null
+          id: string
+          nom: string
+          sujet: string
+          variables_disponibles: string[] | null
+        }
+        Insert: {
+          actif?: boolean | null
+          corps_html: string
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          id?: string
+          nom: string
+          sujet: string
+          variables_disponibles?: string[] | null
+        }
+        Update: {
+          actif?: boolean | null
+          corps_html?: string
+          date_creation?: string | null
+          date_modification?: string | null
+          description?: string | null
+          id?: string
+          nom?: string
+          sujet?: string
+          variables_disponibles?: string[] | null
+        }
+        Relationships: []
+      }
       dashboard_widget_config: {
         Row: {
           date_creation: string | null
@@ -1430,6 +1530,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dedup_log: {
+        Row: {
+          date_nettoyage: string | null
+          deleted_ids: string[] | null
+          id: string
+          kept_id: string | null
+          numero_commande: string | null
+          raison: string | null
+          sendcloud_id: string | null
+        }
+        Insert: {
+          date_nettoyage?: string | null
+          deleted_ids?: string[] | null
+          id?: string
+          kept_id?: string | null
+          numero_commande?: string | null
+          raison?: string | null
+          sendcloud_id?: string | null
+        }
+        Update: {
+          date_nettoyage?: string | null
+          deleted_ids?: string[] | null
+          id?: string
+          kept_id?: string | null
+          numero_commande?: string | null
+          raison?: string | null
+          sendcloud_id?: string | null
+        }
+        Relationships: []
       }
       demande_service_personnalise: {
         Row: {
@@ -3799,6 +3929,91 @@ export type Database = {
         }
         Relationships: []
       }
+      sendcloud_parcels: {
+        Row: {
+          carrier_code: string | null
+          carrier_name: string | null
+          city: string | null
+          commande_id: string | null
+          country: string | null
+          created_at: string | null
+          id: string
+          label_url: string | null
+          parcel_id: string
+          postal_code: string | null
+          service_name: string | null
+          shipment_id: string | null
+          status_id: number | null
+          status_message: string | null
+          tracking_number: string | null
+          tracking_url: string | null
+          updated_at: string | null
+          weight: number | null
+        }
+        Insert: {
+          carrier_code?: string | null
+          carrier_name?: string | null
+          city?: string | null
+          commande_id?: string | null
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          label_url?: string | null
+          parcel_id: string
+          postal_code?: string | null
+          service_name?: string | null
+          shipment_id?: string | null
+          status_id?: number | null
+          status_message?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Update: {
+          carrier_code?: string | null
+          carrier_name?: string | null
+          city?: string | null
+          commande_id?: string | null
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          label_url?: string | null
+          parcel_id?: string
+          postal_code?: string | null
+          service_name?: string | null
+          shipment_id?: string | null
+          status_id?: number | null
+          status_message?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sendcloud_parcels_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sendcloud_parcels_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commande_gestionnaire_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sendcloud_parcels_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "v_commandes_avec_statut"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sendcloud_sender_address: {
         Row: {
           bank_account_number: string | null
@@ -3982,6 +4197,50 @@ export type Database = {
           statut?: string
         }
         Relationships: []
+      }
+      sendcloud_tracking_events: {
+        Row: {
+          carrier_message: string | null
+          created_at: string | null
+          event_timestamp: string
+          id: string
+          location: string | null
+          metadata: Json | null
+          parcel_id: string
+          status_id: number
+          status_message: string
+        }
+        Insert: {
+          carrier_message?: string | null
+          created_at?: string | null
+          event_timestamp: string
+          id?: string
+          location?: string | null
+          metadata?: Json | null
+          parcel_id: string
+          status_id: number
+          status_message: string
+        }
+        Update: {
+          carrier_message?: string | null
+          created_at?: string | null
+          event_timestamp?: string
+          id?: string
+          location?: string | null
+          metadata?: Json | null
+          parcel_id?: string
+          status_id?: number
+          status_message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sendcloud_tracking_events_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "sendcloud_parcels"
+            referencedColumns: ["parcel_id"]
+          },
+        ]
       }
       sendcloud_webhook_events: {
         Row: {
@@ -4463,6 +4722,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sync_locks: {
+        Row: {
+          expires_at: string | null
+          id: string
+          lock_key: string
+          owner: string
+          started_at: string | null
+        }
+        Insert: {
+          expires_at?: string | null
+          id?: string
+          lock_key: string
+          owner: string
+          started_at?: string | null
+        }
+        Update: {
+          expires_at?: string | null
+          id?: string
+          lock_key?: string
+          owner?: string
+          started_at?: string | null
+        }
+        Relationships: []
       }
       transporteur_configuration: {
         Row: {
@@ -5230,6 +5513,10 @@ export type Database = {
       }
     }
     Functions: {
+      acquire_sync_lock: {
+        Args: { p_lock_key: string; p_owner: string; p_ttl_minutes?: number }
+        Returns: boolean
+      }
       ajouter_stock_manuel: {
         Args: {
           p_emplacement_id: string
@@ -5359,6 +5646,10 @@ export type Database = {
       reintegrer_produits_retour: {
         Args: { p_retour_id: string }
         Returns: Json
+      }
+      release_sync_lock: {
+        Args: { p_lock_key: string; p_owner: string }
+        Returns: boolean
       }
       reserver_stock: {
         Args: {
