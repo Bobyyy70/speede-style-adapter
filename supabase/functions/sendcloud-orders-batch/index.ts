@@ -110,10 +110,11 @@ Deno.serve(async (req) => {
 
     for (const sendcloudData of orders) {
       const orderNumber = sendcloudData.order_number || sendcloudData.order_id || String(sendcloudData.id);
+      const sendcloudId = String(sendcloudData.id);
       const status = (sendcloudData as any).status || 'pending';
       
       try {
-        console.log(`\n🔄 Traitement: ${orderNumber} (status: ${status})`);
+        console.log(`\n🔄 Traitement: ${orderNumber} (SendCloud ID: ${sendcloudId}, status: ${status})`);
 
         // Si commande annulée, l'archiver directement
         if (status === 'cancelled') {
@@ -123,7 +124,7 @@ Deno.serve(async (req) => {
           const { data: existing } = await supabase
             .from('commande')
             .select('id')
-            .or(`sendcloud_id.eq.${String(sendcloudData.id)},numero_commande.eq.${orderNumber}`)
+            .or(`sendcloud_id.eq.${sendcloudId},numero_commande.eq.${orderNumber}`)
             .maybeSingle();
           
           if (existing) {
