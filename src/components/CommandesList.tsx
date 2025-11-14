@@ -162,7 +162,19 @@ export function CommandesList({
     }
   };
 
-  const filteredCommandes = commandes.filter((commande) => {
+  // Déduplication temporaire en attendant que les index uniques prennent effet
+  const dedupedCommandes = commandes.reduce((acc, commande) => {
+    const existing = acc.find(c => c.numero_commande === commande.numero_commande);
+    if (!existing) {
+      acc.push(commande);
+    } else if (new Date(commande.date_creation) > new Date(existing.date_creation)) {
+      const index = acc.indexOf(existing);
+      acc[index] = commande;
+    }
+    return acc;
+  }, [] as Commande[]);
+
+  const filteredCommandes = dedupedCommandes.filter((commande) => {
     const matchesSearch =
       commande.numero_commande.toLowerCase().includes(searchQuery.toLowerCase()) ||
       commande.nom_client.toLowerCase().includes(searchQuery.toLowerCase());
@@ -233,8 +245,13 @@ export function CommandesList({
     return ORDER_STATUS_LABELS[statut as keyof typeof ORDER_STATUS_LABELS] || statut;
   };
 
-  const needsStockAlert = (statut: string): boolean => {
-    return statut === ORDER_STATUSES.EN_ATTENTE_REAPPRO;
+  const needsStockAlert = (commande: Commande): boolean => {
+    // Alertes uniquement pour les vraies problèmes de stock
+    return (
+      commande.statut_wms === ORDER_STATUSES.EN_ATTENTE_REAPPRO ||
+      commande.statut_wms === 'produit_non_trouve' ||
+      (commande.validation_requise && commande.validation_message?.includes('stock'))
+    );
   };
 
   // Tri intelligent: non expédiées en haut, expédiées en bas
@@ -411,7 +428,7 @@ export function CommandesList({
                             </Badge>
                           )}
                           
-                          {needsStockAlert(commande.statut_wms) && (
+                          {needsStockAlert(commande) && (
                             <span className="inline-flex items-center gap-1 text-xs text-orange-600">
                               <AlertCircle className="h-3 w-3" />
                               Alerte stock
