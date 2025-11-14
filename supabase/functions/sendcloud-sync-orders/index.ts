@@ -120,6 +120,8 @@ Deno.serve(async (req) => {
   }
 
   const startTime = Date.now();
+  const lockOwner = crypto.randomUUID(); // Identifiant unique pour cette exécution
+  let lockAcquired = false;
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -137,6 +139,37 @@ Deno.serve(async (req) => {
     const customStartDate = body.startDate;
 
     console.log(`[SendCloud Sync] Mode: ${mode}`);
+
+    // 🔒 ACQUISITION DU VERROU DE SYNCHRONISATION
+    console.log(`[SendCloud Sync] Tentative d'acquisition du verrou (owner: ${lockOwner})...`);
+    const { data: lockResult, error: lockError } = await supabase.rpc('acquire_sync_lock', {
+      p_lock_key: 'sendcloud-sync',
+      p_owner: lockOwner,
+      p_ttl_minutes: 10
+    });
+
+    if (lockError) {
+      console.error('[SendCloud Sync] Erreur lors de l\'acquisition du verrou:', lockError);
+      throw new Error(`Impossible d'acquérir le verrou: ${lockError.message}`);
+    }
+
+    if (!lockResult) {
+      console.warn('[SendCloud Sync] ⚠️ Verrou déjà pris - Une synchronisation est déjà en cours');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Une synchronisation SendCloud est déjà en cours. Veuillez réessayer dans quelques minutes.',
+          lock_status: 'busy'
+        }),
+        {
+          status: 409, // Conflict
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    lockAcquired = true;
+    console.log('[SendCloud Sync] ✅ Verrou acquis avec succès');
 
     // Calculate time window
     let dateMin: string;
@@ -720,5 +753,30 @@ Deno.serve(async (req) => {
       JSON.stringify({ success: false, error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+  } finally {
+    // 🔓 LIBÉRATION DU VERROU DE SYNCHRONISATION
+    if (lockAcquired) {
+      console.log(`[SendCloud Sync] Libération du verrou (owner: ${lockOwner})...`);
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        const { data: released, error: releaseError } = await supabase.rpc('release_sync_lock', {
+          p_lock_key: 'sendcloud-sync',
+          p_owner: lockOwner
+        });
+
+        if (releaseError) {
+          console.error('[SendCloud Sync] ⚠️ Erreur lors de la libération du verrou:', releaseError);
+        } else if (released) {
+          console.log('[SendCloud Sync] ✅ Verrou libéré avec succès');
+        } else {
+          console.warn('[SendCloud Sync] ⚠️ Verrou non trouvé lors de la libération (probablement expiré)');
+        }
+      } catch (releaseError) {
+        console.error('[SendCloud Sync] ⚠️ Exception lors de la libération du verrou:', releaseError);
+      }
+    }
   }
 });
