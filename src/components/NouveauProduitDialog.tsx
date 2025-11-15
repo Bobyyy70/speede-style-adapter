@@ -8,14 +8,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus } from "lucide-react";
+import { Plus, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
   const { toast } = useToast();
+  const { hasRole } = useAuth();
+
+  // Query pour récupérer la liste des clients (pour les admins)
+  const { data: clients } = useQuery({
+    queryKey: ['clients-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('client')
+        .select('id, nom_entreprise')
+        .eq('actif', true)
+        .order('nom_entreprise');
+      if (error) throw error;
+      return data;
+    },
+    enabled: hasRole('admin') // Seulement si admin
+  });
 
   const [formData, setFormData] = useState({
     // Général
@@ -60,7 +80,6 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
     setLoading(true);
 
     try {
-      // Récupérer le client_id du profil utilisateur
       const user = (await supabase.auth.getUser()).data.user;
       if (!user) {
         toast({
@@ -72,25 +91,43 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
         return;
       }
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('client_id')
-        .eq('id', user.id)
-        .single();
+      let clientId: string;
 
-      if (profileError || !profile?.client_id) {
-        toast({
-          variant: "destructive",
-          title: "Erreur",
-          description: "Vous devez être associé à un client pour créer un produit",
-        });
-        setLoading(false);
-        return;
+      // Si admin : utiliser le client sélectionné
+      if (hasRole('admin')) {
+        if (!selectedClientId) {
+          toast({
+            variant: "destructive",
+            title: "Client requis",
+            description: "Veuillez sélectionner un client pour ce produit",
+          });
+          setLoading(false);
+          return;
+        }
+        clientId = selectedClientId;
+      } else {
+        // Si client/gestionnaire/opérateur : récupérer depuis le profil
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('client_id')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError || !profile?.client_id) {
+          toast({
+            variant: "destructive",
+            title: "Erreur",
+            description: "Vous devez être associé à un client",
+          });
+          setLoading(false);
+          return;
+        }
+        clientId = profile.client_id;
       }
 
       const { data: newProduct, error } = await supabase.from("produit").insert([
         {
-          client_id: profile.client_id, // 🔥 Ajout automatique du client_id
+          client_id: clientId,
           reference: formData.reference,
           nom: formData.nom,
           description: formData.description || null,
@@ -155,6 +192,7 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
       });
 
       setOpen(false);
+      setSelectedClientId("");
       setFormData({
         reference: "",
         nom: "",
@@ -214,6 +252,43 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
+          {/* Sélecteur de client pour les admins */}
+          {hasRole('admin') && (
+            <div className="mb-4 p-4 bg-muted rounded-lg border">
+              <Label htmlFor="client-select" className="text-base font-semibold">
+                Client propriétaire <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={selectedClientId}
+                onValueChange={setSelectedClientId}
+              >
+                <SelectTrigger id="client-select" className="mt-2">
+                  <SelectValue placeholder="Sélectionnez un client..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients?.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.nom_entreprise}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground mt-1">
+                Ce produit sera attribué au client sélectionné
+              </p>
+            </div>
+          )}
+
+          {/* Indicateur pour les non-admins */}
+          {!hasRole('admin') && (
+            <Alert className="mb-4 bg-blue-50 dark:bg-blue-950 border-blue-200">
+              <Info className="h-4 w-4 text-blue-800 dark:text-blue-200" />
+              <AlertDescription className="text-blue-800 dark:text-blue-200">
+                Ce produit sera automatiquement attribué à votre client
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Tabs defaultValue="general" className="w-full">
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="general">Général</TabsTrigger>
