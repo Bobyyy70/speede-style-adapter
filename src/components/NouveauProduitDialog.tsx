@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
   const [loading, setLoading] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const { toast } = useToast();
-  const { hasRole } = useAuth();
+  const { hasRole, userRole } = useAuth();
 
   // Query pour récupérer la liste des clients (pour les admins)
   const { data: clients } = useQuery({
@@ -36,6 +36,18 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
     },
     enabled: hasRole('admin') // Seulement si admin
   });
+
+  // Debug logs quand le dialog s'ouvre
+  useEffect(() => {
+    if (open) {
+      console.group('🔍 [NouveauProduitDialog] Debug Rôle');
+      console.log('userRole:', userRole);
+      console.log('hasRole("admin"):', hasRole('admin'));
+      console.log('hasRole("client"):', hasRole('client'));
+      console.log('selectedClientId:', selectedClientId);
+      console.groupEnd();
+    }
+  }, [open, userRole, selectedClientId]);
 
   const [formData, setFormData] = useState({
     // Général
@@ -251,9 +263,18 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
             Créer une nouvelle référence produit complète avec toutes les informations nécessaires
           </DialogDescription>
         </DialogHeader>
+        
+        {/* Badge de debug */}
+        <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded mb-4 border border-yellow-300 dark:border-yellow-700">
+          <p className="text-xs text-yellow-900 dark:text-yellow-100">
+            🔐 Rôle: <strong>{userRole || 'INCONNU'}</strong> | 
+            Admin: <strong>{hasRole('admin') ? 'OUI' : 'NON'}</strong>
+          </p>
+        </div>
+        
         <form onSubmit={handleSubmit}>
           {/* Sélecteur de client pour les admins */}
-          {hasRole('admin') && (
+          {hasRole('admin') && (() => { console.log('✅ Affichage Select admin'); return true; })() && (
             <div className="mb-4 p-4 bg-muted rounded-lg border">
               <Label htmlFor="client-select" className="text-base font-semibold">
                 Client propriétaire <span className="text-destructive">*</span>
@@ -280,7 +301,7 @@ export const NouveauProduitDialog = ({ onSuccess }: { onSuccess?: () => void }) 
           )}
 
           {/* Indicateur pour les non-admins */}
-          {!hasRole('admin') && (
+          {!hasRole('admin') && (() => { console.log('✅ Affichage Alert client'); return true; })() && (
             <Alert className="mb-4 bg-blue-50 dark:bg-blue-950 border-blue-200">
               <Info className="h-4 w-4 text-blue-800 dark:text-blue-200" />
               <AlertDescription className="text-blue-800 dark:text-blue-200">
