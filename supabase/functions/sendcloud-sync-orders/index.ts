@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
     const { data: lockResult, error: lockError } = await supabase.rpc('acquire_sync_lock', {
       p_lock_key: 'sendcloud-sync',
       p_owner: lockOwner,
-      p_ttl_minutes: 10
+      p_ttl_minutes: 20 // ✅ Augmenté à 20 minutes pour les syncs volumineuses
     });
 
     if (lockError) {
@@ -158,22 +158,48 @@ Deno.serve(async (req) => {
     }
 
     if (!lockResult) {
-      console.warn('[SendCloud Sync] ⚠️ Verrou déjà pris - Une synchronisation est déjà en cours');
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Une synchronisation SendCloud est déjà en cours. Veuillez réessayer dans quelques minutes.',
-          lock_status: 'busy'
-        }),
-        {
-          status: 409, // Conflict
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      console.warn('[SendCloud Sync] ⚠️ Verrou déjà pris - Tentative de retry dans 30s');
+      
+      // ✅ Retry une seule fois après 30 secondes
+      if (!body.isRetry) {
+        await new Promise(resolve => setTimeout(resolve, 30000));
+        
+        const { data: retryLock, error: retryError } = await supabase.rpc('acquire_sync_lock', {
+          p_lock_key: 'sendcloud-sync',
+          p_owner: lockOwner,
+          p_ttl_minutes: 20
+        });
+        
+        if (retryError || !retryLock) {
+          console.error('[SendCloud Sync] ❌ Verrou toujours occupé après retry');
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Synchronisation déjà en cours. Merci de réessayer plus tard.',
+              lock_status: 'busy',
+              retry_attempted: true
+            }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
-      );
+        
+        lockAcquired = true;
+        console.log('[SendCloud Sync] ✅ Verrou acquis après retry');
+      } else {
+        // Si déjà un retry, ne pas boucler
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Une synchronisation SendCloud est déjà en cours.',
+            lock_status: 'busy'
+          }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      lockAcquired = true;
+      console.log('[SendCloud Sync] ✅ Verrou acquis avec succès');
     }
-
-    lockAcquired = true;
-    console.log('[SendCloud Sync] ✅ Verrou acquis avec succès');
 
     // Démarrer le log de synchronisation
     runId = await startSyncLog(supabase, 'orders', undefined);
@@ -796,6 +822,12 @@ Deno.serve(async (req) => {
 
         if (releaseError) {
           console.error('[SendCloud Sync] ⚠️ Erreur lors de la libération du verrou:', releaseError);
+          // ✅ Forcer la suppression en cas d'erreur
+          await supabase
+            .from('sync_locks')
+            .delete()
+            .eq('lock_key', 'sendcloud-sync')
+            .eq('owner', lockOwner);
         } else if (released) {
           console.log('[SendCloud Sync] ✅ Verrou libéré avec succès');
         } else {
