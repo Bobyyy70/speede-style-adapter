@@ -3842,6 +3842,45 @@ export type Database = {
           },
         ]
       }
+      sendcloud_dlq: {
+        Row: {
+          created_at: string
+          error_message: string
+          event_type: string
+          id: number
+          max_retries: number
+          next_retry_at: string | null
+          payload: Json
+          processed_at: string | null
+          retry_count: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message: string
+          event_type: string
+          id?: number
+          max_retries?: number
+          next_retry_at?: string | null
+          payload: Json
+          processed_at?: string | null
+          retry_count?: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string
+          event_type?: string
+          id?: number
+          max_retries?: number
+          next_retry_at?: string | null
+          payload?: Json
+          processed_at?: string | null
+          retry_count?: number
+          status?: string
+        }
+        Relationships: []
+      }
       sendcloud_event_history: {
         Row: {
           created_at: string | null
@@ -4197,6 +4236,63 @@ export type Database = {
           statut?: string
         }
         Relationships: []
+      }
+      sendcloud_sync_logs: {
+        Row: {
+          batch_count: number
+          client_id: string | null
+          error_message: string | null
+          finished_at: string | null
+          id: number
+          item_count: number
+          job: string
+          metadata: Json | null
+          run_id: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          batch_count?: number
+          client_id?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: number
+          item_count?: number
+          job: string
+          metadata?: Json | null
+          run_id?: string
+          started_at?: string
+          status: string
+        }
+        Update: {
+          batch_count?: number
+          client_id?: string | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: number
+          item_count?: number
+          job?: string
+          metadata?: Json | null
+          run_id?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sendcloud_sync_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sendcloud_sync_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_user_stats"
+            referencedColumns: ["client_id"]
+          },
+        ]
       }
       sendcloud_tracking_events: {
         Row: {
@@ -5577,6 +5673,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      current_client_id: { Args: never; Returns: string }
       execute_sql_admin: { Args: { statements: string[] }; Returns: Json }
       expedier_commande_stock: {
         Args: { p_commande_id: string }
