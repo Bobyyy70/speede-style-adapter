@@ -61,6 +61,7 @@ import ScoringPredictif from "./pages/analytics/ScoringPredictif";
 import OptimisationCouts from "./pages/analytics/OptimisationCouts";
 import ApprentissageContinu from "./pages/analytics/ApprentissageContinu";
 import OptimisationTransport from "./pages/OptimisationTransport";
+import OnboardingWizard from "./pages/onboarding/OnboardingWizard";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin-bootstrap" element={<AdminBootstrap />} />
+            <Route path="/onboarding" element={<OnboardingWizard />} />
             <Route
               path="/"
               element={
