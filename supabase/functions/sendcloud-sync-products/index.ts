@@ -1,7 +1,8 @@
 // SendCloud Product Sync: Export WMS products to SendCloud
 // Automatically creates/updates products in SendCloud when they are created/modified in WMS
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { startSyncLog, finalizeSyncLog, pushToDLQ } from '../_shared/sync-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,6 +44,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  let runId: string | null = null;
+  const startTime = Date.now();
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -91,6 +95,10 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[sendcloud-sync-products] Found ${products.length} products to sync`);
+
+    // Démarrer le log de synchronisation
+    runId = await startSyncLog(supabase, 'products', undefined);
+    console.log(`[sendcloud-sync-products] Sync log started with runId: ${runId}`);
 
     let synced = 0;
     let errors = 0;
@@ -147,17 +155,18 @@ Deno.serve(async (req) => {
           const errorText = await response.text();
           console.error(`[sendcloud-sync-products] SendCloud API error for ${product.reference}:`, errorText);
           
-          // Log error to database
-          await supabase.from('sendcloud_sync_errors').insert({
-            entity_type: 'product',
-            entity_id: product.id,
-            operation: existingMapping ? 'update' : 'create',
-            error_code: `HTTP_${response.status}`,
-            error_message: `SendCloud API returned ${response.status}`,
-            error_details: { response_body: errorText },
-            request_payload: sendcloudProduct,
-            next_retry_at: new Date(Date.now() + 15 * 60 * 1000), // Retry in 15 minutes
-          });
+          // Pousser dans la DLQ pour retry ultérieur
+          await pushToDLQ(
+            supabase,
+            'product_sync',
+            { 
+              product_id: product.id,
+              sku: product.reference,
+              operation: existingMapping ? 'update' : 'create',
+              sendcloud_product: sendcloudProduct,
+            },
+            `SendCloud API returned ${response.status}: ${errorText}`
+          );
 
           // Update mapping status to error
           if (existingMapping) {
@@ -202,19 +211,19 @@ Deno.serve(async (req) => {
 
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        const errorStack = error instanceof Error ? error.stack : undefined;
         console.error(`[sendcloud-sync-products] Error syncing product ${product.reference}:`, error);
         
-        // Log error
-        await supabase.from('sendcloud_sync_errors').insert({
-          entity_type: 'product',
-          entity_id: product.id,
-          operation: 'sync',
-          error_message: errorMessage,
-          error_details: { stack: errorStack },
-          request_payload: product,
-          next_retry_at: new Date(Date.now() + 15 * 60 * 1000),
-        });
+        // Pousser dans la DLQ pour retry ultérieur
+        await pushToDLQ(
+          supabase,
+          'product_sync',
+          { 
+            product_id: product.id,
+            sku: product.reference,
+            product_data: product,
+          },
+          errorMessage
+        );
 
         errors++;
         results.push({ product_id: product.id, reference: product.reference, status: 'error', error: errorMessage });
@@ -222,6 +231,20 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[sendcloud-sync-products] Sync complete: ${synced} synced, ${errors} errors`);
+
+    // Finaliser le log de synchronisation
+    if (runId) {
+      await finalizeSyncLog(supabase, runId, errors === 0 ? 'success' : 'partial', {
+        batchCount: 1,
+        itemCount: synced,
+        metadata: {
+          total_products: products.length,
+          synced_count: synced,
+          error_count: errors,
+          duration_ms: Date.now() - startTime,
+        },
+      });
+    }
 
     return new Response(
       JSON.stringify({
@@ -237,6 +260,20 @@ Deno.serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[sendcloud-sync-products] Fatal error:', error);
+    
+    // Finaliser le log en erreur
+    if (runId) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      await finalizeSyncLog(supabase, runId, 'error', {
+        batchCount: 0,
+        itemCount: 0,
+        errorMessage,
+      });
+    }
+    
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
