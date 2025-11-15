@@ -670,6 +670,7 @@ export type Database = {
           sendcloud_id: string | null
           sendcloud_reference: string | null
           sendcloud_shipment_id: string | null
+          service_transport: string | null
           source: string
           sous_client: string | null
           statut_wms: Database["public"]["Enums"]["statut_commande_enum"]
@@ -754,6 +755,7 @@ export type Database = {
           sendcloud_id?: string | null
           sendcloud_reference?: string | null
           sendcloud_shipment_id?: string | null
+          service_transport?: string | null
           source: string
           sous_client?: string | null
           statut_wms?: Database["public"]["Enums"]["statut_commande_enum"]
@@ -838,6 +840,7 @@ export type Database = {
           sendcloud_id?: string | null
           sendcloud_reference?: string | null
           sendcloud_shipment_id?: string | null
+          service_transport?: string | null
           source?: string
           sous_client?: string | null
           statut_wms?: Database["public"]["Enums"]["statut_commande_enum"]
