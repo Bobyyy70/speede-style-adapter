@@ -529,6 +529,219 @@ async function handleLabelCreated(supabase: any, parcel: SendCloudParcel): Promi
   console.log('✅ Label attached to order');
 }
 
+// ============================================================
+// NEW HANDLERS: Returns, Delivery, Errors, Label Download
+// ============================================================
+
+async function handleReturnEvent(supabase: any, event: SendCloudWebhookEvent): Promise<void> {
+  console.log('🔄 Return event:', event.action);
+
+  const parcel = event.parcel;
+  if (!parcel) return;
+
+  // Trouver la commande associée
+  const { data: commande } = await supabase
+    .from('commande')
+    .select('id, numero_commande, client_id')
+    .or(`sendcloud_shipment_id.eq.${parcel.id},tracking_number.eq.${parcel.tracking_number}`)
+    .maybeSingle();
+
+  if (!commande) {
+    console.warn('⚠️ Order not found for return:', parcel.id);
+    return;
+  }
+
+  // Vérifier si le retour existe déjà
+  const { data: existingReturn } = await supabase
+    .from('retour_produit')
+    .select('id')
+    .eq('sendcloud_parcel_id', parcel.id.toString())
+    .maybeSingle();
+
+  if (!existingReturn) {
+    // Créer un nouveau retour
+    const { data: newReturn, error } = await supabase
+      .from('retour_produit')
+      .insert({
+        commande_id: commande.id,
+        client_id: commande.client_id,
+        numero_retour: `RET-${parcel.id}`,
+        sendcloud_parcel_id: parcel.id.toString(),
+        tracking_number: parcel.tracking_number,
+        tracking_url: parcel.tracking_url,
+        statut: 'cree',
+        raison_retour: 'Retour client',
+        date_creation: new Date().toISOString(),
+        source: 'sendcloud_webhook'
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('❌ Error creating return:', error);
+      return;
+    }
+
+    console.log('✅ Return created:', newReturn.id);
+
+    // Créer les lignes de retour
+    const { data: lignesCommande } = await supabase
+      .from('ligne_commande')
+      .select('*')
+      .eq('commande_id', commande.id);
+
+    if (lignesCommande) {
+      for (const ligne of lignesCommande) {
+        await supabase.from('ligne_retour').insert({
+          retour_id: newReturn.id,
+          produit_id: ligne.produit_id,
+          produit_reference: ligne.produit_reference,
+          produit_nom: ligne.produit_nom,
+          quantite_retournee: ligne.quantite_commandee,
+          raison: 'Retour client'
+        });
+      }
+    }
+  }
+
+  // Mettre à jour le statut de la commande
+  await supabase
+    .from('commande')
+    .update({ statut_wms: 'retour' })
+    .eq('id', commande.id);
+
+  console.log('✅ Return processed for order:', commande.numero_commande);
+}
+
+async function handleParcelDelivered(supabase: any, parcel: SendCloudParcel): Promise<void> {
+  console.log('📦 Parcel delivered:', parcel.tracking_number);
+
+  await upsertParcel(supabase, parcel);
+
+  await addTrackingEvent(supabase, parcel.id.toString(), {
+    id: 11,
+    message: 'Livré'
+  }, {
+    tracking_number: parcel.tracking_number
+  });
+
+  const { data: commande } = await supabase
+    .from('commande')
+    .select('id')
+    .or(`sendcloud_shipment_id.eq.${parcel.id},tracking_number.eq.${parcel.tracking_number}`)
+    .maybeSingle();
+
+  if (!commande) {
+    console.warn('⚠️ Order not found for delivered parcel:', parcel.id);
+    return;
+  }
+
+  await supabase.from('commande').update({
+    statut_wms: 'livre',
+    date_livraison: new Date().toISOString(),
+    date_modification: new Date().toISOString(),
+  }).eq('id', commande.id);
+
+  console.log('✅ Order marked as delivered');
+}
+
+async function handleParcelError(supabase: any, parcel: SendCloudParcel, action: string): Promise<void> {
+  console.log('⚠️ Parcel error/exception:', parcel.tracking_number);
+
+  await upsertParcel(supabase, parcel);
+
+  await addTrackingEvent(supabase, parcel.id.toString(), {
+    id: 80,
+    message: action === 'parcel_exception' ? 'Exception' : 'Erreur'
+  }, {
+    tracking_number: parcel.tracking_number,
+    error_type: action
+  });
+
+  const { data: commande } = await supabase
+    .from('commande')
+    .select('id')
+    .or(`sendcloud_shipment_id.eq.${parcel.id},tracking_number.eq.${parcel.tracking_number}`)
+    .maybeSingle();
+
+  if (!commande) {
+    console.warn('⚠️ Order not found for error parcel:', parcel.id);
+    return;
+  }
+
+  await supabase.from('commande').update({
+    statut_wms: 'erreur',
+    date_modification: new Date().toISOString(),
+  }).eq('id', commande.id);
+
+  // Créer une alerte
+  await supabase.from('system_alerts').insert({
+    alert_type: 'parcel_error',
+    severity: action === 'parcel_exception' ? 'warning' : 'critical',
+    message: `Erreur de livraison pour colis ${parcel.tracking_number}`,
+    metadata: {
+      parcel_id: parcel.id,
+      tracking_number: parcel.tracking_number,
+      action: action
+    },
+    created_at: new Date().toISOString()
+  });
+
+  console.log('✅ Parcel error logged and alerted');
+}
+
+async function downloadLabelAutomatically(supabase: any, parcel: SendCloudParcel): Promise<void> {
+  console.log('📥 Auto-downloading label for parcel:', parcel.id);
+
+  if (!parcel.label?.label_printer) {
+    console.warn('⚠️ No label URL found for parcel:', parcel.id);
+    return;
+  }
+
+  try {
+    // Appeler la fonction sendcloud-fetch-documents
+    const functionUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/sendcloud-fetch-documents`;
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        parcel_id: parcel.id,
+        document_type: 'label',
+        auto_download: true
+      }),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('✅ Label downloaded:', result.file_path || result.url);
+
+      // Mettre à jour la commande avec le lien du label téléchargé
+      const { data: commande } = await supabase
+        .from('commande')
+        .select('id')
+        .or(`sendcloud_shipment_id.eq.${parcel.id},tracking_number.eq.${parcel.tracking_number}`)
+        .maybeSingle();
+
+      if (commande) {
+        await supabase
+          .from('commande')
+          .update({
+            label_file_path: result.file_path,
+            label_downloaded_at: new Date().toISOString()
+          })
+          .eq('id', commande.id);
+      }
+    } else {
+      console.warn('⚠️ Label download failed:', await response.text());
+    }
+  } catch (error) {
+    console.error('❌ Error downloading label:', error);
+  }
+}
+
 // Main handler
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -609,11 +822,39 @@ Deno.serve(async (req) => {
       case 'label_created':
         if (event.parcel) {
           await handleLabelCreated(supabase, event.parcel);
+          // ✅ Télécharger automatiquement l'étiquette
+          await downloadLabelAutomatically(supabase, event.parcel);
+        }
+        break;
+
+      case 'return_created':
+      case 'return_status_changed':
+        if (event.parcel) {
+          await handleReturnEvent(supabase, event);
+        }
+        break;
+
+      case 'parcel_delivered':
+        if (event.parcel) {
+          await handleParcelDelivered(supabase, event.parcel);
+        }
+        break;
+
+      case 'parcel_exception':
+      case 'parcel_error':
+        if (event.parcel) {
+          await handleParcelError(supabase, event.parcel, event.action);
         }
         break;
 
       default:
         console.log('ℹ️ Unhandled event:', event.action);
+        // Logger pour analyse future
+        await supabase.from('sendcloud_unhandled_events').insert({
+          action: event.action,
+          payload: event,
+          created_at: new Date().toISOString()
+        }).then(() => {}).catch((err: any) => console.warn('Failed to log unhandled event:', err));
     }
 
     const processingTime = Date.now() - startTime;
