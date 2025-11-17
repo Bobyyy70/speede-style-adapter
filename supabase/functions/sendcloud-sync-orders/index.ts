@@ -337,9 +337,9 @@ Deno.serve(async (req) => {
         const dateParam = mode === 'full' ? 'created_at_min' : 'updated_at_min';
         let page = 1;
         const perPage = 100;
-        const maxPages = 50;
+        const maxPages = 5; // ✅ RÉDUIT de 50 à 5 pour éviter timeout (500 parcels max au lieu de 5000)
 
-        console.log(`[V2 Parcels] Using ${dateParam}=${dateMin}`);
+        console.log(`[V2 Parcels] Using ${dateParam}=${dateMin} (max ${maxPages} pages = ${maxPages * perPage} parcels max)`);
 
         while (page <= maxPages) {
           const url = `${SENDCLOUD_V2_PARCELS_ENDPOINT}?${dateParam}=${dateMin}&page=${page}&per_page=${perPage}`;
@@ -394,56 +394,93 @@ Deno.serve(async (req) => {
         // ✅ ENRICHMENT: Fetch full details for each parcel
         // ============================================================
         if (allParcels.length > 0) {
-          console.log(`✓ V2 Parcels: ${allParcels.length} found, enriching with full details in parallel...`);
-          
+          const MAX_ENRICHMENTS = 50; // ✅ LIMITE à 50 enrichissements max pour éviter rate limit
+          const parcelsToEnrich = allParcels.slice(0, MAX_ENRICHMENTS);
+          const parcelsSkipped = allParcels.length - parcelsToEnrich.length;
+
+          console.log(`✓ V2 Parcels: ${allParcels.length} found`);
+          console.log(`  → Enriching ${parcelsToEnrich.length} parcels (max ${MAX_ENRICHMENTS})`);
+          if (parcelsSkipped > 0) {
+            console.log(`  → Skipping enrichment for ${parcelsSkipped} parcels (using summary data)`);
+          }
+
           const enrichedParcels: SendCloudParcel[] = [];
           let enrichedCount = 0;
           let enrichErrors = 0;
-          
-          // Process in parallel batches of 10 to avoid timeout
-          const BATCH_SIZE = 10;
+
+          // Process in smaller batches of 5 to avoid overwhelming API
+          const BATCH_SIZE = 5; // ✅ RÉDUIT de 10 à 5
           const batches = [];
-          for (let i = 0; i < allParcels.length; i += BATCH_SIZE) {
-            batches.push(allParcels.slice(i, i + BATCH_SIZE));
+          for (let i = 0; i < parcelsToEnrich.length; i += BATCH_SIZE) {
+            batches.push(parcelsToEnrich.slice(i, i + BATCH_SIZE));
           }
-          
+
           console.log(`Processing ${batches.length} batches of up to ${BATCH_SIZE} parcels`);
           
           for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
             const batch = batches[batchIndex];
             console.log(`[Batch ${batchIndex + 1}/${batches.length}] Processing ${batch.length} parcels...`);
-            
-            const batchPromises = batch.map(async (parcel) => {
+
+            // ✅ Ajouter délai entre les batches pour éviter rate limit
+            if (batchIndex > 0) {
+              await new Promise(resolve => setTimeout(resolve, 200)); // 200ms entre chaque batch
+            }
+
+            const batchPromises = batch.map(async (parcel, indexInBatch) => {
               try {
+                // ✅ Ajouter délai entre chaque appel dans le batch
+                if (indexInBatch > 0) {
+                  await new Promise(resolve => setTimeout(resolve, 150)); // 150ms entre appels
+                }
+
                 const detailUrl = `${SENDCLOUD_V2_PARCELS_ENDPOINT}/${parcel.id}`;
                 const detailCallStart = Date.now();
-                
-                const detailResponse = await fetch(detailUrl, {
-                  method: 'GET',
-                  headers: { 'Authorization': authHeader, 'Accept': 'application/json' }
-                });
-                
+
+                // ✅ Retry logic avec exponential backoff pour gérer les 429
+                let retries = 0;
+                const maxRetries = 3;
+                let detailResponse: Response | null = null;
+
+                while (retries < maxRetries) {
+                  detailResponse = await fetch(detailUrl, {
+                    method: 'GET',
+                    headers: { 'Authorization': authHeader, 'Accept': 'application/json' }
+                  });
+
+                  // Si 429 (rate limit), attendre et réessayer
+                  if (detailResponse.status === 429) {
+                    const retryAfter = detailResponse.headers.get('Retry-After');
+                    const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, retries) * 1000;
+                    console.warn(`[Parcel ${parcel.id}] Rate limited (429), waiting ${waitTime}ms before retry ${retries + 1}/${maxRetries}`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                    retries++;
+                    continue;
+                  }
+
+                  break; // Sortir de la boucle si pas 429
+                }
+
                 const detailDuration = Date.now() - detailCallStart;
-                
-                if (detailResponse.ok) {
+
+                if (detailResponse && detailResponse.ok) {
                   const detailData = await detailResponse.json();
                   const fullParcel = detailData.parcel;
-                  
+
                   console.log(`[Parcel ${parcel.id}] ✓ Enriched:`);
                   console.log(`  Carrier: ${fullParcel.carrier?.name || 'N/A'}`);
                   console.log(`  Shipment: ${fullParcel.shipment?.name || 'N/A'}`);
                   console.log(`  Weight: ${fullParcel.weight || 'N/A'}kg`);
                   console.log(`  Items: ${fullParcel.parcel_items?.length || 0}`);
                   console.log(`  Sender: ${fullParcel.sender_address?.company_name || fullParcel.sender_address?.name || 'N/A'}`);
-                  
+
                   await logApiCall(detailUrl, 200, null, detailDuration, { parcel_id: parcel.id, strategy: 'parcel_detail' });
-                  
+
                   return { success: true, parcel: fullParcel };
                 } else {
-                  const errorText = await detailResponse.text();
-                  console.warn(`[Parcel ${parcel.id}] ⚠️ Detail fetch failed (${detailResponse.status}), using summary data`);
-                  await logApiCall(detailUrl, detailResponse.status, errorText, detailDuration, { parcel_id: parcel.id, strategy: 'parcel_detail' });
-                  
+                  const errorText = detailResponse ? await detailResponse.text() : 'No response';
+                  console.warn(`[Parcel ${parcel.id}] ⚠️ Detail fetch failed (${detailResponse?.status}), using summary data`);
+                  await logApiCall(detailUrl, detailResponse?.status || null, errorText, detailDuration, { parcel_id: parcel.id, strategy: 'parcel_detail' });
+
                   return { success: false, parcel }; // Fallback to summary
                 }
               } catch (error: any) {
@@ -465,9 +502,16 @@ Deno.serve(async (req) => {
             
             console.log(`[Batch ${batchIndex + 1}/${batches.length}] Complete: ${enrichedCount} enriched, ${enrichErrors} errors so far`);
           }
-          
-          allParcels = enrichedParcels;
-          console.log(`✓ Enrichment complete: ${enrichedCount} fully enriched, ${enrichErrors} fallback to summary`);
+
+          // ✅ Ajouter les parcels non enrichis (utilisant les données summary)
+          const nonEnrichedParcels = allParcels.slice(MAX_ENRICHMENTS);
+          allParcels = [...enrichedParcels, ...nonEnrichedParcels];
+
+          console.log(`✓ Enrichment complete:`);
+          console.log(`  → ${enrichedCount} parcels fully enriched`);
+          console.log(`  → ${enrichErrors} parcels using summary data (errors)`);
+          console.log(`  → ${nonEnrichedParcels.length} parcels using summary data (not enriched)`);
+          console.log(`  → ${allParcels.length} total parcels to process`);
         }
       } catch (error: any) {
         const errMsg = error?.message || String(error);
