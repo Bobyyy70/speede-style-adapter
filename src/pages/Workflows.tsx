@@ -85,16 +85,13 @@ export default function Workflows() {
   // Execute workflow
   const executeMutation = useMutation({
     mutationFn: async (workflow: Workflow) => {
-      const N8N_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzNzBkYTMwMy1iNzRiLTRlOGQtOTNhYy01Y2NiZmU0YjRkZTgiLCJpc3MiOiJuOG4iLCJhdWQiOicHVibGljLWFwaSIsImlhdCI6MTc1OTU3Nzg4NX0.JZV7iwQPikzJrGrrRiYs6JtoDV1hrcuUONUD-jTKBbU';
-      
+      // Note: Authentication is handled automatically via Supabase auth token
+      // No need to send API key from frontend (security improvement)
       const { data } = await supabase.functions.invoke('n8n-gateway', {
         body: {
           action: 'execute',
           workflow_id: workflow.id,
           payload: { test: true, timestamp: new Date().toISOString() },
-        },
-        headers: {
-          'X-N8N-API-KEY': N8N_API_KEY,
         },
       });
 
