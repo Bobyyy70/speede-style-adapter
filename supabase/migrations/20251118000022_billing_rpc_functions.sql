@@ -507,7 +507,52 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =====================================================
--- 8. CRON Job - Génération automatique fin de mois
+-- 8. get_stats_facturation_par_client - Stats clients
+-- =====================================================
+
+CREATE OR REPLACE FUNCTION get_stats_facturation_par_client(
+  p_annee INTEGER
+)
+RETURNS TABLE (
+  client_id UUID,
+  client_nom TEXT,
+  nb_factures INTEGER,
+  total_ht DECIMAL,
+  total_ttc DECIMAL,
+  total_paye DECIMAL,
+  total_en_attente DECIMAL,
+  taux_paiement_pct DECIMAL
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    c.id AS client_id,
+    c.nom_entreprise AS client_nom,
+    COUNT(fm.id)::INTEGER AS nb_factures,
+    COALESCE(SUM(fm.montant_ht), 0)::DECIMAL AS total_ht,
+    COALESCE(SUM(fm.montant_ttc), 0)::DECIMAL AS total_ttc,
+    COALESCE(SUM(CASE WHEN fm.statut_paiement = 'payee' THEN fm.montant_ttc ELSE 0 END), 0)::DECIMAL AS total_paye,
+    COALESCE(SUM(CASE WHEN fm.statut_paiement = 'en_attente' THEN fm.montant_ttc ELSE 0 END), 0)::DECIMAL AS total_en_attente,
+    CASE
+      WHEN COALESCE(SUM(fm.montant_ttc), 0) > 0 THEN
+        ROUND(
+          100.0 * COALESCE(SUM(CASE WHEN fm.statut_paiement = 'payee' THEN fm.montant_ttc ELSE 0 END), 0) /
+          COALESCE(SUM(fm.montant_ttc), 1),
+          2
+        )
+      ELSE 0
+    END::DECIMAL AS taux_paiement_pct
+  FROM public.client c
+  LEFT JOIN public.facturation_mensuelle fm ON fm.client_id = c.id AND fm.periode_annee = p_annee
+  WHERE c.actif = TRUE
+  GROUP BY c.id, c.nom_entreprise
+  HAVING COUNT(fm.id) > 0
+  ORDER BY total_ttc DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =====================================================
+-- 9. CRON Job - Génération automatique fin de mois
 -- =====================================================
 
 -- Désactiver le job existant si présent
@@ -523,7 +568,7 @@ SELECT cron.schedule(
 );
 
 -- =====================================================
--- 9. Summary
+-- 10. Summary
 -- =====================================================
 
 DO $$
@@ -546,6 +591,7 @@ BEGIN
   RAISE NOTICE '  ✅ generer_facture_mensuelle()';
   RAISE NOTICE '  ✅ generer_toutes_factures_mensuelles()';
   RAISE NOTICE '  ✅ get_factures_client()';
+  RAISE NOTICE '  ✅ get_stats_facturation_par_client()';
   RAISE NOTICE '';
   RAISE NOTICE 'CRON Job:';
   IF job_count > 0 THEN
