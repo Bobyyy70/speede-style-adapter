@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FileText, Download, ChevronDown, Loader2, Package, Archive, Sparkles } from "lucide-react";
+import { FileText, Download, ChevronDown, Loader2, Package, Archive, Sparkles, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -23,6 +23,7 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
   const { toast } = useToast();
   const [generating, setGenerating] = useState<string | null>(null);
   const [autoGenerating, setAutoGenerating] = useState(false);
+  const [sendingCustomsDocs, setSendingCustomsDocs] = useState(false);
 
   // Fetch documents existants
   const { data: documents, refetch } = useQuery({
@@ -246,6 +247,44 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
     return documents?.find((d) => d.type_document === type);
   };
 
+  const handleSendCustomsDocuments = async () => {
+    setSendingCustomsDocs(true);
+    try {
+      console.log('📧 Envoi des documents douaniers pour commande:', commandeId);
+
+      const { data, error } = await supabase.functions.invoke('send-customs-documents', {
+        body: {
+          commande_id: commandeId,
+          send_to_client: true,
+          send_to_carrier: false,
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        const successCount = data.results?.filter((r: any) => r.success).length || 0;
+        const totalCount = data.results?.length || 0;
+
+        toast({
+          title: "Documents douaniers envoyés",
+          description: `${successCount}/${totalCount} email(s) envoyé(s) avec succès`,
+        });
+      } else {
+        throw new Error(data?.error || "Erreur lors de l'envoi");
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur envoi documents douaniers:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible d'envoyer les documents",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingCustomsDocs(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -306,6 +345,42 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
 
         {/* Validation douanière */}
         <CustomsValidation commande={commande} isHorsUE={isHorsUE} />
+
+        {/* Envoi des documents douaniers par email */}
+        {isHorsUE && documents?.some(d => d.type_document === 'cn23') && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-blue-600" />
+                <div>
+                  <div className="text-sm font-semibold text-blue-900">Documents douaniers disponibles</div>
+                  <div className="text-xs text-blue-700 mt-1">
+                    CN23 et Packing List prêts à être envoyés par email
+                  </div>
+                </div>
+              </div>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleSendCustomsDocuments}
+                disabled={sendingCustomsDocs}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {sendingCustomsDocs ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Envoi en cours...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Envoyer au client
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {documentTypes.map((category) => (
           <Collapsible key={category.categorie} defaultOpen>
