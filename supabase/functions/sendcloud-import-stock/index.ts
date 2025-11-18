@@ -1,7 +1,7 @@
 // SendCloud Import Stock: Import stock levels from SendCloud and detect discrepancies
 // Runs daily to reconcile stock between SendCloud and WMS
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
