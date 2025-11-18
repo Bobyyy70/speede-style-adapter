@@ -46,6 +46,7 @@ import MonDashboard from "./pages/MonDashboard";
 import DashboardAnalytique from "./pages/DashboardAnalytique";
 import GestionTransitions from "./pages/admin/GestionTransitions";
 import Workflows from "./pages/Workflows";
+import ChatbotIA from "./pages/ChatbotIA";
 import ReglesFiltrage from "./pages/commandes/ReglesFiltrage";
 import ReglesEmballages from "./pages/preparation/ReglesEmballages";
 import ReglesValidation from "./pages/commandes/ReglesValidation";
@@ -426,7 +427,25 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            
+
+            {/* IA & Automation */}
+            <Route
+              path="/workflows"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <Workflows />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ia/chatbot"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ChatbotIA />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Client Routes */}
             <Route
               path="/client/produits"
