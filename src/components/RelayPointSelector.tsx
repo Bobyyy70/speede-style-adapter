@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, MapPin, Navigation, Phone, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import "leaflet/dist/leaflet.css";
 
 interface RelayPoint {
@@ -28,6 +29,8 @@ interface RelayPointSelectorProps {
   onSelect: (relayPoint: RelayPoint) => void;
   selectedPointId?: string;
   defaultPostalCode?: string;
+  shippingMethodId?: number; // SendCloud shipping method ID for relay points
+  country?: string; // Default country code (e.g., 'FR')
 }
 
 // Custom map component to handle view changes
@@ -41,6 +44,8 @@ export function RelayPointSelector({
   onSelect,
   selectedPointId,
   defaultPostalCode = "",
+  shippingMethodId = 8, // Default to 8 (common relay point method ID - configure per carrier)
+  country = "FR",
 }: RelayPointSelectorProps) {
   const [postalCode, setPostalCode] = useState(defaultPostalCode);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -78,61 +83,46 @@ export function RelayPointSelector({
 
     setSearchLoading(true);
     try {
-      // TODO: Appeler l'API SendCloud pour récupérer les points relais
-      // Pour l'instant, données de démo
-      const mockPoints: RelayPoint[] = [
-        {
-          id: "relay_1",
-          name: "Point Relais Colis Privé",
-          address: "123 Rue de la République",
-          city: "Paris",
-          postal_code: postalCode,
-          country: "FR",
-          latitude: 48.8566 + Math.random() * 0.02 - 0.01,
-          longitude: 2.3522 + Math.random() * 0.02 - 0.01,
-          phone: "01 23 45 67 89",
-          opening_hours: "Lun-Ven: 9h-18h",
-          distance: Math.round(Math.random() * 5 * 100) / 100,
-        },
-        {
-          id: "relay_2",
-          name: "Mondial Relay Express",
-          address: "45 Avenue des Champs",
-          city: "Paris",
-          postal_code: postalCode,
-          country: "FR",
-          latitude: 48.8566 + Math.random() * 0.02 - 0.01,
-          longitude: 2.3522 + Math.random() * 0.02 - 0.01,
-          phone: "01 98 76 54 32",
-          opening_hours: "Lun-Sam: 8h-19h",
-          distance: Math.round(Math.random() * 5 * 100) / 100,
-        },
-        {
-          id: "relay_3",
-          name: "DPD Pickup",
-          address: "78 Boulevard Saint-Michel",
-          city: "Paris",
-          postal_code: postalCode,
-          country: "FR",
-          latitude: 48.8566 + Math.random() * 0.02 - 0.01,
-          longitude: 2.3522 + Math.random() * 0.02 - 0.01,
-          phone: "01 11 22 33 44",
-          opening_hours: "Lun-Dim: 7h-21h",
-          distance: Math.round(Math.random() * 5 * 100) / 100,
-        },
-      ];
+      console.log(`🔍 Recherche points relais: ${postalCode}, ${country}, method: ${shippingMethodId}`);
 
-      setRelayPoints(mockPoints);
-      if (mockPoints.length > 0) {
-        setMapCenter([mockPoints[0].latitude, mockPoints[0].longitude]);
+      // Appel à l'edge function SendCloud pour récupérer les points relais
+      const { data, error } = await supabase.functions.invoke('sendcloud-get-service-points', {
+        body: {
+          shipping_method_id: shippingMethodId,
+          country: country,
+          postal_code: postalCode,
+        },
+      });
+
+      if (error) {
+        console.error("❌ Error fetching relay points:", error);
+        throw error;
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch service points');
+      }
+
+      const servicePoints = data.service_points || [];
+      console.log(`✅ Received ${servicePoints.length} service points from SendCloud`);
+
+      setRelayPoints(servicePoints);
+
+      if (servicePoints.length > 0) {
+        // Centrer la carte sur le premier point
+        setMapCenter([servicePoints[0].latitude, servicePoints[0].longitude]);
         setMapZoom(14);
-        toast.success(`${mockPoints.length} points relais trouvés`);
+        toast.success(`${servicePoints.length} points relais trouvés`);
       } else {
         toast.info("Aucun point relais trouvé pour ce code postal");
       }
     } catch (error) {
-      console.error("Error searching relay points:", error);
-      toast.error("Erreur lors de la recherche des points relais");
+      console.error("❌ Error searching relay points:", error);
+      toast.error(
+        error instanceof Error
+          ? `Erreur: ${error.message}`
+          : "Erreur lors de la recherche des points relais"
+      );
     } finally {
       setSearchLoading(false);
     }
