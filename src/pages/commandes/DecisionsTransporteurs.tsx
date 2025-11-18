@@ -103,11 +103,28 @@ export default function DecisionsTransporteurs() {
     }
 
     try {
-      // Note: Cette fonction RPC n'existe pas encore dans Supabase
-      // Il faudra la créer via une migration
-      toast.warning("Fonction forcer_transporteur_commande à implémenter");
+      console.log(`Forcing carrier for commande ${selectedDecision.commande_id}: ${forcageData.code}`);
+
+      const { data, error } = await supabase.rpc('forcer_transporteur_commande', {
+        p_commande_id: selectedDecision.commande_id,
+        p_transporteur_code: forcageData.code,
+        p_transporteur_nom: forcageData.nom,
+        p_raison: forcageData.raison,
+      });
+
+      if (error) {
+        console.error('RPC Error:', error);
+        throw error;
+      }
+
+      if (!data || data.length === 0 || !data[0].success) {
+        throw new Error(data?.[0]?.message || 'Échec du forçage');
+      }
+
+      toast.success(data[0].message || `Transporteur ${forcageData.nom} forcé avec succès`);
       setForceDialogOpen(false);
       setForcageData({ code: "", nom: "", raison: "" });
+      loadData();
     } catch (error) {
       console.error('Error forcing carrier:', error);
       toast.error(error instanceof Error ? error.message : "Erreur lors du forçage du transporteur");
