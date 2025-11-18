@@ -23,6 +23,7 @@ export const ORDER_STATUSES = {
   LIVRE: 'livre',
   ANNULE: 'annule',
   ERREUR: 'erreur',
+  RETOUR: 'retour',
   
   // États incidents
   INCIDENT_LIVRAISON: 'incident_livraison',
@@ -47,6 +48,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   [ORDER_STATUSES.LIVRE]: 'Livré',
   [ORDER_STATUSES.ANNULE]: 'Annulé',
   [ORDER_STATUSES.ERREUR]: 'Erreur',
+  [ORDER_STATUSES.RETOUR]: 'Retour',
   [ORDER_STATUSES.INCIDENT_LIVRAISON]: 'Incident livraison',
   [ORDER_STATUSES.RETOUR_EXPEDITEUR]: 'Retour expéditeur'
 };
@@ -67,6 +69,7 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   [ORDER_STATUSES.LIVRE]: 'text-emerald-600',
   [ORDER_STATUSES.ANNULE]: 'text-red-600',
   [ORDER_STATUSES.ERREUR]: 'text-destructive',
+  [ORDER_STATUSES.RETOUR]: 'text-orange-600',
   [ORDER_STATUSES.INCIDENT_LIVRAISON]: 'text-rose-600',
   [ORDER_STATUSES.RETOUR_EXPEDITEUR]: 'text-amber-600'
 };

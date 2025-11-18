@@ -849,12 +849,12 @@ Deno.serve(async (req) => {
 
       default:
         console.log('ℹ️ Unhandled event:', event.action);
-        // Logger pour analyse future
-        await supabase.from('sendcloud_unhandled_events').insert({
+        // Logger pour analyse future (fire and forget, no await)
+        void supabase.from('sendcloud_unhandled_events').insert({
           action: event.action,
           payload: event,
           created_at: new Date().toISOString()
-        }).then(() => {}).catch((err: any) => console.warn('Failed to log unhandled event:', err));
+        });
     }
 
     const processingTime = Date.now() - startTime;
