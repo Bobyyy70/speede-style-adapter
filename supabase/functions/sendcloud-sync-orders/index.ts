@@ -408,24 +408,36 @@ Deno.serve(async (req) => {
           let enrichedCount = 0;
           let enrichErrors = 0;
 
-          // Process in smaller batches of 5 to avoid overwhelming API
-          const BATCH_SIZE = 5; // ✅ RÉDUIT de 10 à 5
-          const batches = [];
-          for (let i = 0; i < parcelsToEnrich.length; i += BATCH_SIZE) {
-            batches.push(parcelsToEnrich.slice(i, i + BATCH_SIZE));
-          }
-
-          console.log(`Processing ${batches.length} batches of up to ${BATCH_SIZE} parcels`);
+          // Dynamic batch sizing based on API performance and error rates
+          let batchSize = 5; // Start with conservative batch size
+          const MIN_BATCH_SIZE = 2;
+          const MAX_BATCH_SIZE = 15;
+          const TARGET_RESPONSE_TIME_MS = 500; // Target average response time per request
           
-          for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-            const batch = batches[batchIndex];
-            console.log(`[Batch ${batchIndex + 1}/${batches.length}] Processing ${batch.length} parcels...`);
+          // Performance metrics for adaptive sizing
+          let totalResponseTime = 0;
+          let totalRequests = 0;
+          let recentErrors = 0;
+          let recentSuccesses = 0;
+          const PERFORMANCE_WINDOW = 10; // Number of requests to consider for adjustments
 
-            // ✅ Ajouter délai entre les batches pour éviter rate limit
-            if (batchIndex > 0) {
-              await new Promise(resolve => setTimeout(resolve, 200)); // 200ms entre chaque batch
+          console.log(`Starting dynamic batch processing (initial size: ${batchSize}, range: ${MIN_BATCH_SIZE}-${MAX_BATCH_SIZE})`);
+          
+          let currentIndex = 0;
+          let batchNumber = 0;
+          
+          while (currentIndex < parcelsToEnrich.length) {
+            batchNumber++;
+            const batch = parcelsToEnrich.slice(currentIndex, currentIndex + batchSize);
+            console.log(`[Batch ${batchNumber}] Processing ${batch.length} parcels (batch size: ${batchSize})...`);
+            currentIndex += batch.length;
+
+            // Add delay between batches to avoid rate limit
+            if (batchNumber > 1) {
+              await new Promise(resolve => setTimeout(resolve, 200));
             }
 
+            const batchStartTime = Date.now();
             const batchPromises = batch.map(async (parcel, indexInBatch) => {
               try {
                 // ✅ Ajouter délai entre chaque appel dans le batch
@@ -490,17 +502,69 @@ Deno.serve(async (req) => {
             });
             
             const batchResults = await Promise.all(batchPromises);
+            const batchDuration = Date.now() - batchStartTime;
+            const avgResponseTime = batchDuration / batch.length;
+            
+            // Track batch performance
+            let batchSuccesses = 0;
+            let batchErrors = 0;
             
             batchResults.forEach(result => {
               if (result.success) {
                 enrichedCount++;
+                batchSuccesses++;
+                recentSuccesses++;
               } else {
                 enrichErrors++;
+                batchErrors++;
+                recentErrors++;
               }
               enrichedParcels.push(result.parcel);
             });
             
-            console.log(`[Batch ${batchIndex + 1}/${batches.length}] Complete: ${enrichedCount} enriched, ${enrichErrors} errors so far`);
+            // Update performance metrics
+            totalResponseTime += avgResponseTime;
+            totalRequests += batch.length;
+            
+            // Keep recent metrics within window
+            if (totalRequests > PERFORMANCE_WINDOW) {
+              recentSuccesses = Math.max(0, recentSuccesses - Math.floor(PERFORMANCE_WINDOW / 3));
+              recentErrors = Math.max(0, recentErrors - Math.floor(PERFORMANCE_WINDOW / 3));
+            }
+            
+            console.log(`[Batch ${batchNumber}] Complete: ${batchSuccesses} succeeded, ${batchErrors} failed, avg response: ${Math.round(avgResponseTime)}ms`);
+            
+            // Adjust batch size based on performance (only after first batch)
+            if (batchNumber > 0 && currentIndex < parcelsToEnrich.length) {
+              const errorRate = recentErrors / (recentErrors + recentSuccesses);
+              const avgRecentResponseTime = totalResponseTime / totalRequests;
+              
+              let adjustment = 0;
+              
+              // If error rate is high (>20%), reduce batch size
+              if (errorRate > 0.2) {
+                adjustment = -1;
+                console.log(`  → High error rate (${(errorRate * 100).toFixed(1)}%), reducing batch size`);
+              }
+              // If responses are fast and error rate is low, increase batch size
+              else if (avgRecentResponseTime < TARGET_RESPONSE_TIME_MS && errorRate < 0.1) {
+                adjustment = 1;
+                console.log(`  → Good performance (${Math.round(avgRecentResponseTime)}ms avg, ${(errorRate * 100).toFixed(1)}% errors), increasing batch size`);
+              }
+              // If responses are slow, reduce batch size
+              else if (avgRecentResponseTime > TARGET_RESPONSE_TIME_MS * 1.5) {
+                adjustment = -1;
+                console.log(`  → Slow responses (${Math.round(avgRecentResponseTime)}ms avg), reducing batch size`);
+              }
+              
+              if (adjustment !== 0) {
+                const oldBatchSize = batchSize;
+                batchSize = Math.max(MIN_BATCH_SIZE, Math.min(MAX_BATCH_SIZE, batchSize + adjustment));
+                if (batchSize !== oldBatchSize) {
+                  console.log(`  → Batch size adjusted: ${oldBatchSize} → ${batchSize}`);
+                }
+              }
+            }
           }
 
           // ✅ Ajouter les parcels non enrichis (utilisant les données summary)
