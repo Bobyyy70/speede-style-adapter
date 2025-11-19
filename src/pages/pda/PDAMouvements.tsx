@@ -98,12 +98,12 @@ export default function PDAMouvements() {
       // Récupérer le stock disponible
       const { data: stockData } = await supabase
         .from("stock_disponible")
-        .select("quantite_disponible")
+        .select("*")
         .eq("produit_id", produitData.id)
-        .single();
+        .maybeSingle();
 
       setProduit(produitData);
-      setStockDisponible(stockData?.quantite_disponible || 0);
+      setStockDisponible(stockData?.stock_disponible || 0);
       setQuantite(1);
       setNumeroLot("");
 
