@@ -305,11 +305,10 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
       return;
     }
 
-    print({
-      commandeId,
-      documentType: thermalDocType,
-      format: 'html_thermal',
-      autoOpen: true,
+    toast({
+      title: "Fonctionnalité désactivée",
+      description: "L'impression thermique n'est pas configurée",
+      variant: "destructive",
     });
   };
 

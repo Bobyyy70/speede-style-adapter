@@ -10,7 +10,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
-import { ThermalPrinterSettings } from "@/components/thermal-printer/ThermalPrinterSettings";
+import ThermalPrinterSettings from "@/components/thermal-printer/ThermalPrinterSettings";
 
 export default function ConfigurationExpediteur() {
   const { user, userRole } = useAuth();

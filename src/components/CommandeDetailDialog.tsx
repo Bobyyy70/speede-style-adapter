@@ -258,11 +258,10 @@ export const CommandeDetailDialog = ({
       return;
     }
 
-    print({
-      commandeId,
-      documentType: docType,
-      format: 'html_thermal',
-      autoOpen: true,
+    toast({
+      title: "Fonctionnalité désactivée",
+      description: "L'impression thermique n'est pas configurée",
+      variant: "destructive",
     });
   };
 
