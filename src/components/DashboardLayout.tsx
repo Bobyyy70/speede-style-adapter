@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import logo from "@/assets/logo.jpg";
 // Icons imports
-import { LayoutDashboard, Settings, LogOut, Search, Menu, X, Bell, ArrowRightLeft, ClipboardList, RefreshCw, MapPin, Undo2, TruckIcon, Plug, FolderTree, Boxes, Warehouse, PackageOpen, PackagePlus, UserCog, Receipt, ArrowDownUp, ShipWheel, Cable, Building2, Eye, ChevronDown, PlusCircle, Headphones, Wrench, GitBranch, Shield, AlertTriangle, Filter, Webhook, Package } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, Search, Menu, X, Bell, ArrowRightLeft, ClipboardList, RefreshCw, MapPin, Undo2, TruckIcon, Plug, FolderTree, Boxes, Warehouse, PackageOpen, PackagePlus, UserCog, Receipt, ArrowDownUp, ShipWheel, Cable, Building2, Eye, ChevronDown, PlusCircle, Headphones, Wrench, GitBranch, Shield, AlertTriangle, Filter, Webhook, Package, Activity, Zap, Brain, Store } from "lucide-react";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -112,12 +112,20 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
   }
   if (role === "admin") {
     return [...baseNavigation, {
+      name: "OMS Dashboard",
+      href: "/oms-dashboard",
+      icon: Zap
+    }, {
       name: "Commandes",
       icon: ClipboardList,
       children: [{
         name: "Gestion des commandes",
         href: "/commandes",
         icon: ClipboardList
+      }, {
+        name: "Central de Commandes",
+        href: "/commandes/central",
+        icon: Activity
       }, {
         name: "Créer une commande",
         href: "/client/commandes/creer",
@@ -216,6 +224,14 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       name: "Intégrations",
       icon: Plug,
       children: [{
+        name: "Marketplace (40+ apps)",
+        href: "/marketplace-integrations",
+        icon: Store
+      }, {
+        name: "Gestionnaire Webhooks",
+        href: "/webhooks-manager",
+        icon: Webhook
+      }, {
         name: "Transporteurs",
         href: "/integrations/transporteurs",
         icon: ShipWheel
@@ -231,6 +247,22 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "SendCloud Sync",
         href: "/integrations/sendcloud-sync",
         icon: RefreshCw
+      }]
+    }, {
+      name: "OMS Avancé",
+      icon: Brain,
+      children: [{
+        name: "Orchestration Intelligente",
+        href: "/orchestration-intelligente",
+        icon: GitBranch
+      }, {
+        name: "Analytics Prédictifs",
+        href: "/analytics-predictifs",
+        icon: Brain
+      }, {
+        name: "Omnicanal Click & Collect",
+        href: "/omnicanal-click-collect",
+        icon: Store
       }]
     }, {
       name: "Gestion Données",

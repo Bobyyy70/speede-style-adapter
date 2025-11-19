@@ -91,6 +91,16 @@ export function RelayPointSelector({
           shipping_method_id: shippingMethodId,
           country: country,
           postal_code: postalCode,
+      // Appeler l'API Mondial Relay pour récupérer les points relais
+      const { supabase } = await import("@/integrations/supabase/client");
+
+      const { data, error } = await supabase.functions.invoke('tms-mondialrelay-api', {
+        body: {
+          action: 'searchRelayPoints',
+          postalCode,
+          countryCode: 'FR',
+          numResults: 20,
+          deliveryMode: 'LCC',
         },
       });
 
@@ -113,6 +123,29 @@ export function RelayPointSelector({
         setMapCenter([servicePoints[0].latitude, servicePoints[0].longitude]);
         setMapZoom(14);
         toast.success(`${servicePoints.length} points relais trouvés`);
+        throw new Error(error.message || "Erreur lors de la recherche");
+      }
+
+      // Convertir les points relais Mondial Relay au format attendu
+      const convertedPoints: RelayPoint[] = (data?.relayPoints || []).map((point: any) => ({
+        id: point.code,
+        name: point.name,
+        address: point.address.street,
+        city: point.address.city,
+        postal_code: point.address.postalCode,
+        country: point.address.country,
+        latitude: point.coordinates.latitude,
+        longitude: point.coordinates.longitude,
+        phone: point.phone || '',
+        opening_hours: formatMondialRelayHours(point.openingHours),
+        distance: point.distance / 1000, // Convertir mètres en km
+      }));
+
+      setRelayPoints(convertedPoints);
+      if (convertedPoints.length > 0) {
+        setMapCenter([convertedPoints[0].latitude, convertedPoints[0].longitude]);
+        setMapZoom(14);
+        toast.success(`${convertedPoints.length} points relais trouvés`);
       } else {
         toast.info("Aucun point relais trouvé pour ce code postal");
       }
@@ -126,6 +159,21 @@ export function RelayPointSelector({
     } finally {
       setSearchLoading(false);
     }
+  };
+
+  // Formater les horaires Mondial Relay pour l'affichage
+  const formatMondialRelayHours = (hours: any): string => {
+    if (!hours || !hours.monday) return "Horaires non disponibles";
+    const formatSlot = (slot: string) => {
+      if (!slot || slot === '0000-0000') return 'Fermé';
+      return slot.split(' ').map(s => {
+        if (s.length === 9) {
+          return `${s.substring(0,2)}:${s.substring(2,4)}-${s.substring(5,7)}:${s.substring(7,9)}`;
+        }
+        return s;
+      }).join(' ');
+    };
+    return `Lun: ${formatSlot(hours.monday)} | Mar: ${formatSlot(hours.tuesday)}`;
   };
 
   const handleSelectPoint = (point: RelayPoint) => {
