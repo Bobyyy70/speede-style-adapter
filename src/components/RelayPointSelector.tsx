@@ -78,55 +78,43 @@ export function RelayPointSelector({
 
     setSearchLoading(true);
     try {
-      // TODO: Appeler l'API SendCloud pour récupérer les points relais
-      // Pour l'instant, données de démo
-      const mockPoints: RelayPoint[] = [
-        {
-          id: "relay_1",
-          name: "Point Relais Colis Privé",
-          address: "123 Rue de la République",
-          city: "Paris",
-          postal_code: postalCode,
-          country: "FR",
-          latitude: 48.8566 + Math.random() * 0.02 - 0.01,
-          longitude: 2.3522 + Math.random() * 0.02 - 0.01,
-          phone: "01 23 45 67 89",
-          opening_hours: "Lun-Ven: 9h-18h",
-          distance: Math.round(Math.random() * 5 * 100) / 100,
-        },
-        {
-          id: "relay_2",
-          name: "Mondial Relay Express",
-          address: "45 Avenue des Champs",
-          city: "Paris",
-          postal_code: postalCode,
-          country: "FR",
-          latitude: 48.8566 + Math.random() * 0.02 - 0.01,
-          longitude: 2.3522 + Math.random() * 0.02 - 0.01,
-          phone: "01 98 76 54 32",
-          opening_hours: "Lun-Sam: 8h-19h",
-          distance: Math.round(Math.random() * 5 * 100) / 100,
-        },
-        {
-          id: "relay_3",
-          name: "DPD Pickup",
-          address: "78 Boulevard Saint-Michel",
-          city: "Paris",
-          postal_code: postalCode,
-          country: "FR",
-          latitude: 48.8566 + Math.random() * 0.02 - 0.01,
-          longitude: 2.3522 + Math.random() * 0.02 - 0.01,
-          phone: "01 11 22 33 44",
-          opening_hours: "Lun-Dim: 7h-21h",
-          distance: Math.round(Math.random() * 5 * 100) / 100,
-        },
-      ];
+      // Appeler l'API Mondial Relay pour récupérer les points relais
+      const { supabase } = await import("@/integrations/supabase/client");
 
-      setRelayPoints(mockPoints);
-      if (mockPoints.length > 0) {
-        setMapCenter([mockPoints[0].latitude, mockPoints[0].longitude]);
+      const { data, error } = await supabase.functions.invoke('tms-mondialrelay-api', {
+        body: {
+          action: 'searchRelayPoints',
+          postalCode,
+          countryCode: 'FR',
+          numResults: 20,
+          deliveryMode: 'LCC',
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || "Erreur lors de la recherche");
+      }
+
+      // Convertir les points relais Mondial Relay au format attendu
+      const convertedPoints: RelayPoint[] = (data?.relayPoints || []).map((point: any) => ({
+        id: point.code,
+        name: point.name,
+        address: point.address.street,
+        city: point.address.city,
+        postal_code: point.address.postalCode,
+        country: point.address.country,
+        latitude: point.coordinates.latitude,
+        longitude: point.coordinates.longitude,
+        phone: point.phone || '',
+        opening_hours: formatMondialRelayHours(point.openingHours),
+        distance: point.distance / 1000, // Convertir mètres en km
+      }));
+
+      setRelayPoints(convertedPoints);
+      if (convertedPoints.length > 0) {
+        setMapCenter([convertedPoints[0].latitude, convertedPoints[0].longitude]);
         setMapZoom(14);
-        toast.success(`${mockPoints.length} points relais trouvés`);
+        toast.success(`${convertedPoints.length} points relais trouvés`);
       } else {
         toast.info("Aucun point relais trouvé pour ce code postal");
       }
@@ -136,6 +124,21 @@ export function RelayPointSelector({
     } finally {
       setSearchLoading(false);
     }
+  };
+
+  // Formater les horaires Mondial Relay pour l'affichage
+  const formatMondialRelayHours = (hours: any): string => {
+    if (!hours || !hours.monday) return "Horaires non disponibles";
+    const formatSlot = (slot: string) => {
+      if (!slot || slot === '0000-0000') return 'Fermé';
+      return slot.split(' ').map(s => {
+        if (s.length === 9) {
+          return `${s.substring(0,2)}:${s.substring(2,4)}-${s.substring(5,7)}:${s.substring(7,9)}`;
+        }
+        return s;
+      }).join(' ');
+    };
+    return `Lun: ${formatSlot(hours.monday)} | Mar: ${formatSlot(hours.tuesday)}`;
   };
 
   const handleSelectPoint = (point: RelayPoint) => {
