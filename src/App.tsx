@@ -70,6 +70,8 @@ import Planification from "./pages/tms/Planification";
 import Tracking from "./pages/tms/Tracking";
 import AnalyticsTransporteurs from "./pages/tms/AnalyticsTransporteurs";
 import GreenDashboard from "./pages/tms/GreenDashboard";
+import ConfigurationTransporteurs from "./pages/tms/ConfigurationTransporteurs";
+import ExpeditionTMS from "./pages/tms/Expedition";
 
 const queryClient = new QueryClient();
 
@@ -538,6 +540,22 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
                   <GreenDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/configuration"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ConfigurationTransporteurs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/expedition"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'preparateur']}>
+                  <ExpeditionTMS />
                 </ProtectedRoute>
               }
             />
