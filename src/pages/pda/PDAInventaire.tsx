@@ -89,7 +89,7 @@ export default function PDAInventaire() {
 
       setCurrentProduit({
         ...produit,
-        stock_theorique: stock?.quantite_disponible || 0
+        stock_theorique: stock?.stock_disponible || 0
       });
       setQuantiteComptee(0);
       setNumeroLot("");

@@ -49,8 +49,6 @@ export default function SendCloudTracking() {
   const { data: parcels, isLoading, refetch } = useQuery({
     queryKey: ['sendcloud-parcels', searchTerm],
     queryFn: async () => {
-      let query = supabase
-        .from('sendcloud_parcels' as any)
       let query = (supabase as any)
         .from('sendcloud_parcels')
         .select(`

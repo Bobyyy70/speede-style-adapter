@@ -103,7 +103,7 @@ export default function PDAMouvements() {
         .single();
 
       setProduit(produitData);
-      setStockDisponible(stockData?.quantite_disponible || 0);
+      setStockDisponible(stockData?.stock_disponible || 0);
       setQuantite(1);
       setNumeroLot("");
 
