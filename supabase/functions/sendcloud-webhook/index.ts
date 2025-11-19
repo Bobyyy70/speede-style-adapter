@@ -1,9 +1,49 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schemas
+const SendCloudProductSchema = z.object({
+  sku: z.string().trim().max(255),
+  name: z.string().trim().max(500),
+  quantity: z.number().int().min(0).max(100000),
+  weight: z.union([z.string(), z.number()]).optional(),
+  price: z.number().min(0).optional(),
+  hs_code: z.string().trim().max(50).optional(),
+  origin_country: z.string().trim().max(2).optional(),
+});
+
+const SendCloudOrderSchema = z.object({
+  id: z.union([z.number(), z.string()]),
+  order_number: z.string().trim().max(255),
+  email: z.string().email().optional(),
+  name: z.string().trim().max(255).optional(),
+  phone_number: z.string().trim().max(50).optional(),
+  address: z.string().trim().max(500).optional(),
+  address_2: z.string().trim().max(500).optional(),
+  city: z.string().trim().max(255).optional(),
+  postal_code: z.string().trim().max(20).optional(),
+  country_code: z.string().trim().max(2).optional(),
+  order_items: z.array(SendCloudProductSchema).optional(),
+  total_order_value: z.number().min(0).optional(),
+  currency: z.string().trim().max(3).optional(),
+  external_reference: z.string().trim().max(255).optional(),
+  integration: z.number().int().optional(),
+});
+
+const SendCloudWebhookEventSchema = z.object({
+  action: z.string().trim().max(100),
+  timestamp: z.number().int().min(0),
+  integration: z.number().int().optional(),
+  parcel: z.any().optional(),
+  order: SendCloudOrderSchema.optional(),
+  external_order_id: z.string().trim().max(255).optional(),
+  external_reference: z.string().trim().max(255).optional(),
+});
 
 // Security utilities
 function constantTimeCompare(a: string, b: string): boolean {
@@ -788,8 +828,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Parse event
-    const event: SendCloudWebhookEvent = await req.json();
+    // Parse and validate event
+    let event: SendCloudWebhookEvent;
+    try {
+      const rawEvent = await req.json();
+      event = SendCloudWebhookEventSchema.parse(rawEvent);
+    } catch (validationError) {
+      console.error('❌ Invalid webhook payload:', validationError);
+      await logSecurityEvent(supabase, ipAddress, '/sendcloud-webhook', 'invalid_payload', userAgent, { 
+        error: validationError instanceof Error ? validationError.message : 'Validation failed'
+      });
+      return new Response(JSON.stringify({ 
+        error: 'Invalid webhook payload',
+        details: validationError instanceof z.ZodError ? validationError.errors : 'Validation failed'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
     console.log('🔔 Webhook received:', event.action);
 
     // Log event
