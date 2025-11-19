@@ -86,12 +86,7 @@ export function RelayPointSelector({
     try {
       console.log(`🔍 Recherche points relais: ${postalCode}, ${country}, method: ${shippingMethodId}`);
 
-      // Appel à l'edge function SendCloud pour récupérer les points relais
-      const { data, error } = await supabase.functions.invoke('sendcloud-get-service-points', {
-        body: {
-          shipping_method_id: shippingMethodId,
-          country: country,
-          postal_code: postalCode,
+      // Appel à l'edge function Mondial Relay pour récupérer les points relais
       const { data, error } = await supabase.functions.invoke('mondial-relay-search-points', {
         body: {
           postal_code: postalCode,
@@ -115,61 +110,6 @@ export function RelayPointSelector({
         } else {
           toast.success(`${data.count} points relais trouvés`);
         }
-      // Appeler l'API Mondial Relay pour récupérer les points relais
-      const { supabase } = await import("@/integrations/supabase/client");
-
-      const { data, error } = await supabase.functions.invoke('tms-mondialrelay-api', {
-        body: {
-          action: 'searchRelayPoints',
-          postalCode,
-          countryCode: 'FR',
-          numResults: 20,
-          deliveryMode: 'LCC',
-        },
-      });
-
-      if (error) {
-        console.error("❌ Error fetching relay points:", error);
-        throw error;
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch service points');
-      }
-
-      const servicePoints = data.service_points || [];
-      console.log(`✅ Received ${servicePoints.length} service points from SendCloud`);
-
-      setRelayPoints(servicePoints);
-
-      if (servicePoints.length > 0) {
-        // Centrer la carte sur le premier point
-        setMapCenter([servicePoints[0].latitude, servicePoints[0].longitude]);
-        setMapZoom(14);
-        toast.success(`${servicePoints.length} points relais trouvés`);
-        throw new Error(error.message || "Erreur lors de la recherche");
-      }
-
-      // Convertir les points relais Mondial Relay au format attendu
-      const convertedPoints: RelayPoint[] = (data?.relayPoints || []).map((point: any) => ({
-        id: point.code,
-        name: point.name,
-        address: point.address.street,
-        city: point.address.city,
-        postal_code: point.address.postalCode,
-        country: point.address.country,
-        latitude: point.coordinates.latitude,
-        longitude: point.coordinates.longitude,
-        phone: point.phone || '',
-        opening_hours: formatMondialRelayHours(point.openingHours),
-        distance: point.distance / 1000, // Convertir mètres en km
-      }));
-
-      setRelayPoints(convertedPoints);
-      if (convertedPoints.length > 0) {
-        setMapCenter([convertedPoints[0].latitude, convertedPoints[0].longitude]);
-        setMapZoom(14);
-        toast.success(`${convertedPoints.length} points relais trouvés`);
       } else {
         setRelayPoints([]);
         toast.info("Aucun point relais trouvé pour ce code postal");
