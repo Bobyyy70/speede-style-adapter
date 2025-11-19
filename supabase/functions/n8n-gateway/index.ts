@@ -1,9 +1,24 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-n8n-api-key',
 };
+
+// Input validation schemas
+const WorkflowDataSchema = z.object({
+  nom: z.string().trim().min(1).max(255),
+  description: z.string().trim().max(1000).optional(),
+  webhook_url: z.string().url().max(2000),
+  config_json: z.any(),
+  categorie: z.string().trim().max(100).optional(),
+  declencheur_auto: z.any().optional(),
+});
+
+const ApiKeySchema = z.string().trim().min(32).max(255);
+const PathSchema = z.string().trim().max(500);
+const MethodSchema = z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
 
 interface WorkflowData {
   nom: string;
