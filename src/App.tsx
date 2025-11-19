@@ -64,6 +64,14 @@ import ApprentissageContinu from "./pages/analytics/ApprentissageContinu";
 import OptimisationTransport from "./pages/OptimisationTransport";
 import OnboardingWizard from "./pages/onboarding/OnboardingWizard";
 
+// PDA Routes
+import PDAHome from "./pages/pda/PDAHome";
+import PDAReception from "./pages/pda/PDAReception";
+import PDAInventaire from "./pages/pda/PDAInventaire";
+import PDAMouvements from "./pages/pda/PDAMouvements";
+import PDAControleQualite from "./pages/pda/PDAControleQualite";
+import PDARetours from "./pages/pda/PDARetours";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -484,12 +492,62 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            
+
+            {/* PDA Routes */}
+            <Route
+              path="/pda"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAHome />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pda/reception"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAReception />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pda/inventaire"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAInventaire />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pda/mouvements"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAMouvements />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pda/controle-qualite"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAControleQualite />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pda/retours"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDARetours />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Redirections */}
             <Route path="/produits" element={<Navigate to="/stock/produits" replace />} />
             <Route path="/retours" element={<Navigate to="/commandes/retours" replace />} />
             <Route path="/client/attendu-reception" element={<Navigate to="/client/reception" replace />} />
-            
+
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
