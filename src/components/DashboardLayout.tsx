@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import logo from "@/assets/logo.jpg";
 // Icons imports
-import { LayoutDashboard, Settings, LogOut, Search, Menu, X, Bell, ArrowRightLeft, ClipboardList, RefreshCw, MapPin, Undo2, TruckIcon, Plug, FolderTree, Boxes, Warehouse, PackageOpen, PackagePlus, UserCog, Receipt, ArrowDownUp, ShipWheel, Cable, Building2, Eye, ChevronDown, PlusCircle, Headphones, Wrench, GitBranch, Shield, AlertTriangle, Filter, Webhook, Package } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut, Search, Menu, X, Bell, ArrowRightLeft, ClipboardList, RefreshCw, MapPin, Undo2, TruckIcon, Plug, FolderTree, Boxes, Warehouse, PackageOpen, PackagePlus, UserCog, Receipt, ArrowDownUp, ShipWheel, Cable, Building2, Eye, ChevronDown, PlusCircle, Headphones, Wrench, GitBranch, Shield, AlertTriangle, Filter, Webhook, Package, Activity, Zap } from "lucide-react";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -143,6 +143,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
   }
   if (role === "admin") {
     return [...baseNavigation, {
+      name: "OMS Dashboard",
+      href: "/oms-dashboard",
+      icon: Zap
+    }, {
       name: "Commandes",
       icon: ClipboardList,
       children: [{

@@ -63,6 +63,7 @@ import OptimisationCouts from "./pages/analytics/OptimisationCouts";
 import ApprentissageContinu from "./pages/analytics/ApprentissageContinu";
 import OptimisationTransport from "./pages/OptimisationTransport";
 import OnboardingWizard from "./pages/onboarding/OnboardingWizard";
+import OMSDashboard from "./pages/OMSDashboard";
 
 const queryClient = new QueryClient();
 
@@ -375,6 +376,16 @@ const App = () => (
               }
             />
             
+            {/* OMS Dashboard */}
+            <Route
+              path="/oms-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <OMSDashboard />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Analytics */}
             <Route
               path="/analytics"
