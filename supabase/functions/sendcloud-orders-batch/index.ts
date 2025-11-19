@@ -40,16 +40,13 @@ interface SendCloudOrder {
   currency?: string;
 }
 
-// Normaliser les codes pays depuis différents formats SendCloud
 function normalizeCountry(country: any): string {
   if (!country) return 'FR';
   
-  // Si c'est déjà un code ISO-2 valide
   if (typeof country === 'string') {
     const trimmed = country.trim().toUpperCase();
     if (trimmed.length === 2) return trimmed;
     
-    // Mapping des noms communs vers ISO-2
     const countryMap: Record<string, string> = {
       'FRANCE': 'FR', 'BELGIUM': 'BE', 'BELGIQUE': 'BE',
       'GERMANY': 'DE', 'ALLEMAGNE': 'DE', 'SPAIN': 'ES', 
@@ -61,7 +58,6 @@ function normalizeCountry(country: any): string {
     return countryMap[trimmed] || 'FR';
   }
   
-  // Si c'est un objet avec iso_2
   if (typeof country === 'object' && country !== null && 'iso_2' in country) {
     const code = (country as any).iso_2;
     if (typeof code === 'string') {
@@ -72,9 +68,142 @@ function normalizeCountry(country: any): string {
   return 'FR';
 }
 
+function buildCommandeData(
+  sendcloudData: SendCloudOrder, 
+  expediteurDefault: any,
+  orderNumber: string,
+  sendcloudId: string,
+  status: string
+): any {
+  const shippingAddr = sendcloudData.shipping_address;
+  const clientName = shippingAddr?.name || sendcloudData.name || 'Client inconnu';
+  const paysCode = normalizeCountry(shippingAddr?.country || sendcloudData.country);
+  const priorite = (sendcloudData as any).shipment?.method === 'express' ? 'express' : 'standard';
+  const incoterm = paysCode === 'FR' ? 'DDP' : 'DAP';
+
+  let statutInitial = 'en_attente_validation';
+  if (status === 'cancelled') {
+    statutInitial = 'annule';
+  }
+
+  return {
+    sendcloud_id: sendcloudId,
+    numero_commande: orderNumber,
+    nom_client: clientName,
+    email_client: sendcloudData.email || null,
+    telephone_client: sendcloudData.telephone || null,
+    adresse_nom: clientName,
+    adresse_ligne_1: shippingAddr?.address || sendcloudData.address || '',
+    adresse_ligne_2: shippingAddr?.address_2 || sendcloudData.address_2 || null,
+    ville: shippingAddr?.city || sendcloudData.city || '',
+    code_postal: shippingAddr?.postal_code || sendcloudData.postal_code || '',
+    pays_code: paysCode,
+    transporteur: (sendcloudData as any).carrier?.name || null,
+    methode_expedition: (sendcloudData as any).shipping_method?.name || null,
+    tracking_number: (sendcloudData as any).tracking_number || null,
+    tracking_url: (sendcloudData as any).tracking_url || null,
+    label_url: (sendcloudData as any).label_url || null,
+    sendcloud_shipment_id: sendcloudId,
+    poids_reel_kg: (sendcloudData as any).weight ? parseFloat(String((sendcloudData as any).weight)) : null,
+    expediteur_nom: (sendcloudData as any).sender_address?.name || expediteurDefault?.nom || null,
+    expediteur_entreprise: (sendcloudData as any).sender_address?.company_name || expediteurDefault?.entreprise || null,
+    expediteur_email: (sendcloudData as any).sender_address?.email || expediteurDefault?.email || null,
+    expediteur_telephone: (sendcloudData as any).sender_address?.telephone || expediteurDefault?.telephone || null,
+    expediteur_adresse_ligne_1: (sendcloudData as any).sender_address?.address || expediteurDefault?.adresse_ligne_1 || null,
+    expediteur_adresse_ligne_2: (sendcloudData as any).sender_address?.address_2 || expediteurDefault?.adresse_ligne_2 || null,
+    expediteur_code_postal: (sendcloudData as any).sender_address?.postal_code || expediteurDefault?.code_postal || null,
+    expediteur_ville: (sendcloudData as any).sender_address?.city || expediteurDefault?.ville || null,
+    expediteur_pays_code: (sendcloudData as any).sender_address?.country || expediteurDefault?.pays_code || 'FR',
+    valeur_totale: sendcloudData.total_order_value || 0,
+    devise: sendcloudData.currency || 'EUR',
+    statut_wms: statutInitial,
+    source: 'sendcloud',
+    incoterm: incoterm,
+    priorite_expedition: priorite,
+    date_expedition_demandee: new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0],
+    pays_origine_marchandise: (sendcloudData as any).sender_address?.country || expediteurDefault?.pays_code || 'FR',
+    remarques: status === 'cancelled' ? 'Commande annulée sur SendCloud' : null
+  };
+}
+
+async function archiveCommandeLines(supabase: any, commandeId: string): Promise<void> {
+  const { data: lines } = await supabase
+    .from('ligne_commande')
+    .select('*')
+    .eq('commande_id', commandeId);
+  
+  if (lines && lines.length > 0) {
+    const archiveData = lines.map((line: any) => ({
+      commande_id: line.commande_id,
+      produit_reference: line.produit_reference,
+      quantite: line.quantite,
+      prix_unitaire: line.prix_unitaire,
+      archived_at: new Date().toISOString(),
+      original_line_data: line
+    }));
+    
+    await supabase
+      .from('ligne_commande_historique')
+      .insert(archiveData)
+      .catch((err: any) => console.warn('⚠️ Archivage historique échoué:', err));
+  }
+}
+
+async function upsertCommande(
+  supabase: any,
+  commandeData: any,
+  orderNumber: string
+): Promise<{ data: any; error: any; wasUpdate: boolean }> {
+  
+  const { data: existing } = await supabase
+    .from('commande')
+    .select('id, numero_commande, statut_wms, date_creation, client_id, sous_client')
+    .or(`sendcloud_id.eq.${commandeData.sendcloud_id},sendcloud_shipment_id.eq.${commandeData.sendcloud_shipment_id || 'null'}`)
+    .eq('source', 'sendcloud')
+    .maybeSingle();
+
+  if (existing) {
+    console.log(`📝 Commande existante trouvée: ${existing.numero_commande} (ID: ${existing.id})`);
+    
+    const updateData = { ...commandeData };
+    updateData.date_creation = existing.date_creation;
+    if (existing.client_id) updateData.client_id = existing.client_id;
+    if (existing.sous_client) updateData.sous_client = existing.sous_client;
+    
+    const statutsAvances = ['en_preparation', 'pret_expedition', 'etiquette_generee', 'expedie', 'livre'];
+    if (statutsAvances.includes(existing.statut_wms)) {
+      console.log(`⚠️ Statut avancé préservé: ${existing.statut_wms}`);
+      updateData.statut_wms = existing.statut_wms;
+    }
+    
+    const result = await supabase
+      .from('commande')
+      .update(updateData)
+      .eq('id', existing.id)
+      .select()
+      .single();
+    
+    return { ...result, wasUpdate: true };
+  }
+
+  console.log(`➕ Nouvelle commande, UPSERT par numero_commande`);
+  
+  const result = await supabase
+    .from('commande')
+    .upsert(commandeData, {
+      onConflict: 'numero_commande',
+      ignoreDuplicates: false
+    })
+    .select()
+    .single();
+  
+  return { ...result, wasUpdate: false };
+}
+
 interface BatchResult {
   order_number: string;
   success: boolean;
+  was_updated?: boolean;
   already_exists?: boolean;
   commande_id?: string;
   error?: string;
@@ -108,442 +237,250 @@ Deno.serve(async (req) => {
     let existingCount = 0;
     let errorCount = 0;
 
+    const { data: expediteurDefault } = await supabase
+      .from('configuration_expediteur')
+      .select('*')
+      .eq('est_defaut', true)
+      .eq('actif', true)
+      .maybeSingle();
+
     for (const sendcloudData of orders) {
       const orderNumber = sendcloudData.order_number || sendcloudData.order_id || String(sendcloudData.id);
+      const sendcloudId = String(sendcloudData.id);
       const status = (sendcloudData as any).status || 'pending';
       
       try {
-        console.log(`\n🔄 Traitement: ${orderNumber} (status: ${status})`);
+        console.log(`\n🔄 Traitement: ${orderNumber} (SendCloud ID: ${sendcloudId}, status: ${status})`);
 
-        // Si commande annulée, l'archiver directement
-        if (status === 'cancelled') {
-          console.log(`🗑️ Commande annulée: ${orderNumber}`);
-          
-          // Vérifier si elle existe déjà
-          const { data: existing } = await supabase
-            .from('commande')
-            .select('id')
-            .or(`sendcloud_id.eq.${String(sendcloudData.id)},numero_commande.eq.${orderNumber}`)
-            .maybeSingle();
-          
-          if (existing) {
-            // Archiver l'existante
-            await supabase
-              .from('commande')
-              .update({ statut_wms: 'Archivé', remarques: 'Commande annulée sur SendCloud' })
-              .eq('id', existing.id);
-            
-            results.push({
-              order_number: orderNumber,
-              success: true,
-              already_exists: true,
-              commande_id: existing.id
-            });
-            existingCount++;
-          } else {
-            // Créer directement archivée
-            const { data: newArchived } = await supabase
-              .from('commande')
-              .insert({
-                sendcloud_id: String(sendcloudData.id),
-                numero_commande: orderNumber,
-                nom_client: sendcloudData.name || 'Client inconnu',
-                statut_wms: 'Archivé',
-                source: 'sendcloud',
-                valeur_totale: 0,
-                remarques: 'Commande annulée sur SendCloud'
-              })
-              .select('id')
-              .single();
-            
-            results.push({
-              order_number: orderNumber,
-              success: true,
-              commande_id: newArchived?.id
-            });
-            successCount++;
-          }
-          continue;
-        }
+        const commandeData = buildCommandeData(
+          sendcloudData,
+          expediteurDefault,
+          orderNumber,
+          sendcloudId,
+          status
+        );
 
-        // Extraire les données d'adresse (v3 avec shipping_address ou v2 à plat)
-        const shippingAddr = sendcloudData.shipping_address;
-        const clientName = shippingAddr?.name || sendcloudData.name || 'Client inconnu';
-        const address1 = shippingAddr?.address || sendcloudData.address || '';
-        const address2 = shippingAddr?.address_2 || sendcloudData.address_2 || null;
-        const city = shippingAddr?.city || sendcloudData.city || '';
-        const postalCode = shippingAddr?.postal_code || sendcloudData.postal_code || '';
-        const country = shippingAddr?.country || sendcloudData.country;
-        
-        // Normaliser le code pays
-        const paysCode = normalizeCountry(country);
-        
-        console.log(`📍 Adresse: ${city}, ${postalCode}, Pays: ${paysCode}`);
+        const { data: commande, error: commandeError, wasUpdate } = await upsertCommande(
+          supabase,
+          commandeData,
+          orderNumber
+        );
 
-        // ⚠️ VÉRIFIER SI DOUBLON AVANT INSERTION
-        const { data: existingOrder } = await supabase
-          .from('commande')
-          .select('id, numero_commande, statut_wms, date_creation')
-          .or(`sendcloud_id.eq.${String(sendcloudData.id)},numero_commande.eq.${orderNumber}`)
-          .maybeSingle();
-
-        if (existingOrder) {
-          console.log(`⚠️ DOUBLON DÉTECTÉ: ${orderNumber} existe déjà (ID: ${existingOrder.id}, statut: ${existingOrder.statut_wms})`);
-          
+        if (commandeError) {
+          console.error(`❌ Erreur UPSERT commande ${orderNumber}:`, commandeError.message);
           results.push({
             order_number: orderNumber,
             success: false,
-            already_exists: true,
-            commande_id: existingOrder.id,
-            error: 'Commande déjà existante',
-            details: `Créée le ${existingOrder.date_creation}, statut: ${existingOrder.statut_wms}`
-          });
-          existingCount++;
-          continue; // ❌ REJETER LE DOUBLON
-        }
-
-        // Récupérer config expéditeur par défaut (depuis HEFAGROUP par défaut)
-        const { data: expediteurDefault } = await supabase
-          .from('configuration_expediteur')
-          .select('*')
-          .eq('est_defaut', true)
-          .eq('actif', true)
-          .maybeSingle();
-
-        // Déterminer priorité et incoterm
-        const priorite = (sendcloudData as any).shipment?.method === 'express' ? 'express' : 'standard';
-        const incoterm = paysCode === 'FR' ? 'DDP' : 'DAP'; // DDP pour France, DAP pour international
-
-        // ✅ INSERTION avec TOUTES les données (carrier, tracking, sender, etc.)
-        const { data: commande, error: commandeError } = await supabase
-          .from('commande')
-          .insert({
-            sendcloud_id: String(sendcloudData.id),
-            numero_commande: orderNumber,
-            
-            // Client
-            nom_client: clientName,
-            email_client: sendcloudData.email || null,
-            telephone_client: sendcloudData.telephone || null,
-            
-            // Adresse livraison
-            adresse_nom: clientName,
-            adresse_ligne_1: address1,
-            adresse_ligne_2: address2,
-            ville: city,
-            code_postal: postalCode,
-            pays_code: paysCode,
-            
-            // ✅ Carrier & Tracking (depuis parcel v2)
-            transporteur: (sendcloudData as any).carrier?.name || null,
-            methode_expedition: (sendcloudData as any).shipping_method?.name || null,
-            tracking_number: (sendcloudData as any).tracking_number || null,
-            tracking_url: (sendcloudData as any).tracking_url || null,
-            label_url: (sendcloudData as any).label_url || null,
-            sendcloud_shipment_id: String(sendcloudData.id),
-            
-            // ✅ POIDS RÉEL (depuis parcel.weight)
-            poids_reel_kg: (sendcloudData as any).weight ? parseFloat(String((sendcloudData as any).weight)) : null,
-            
-            // ✅ Expéditeur (depuis sender_address du parcel OU config par défaut)
-            expediteur_nom: (sendcloudData as any).sender_address?.name || expediteurDefault?.nom || null,
-            expediteur_entreprise: (sendcloudData as any).sender_address?.company_name || expediteurDefault?.entreprise || null,
-            expediteur_email: (sendcloudData as any).sender_address?.email || expediteurDefault?.email || null,
-            expediteur_telephone: (sendcloudData as any).sender_address?.telephone || expediteurDefault?.telephone || null,
-            expediteur_adresse_ligne_1: (sendcloudData as any).sender_address?.address || expediteurDefault?.adresse_ligne_1 || null,
-            expediteur_adresse_ligne_2: (sendcloudData as any).sender_address?.address_2 || expediteurDefault?.adresse_ligne_2 || null,
-            expediteur_code_postal: (sendcloudData as any).sender_address?.postal_code || expediteurDefault?.code_postal || null,
-            expediteur_ville: (sendcloudData as any).sender_address?.city || expediteurDefault?.ville || null,
-            expediteur_pays_code: (sendcloudData as any).sender_address?.country || expediteurDefault?.pays_code || 'FR',
-            
-            // Autres champs
-            valeur_totale: sendcloudData.total_order_value || 0,
-            devise: sendcloudData.currency || 'EUR',
-            statut_wms: 'en_attente_reappro',
-            source: 'sendcloud',
-            incoterm: incoterm,
-            priorite_expedition: priorite,
-            date_expedition_demandee: new Date(Date.now() + 24*60*60*1000).toISOString().split('T')[0],
-            pays_origine_marchandise: (sendcloudData as any).sender_address?.country || expediteurDefault?.pays_code || 'FR'
-          })
-          .select()
-          .single();
-
-        if (commandeError) {
-          // ✅ Détecter spécifiquement les doublons (code PostgreSQL 23505)
-          if (commandeError.code === '23505' || commandeError.message?.includes('duplicate key')) {
-            console.log(`⚠️ DOUBLON DÉTECTÉ (contrainte unique PostgreSQL): ${orderNumber}`);
-            
-            // Récupérer la commande existante pour les stats
-            const { data: existing } = await supabase
-              .from('commande')
-              .select('id, statut_wms, date_creation')
-              .or(`sendcloud_id.eq.${String(sendcloudData.id)},numero_commande.eq.${orderNumber}`)
-              .maybeSingle();
-            
-            results.push({
-              order_number: orderNumber,
-              success: false,
-              already_exists: true,
-              commande_id: existing?.id,
-              error: 'Doublon détecté (protection PostgreSQL)',
-              details: `Créée le ${existing?.date_creation}, statut: ${existing?.statut_wms}`
-            });
-            existingCount++; // ✅ Stats correctes (pas errorCount)
-            continue;
-          }
-          
-          // ❌ Vraie erreur (pas un doublon)
-          console.error(`❌ ERREUR RÉELLE lors insertion commande:`, commandeError.message);
-          results.push({ 
-            order_number: orderNumber, 
-            success: false, 
             error: commandeError.message,
-            details: commandeError.details 
+            details: commandeError.details
           });
           errorCount++;
           continue;
         }
 
-        // ✅ Commande créée avec TOUTES les données déjà mappées
-        console.log(`✅ Commande créée: ${commande.id} | Transporteur: ${commande.transporteur || 'N/A'} | Tracking: ${commande.tracking_number || 'N/A'}`);
+        console.log(`✅ Commande ${wasUpdate ? 'mise à jour' : 'créée'}: ${commande.id} | ${commande.numero_commande}`);
 
-        // Traiter les produits
-        let tousProduitsStockOk = true;
-        let tousProduitsTrouves = true;
-        const produitsCommande: any[] = [];
+        if (wasUpdate) {
+          await archiveCommandeLines(supabase, commande.id);
+          
+          await supabase
+            .from('ligne_commande')
+            .delete()
+            .eq('commande_id', commande.id);
+          
+          console.log(`🗑️ Anciennes lignes supprimées pour re-création`);
+        }
 
-        const publicKey = Deno.env.get('SENDCLOUD_API_PUBLIC_KEY');
-        const secretKey = Deno.env.get('SENDCLOUD_API_SECRET_KEY');
+        let stockOk = true;
+        let clientIdInfere: string | null = null;
+        let sousClientInfere: string | null = null;
 
         for (const product of sendcloudData.order_products) {
-          // Chercher le produit par SKU puis par EAN
-          let { data: produit } = await supabase
+          const sku = product.sku;
+          const quantity = product.quantity;
+
+          console.log(`  📦 Produit: ${sku} x${quantity}`);
+
+          const { data: produitData } = await supabase
             .from('produit')
-            .select('id, nom, reference, marque, client_id, stock_actuel, poids_unitaire, prix_unitaire')
-            .eq('reference', product.sku)
+            .select('id, reference, nom, client_id, marque')
+            .or(`reference.eq.${sku},ean.eq.${product.ean || 'none'}`)
             .maybeSingle();
 
-          // Si pas trouvé par SKU, essayer par EAN
-          if (!produit && product.ean) {
-            ({ data: produit } = await supabase
-              .from('produit')
-              .select('id, nom, reference, marque, client_id, stock_actuel, poids_unitaire, prix_unitaire')
-              .eq('code_barre_ean', product.ean)
-              .maybeSingle());
-          }
+          let produitId = produitData?.id;
 
-          // Si toujours pas trouvé, récupérer depuis SendCloud API et créer le produit
-          if (!produit && publicKey && secretKey) {
-            console.log(`🔍 Produit ${product.sku} non trouvé, récupération depuis SendCloud...`);
-            
-            try {
-              const basicAuth = btoa(`${publicKey}:${secretKey}`);
-              
-              // Chercher le produit dans SendCloud Products API par SKU
-              const productResponse = await fetch(
-                `https://panel.sendcloud.sc/api/v3/products?sku=${encodeURIComponent(product.sku)}`,
-                {
-                  headers: {
-                    'Authorization': `Basic ${basicAuth}`,
-                    'Content-Type': 'application/json',
-                  },
-                }
-              );
+          if (!produitData) {
+            console.log(`    ⚠️ Produit non trouvé: ${sku}, tentative création depuis SendCloud`);
 
-              if (productResponse.ok) {
-                const productData = await productResponse.json();
-                const scProduct = productData.products?.[0];
+            const apiKey = Deno.env.get('SENDCLOUD_PUBLIC_KEY');
+            const apiSecret = Deno.env.get('SENDCLOUD_SECRET_KEY');
 
-                if (scProduct) {
-                  console.log(`✅ Produit trouvé dans SendCloud: ${scProduct.description}`);
-                  
-                  // Déterminer le client_id par défaut (HEFAGROUP)
-                  const { data: defaultClient } = await supabase
-                    .from('client')
-                    .select('id')
-                    .eq('nom_entreprise', 'HEFAGROUP OÜ')
-                    .maybeSingle();
+            if (apiKey && apiSecret) {
+              try {
+                const auth = btoa(`${apiKey}:${apiSecret}`);
+                const scResponse = await fetch(
+                  `https://panel.sendcloud.sc/api/v2/products?sku=${encodeURIComponent(sku)}`,
+                  { headers: { 'Authorization': `Basic ${auth}` } }
+                );
 
-                  // ✅ Créer le produit avec HS code, pays origine et EAN
-                  const { data: newProduit, error: createError } = await supabase
-                    .from('produit')
-                    .insert({
-                      reference: product.sku,
-                      nom: scProduct.description || product.name,
-                      code_barre_ean: (product as any).ean || scProduct.ean || product.ean || null,
-                      poids_unitaire: scProduct.weight?.value || 0.1,
-                      prix_unitaire: product.unit_price?.value || 0,
-                      client_id: defaultClient?.id,
-                      stock_actuel: 0,
-                      stock_minimum: 0,
-                      statut_actif: true,
-                      pays_origine: (product as any).origin_country || scProduct.origin_country || 'FR',
-                      code_sh: (product as any).hs_code || scProduct.hs_code || null,
-                      marque: 'SendCloud Import',
-                    })
-                    .select('id, nom, reference, marque, client_id, stock_actuel, poids_unitaire, prix_unitaire, pays_origine, code_sh')
-                    .single();
+                if (scResponse.ok) {
+                  const scData = await scResponse.json();
+                  if (scData.results && scData.results.length > 0) {
+                    const scProduct = scData.results[0];
 
-                   if (createError) {
-                    console.error(`❌ Erreur création produit ${product.sku}:`, createError);
-                  } else {
-                    console.log(`✅ Produit ${product.sku} créé | HS: ${newProduit.code_sh || 'N/A'} | Origine: ${newProduit.pays_origine}`);
-                    produit = newProduit;
+                    const { data: newProduit } = await supabase
+                      .from('produit')
+                      .insert({
+                        reference: sku,
+                        nom: scProduct.name || product.name,
+                        ean: scProduct.ean || product.ean,
+                        poids_kg: scProduct.weight ? parseFloat(scProduct.weight) / 1000 : null,
+                        description: scProduct.description,
+                        hs_code: scProduct.hs_code,
+                        pays_origine: scProduct.origin_country,
+                        statut_actif: true
+                      })
+                      .select('id')
+                      .single();
+
+                    if (newProduit) {
+                      produitId = newProduit.id;
+                      console.log(`    ✅ Produit créé depuis SendCloud: ${produitId}`);
+                    }
                   }
                 }
+              } catch (err) {
+                console.warn(`    ⚠️ Erreur création produit:`, err);
               }
-            } catch (apiError) {
-              console.error(`⚠️ Erreur API SendCloud Products pour ${product.sku}:`, apiError);
+            }
+
+            if (!produitId) {
+              stockOk = false;
+              console.log(`    ❌ Produit introuvable et création échouée`);
+              continue;
             }
           }
 
-          if (!produit) {
-            console.log(`⚠️ Produit non trouvé et non créé: SKU=${product.sku}, EAN=${product.ean || 'N/A'}`);
-            tousProduitsTrouves = false;
-            continue;
+          if (produitData?.client_id && !clientIdInfere) {
+            clientIdInfere = produitData.client_id;
+          }
+          if (produitData?.marque && !sousClientInfere) {
+            sousClientInfere = produitData.marque;
           }
 
-          // Stocker le produit pour inférer le client plus tard
-          produitsCommande.push(produit);
-
-          // Vérifier le stock
           const { data: stockData } = await supabase
             .from('stock_disponible')
             .select('stock_disponible')
-            .eq('produit_id', produit.id)
+            .eq('produit_id', produitId)
             .maybeSingle();
 
           const stockDisponible = stockData?.stock_disponible || 0;
 
-          if (stockDisponible < product.quantity) {
-            console.log(`⚠️ Stock insuffisant pour ${product.sku}: ${stockDisponible}/${product.quantity}`);
-            tousProduitsStockOk = false;
+          if (stockDisponible < quantity) {
+            stockOk = false;
+            console.log(`    ⚠️ Stock insuffisant: ${stockDisponible} < ${quantity}`);
           }
 
-          // ✅ Créer la ligne de commande avec données enrichies
+          const unitPrice = product.unit_price?.value || product.total_price?.value || 0;
+
           await supabase
             .from('ligne_commande')
             .insert({
               commande_id: commande.id,
-              produit_id: produit.id,
-              produit_reference: product.sku,
-              produit_nom: product.name,
-              quantite_commandee: product.quantity,
-              prix_unitaire: product.unit_price?.value || produit.prix_unitaire || 0,
-              valeur_totale: product.total_price?.value || (product.quantity * (produit.prix_unitaire || 0)),
-              poids_unitaire: produit.poids_unitaire,
-              statut_ligne: 'en_attente'
+              produit_id: produitId,
+              produit_reference: sku,
+              quantite: quantity,
+              prix_unitaire: unitPrice
             });
-          
-          console.log(`📦 Ligne créée: ${product.sku} x${product.quantity}`);
 
-          // Réserver le stock si disponible
-          if (stockDisponible >= product.quantity) {
+          if (stockDisponible >= quantity) {
             await supabase.rpc('reserver_stock', {
-              p_produit_id: produit.id,
-              p_quantite: product.quantity,
-              p_commande_id: commande.id,
-              p_reference_origine: commande.numero_commande
+              p_produit_id: produitId,
+              p_quantite: quantity,
+              p_commande_id: commande.id
             });
+            console.log(`    ✅ Stock réservé: ${quantity}`);
           }
         }
 
-        // Inférer client_id et sous_client depuis la marque du premier produit
-        let clientId = null;
-        let sousClient = null;
+        const updatePayload: any = {};
         
-        if (produitsCommande.length > 0) {
-          const premierProduit = produitsCommande[0];
-          const marque = premierProduit.marque?.toLowerCase() || '';
-          
-          if (marque.includes('heatzy')) {
-            const { data: heatzyClient } = await supabase
-              .from('client')
-              .select('id')
-              .eq('nom_entreprise', 'HEATZY')
-              .maybeSingle();
-            clientId = heatzyClient?.id;
-          } else if (marque.includes('thomas')) {
-            const { data: linkosClient } = await supabase
-              .from('client')
-              .select('id')
-              .eq('nom_entreprise', 'Link-OS')
-              .maybeSingle();
-            clientId = linkosClient?.id;
-            sousClient = 'Thomas';
-          } else if (marque.includes('elete') || marque.includes('electrolyte')) {
-            const { data: linkosClient } = await supabase
-              .from('client')
-              .select('id')
-              .eq('nom_entreprise', 'Link-OS')
-              .maybeSingle();
-            clientId = linkosClient?.id;
-            sousClient = 'Elite Water';
-          } else {
-            const { data: hefaClient } = await supabase
-              .from('client')
-              .select('id')
-              .eq('nom_entreprise', 'HEFAGROUP OÜ')
-              .maybeSingle();
-            clientId = hefaClient?.id;
-          }
+        if (clientIdInfere && !commande.client_id) {
+          updatePayload.client_id = clientIdInfere;
+        }
+        if (sousClientInfere && !commande.sous_client) {
+          updatePayload.sous_client = sousClientInfere;
+        }
+        
+        if (!stockOk) {
+          updatePayload.statut_wms = 'en_attente_reappro';
+          updatePayload.message_validation = 'Stock insuffisant pour un ou plusieurs produits';
         }
 
-        // Mettre à jour le statut et client de la commande
-        const nouveauStatut = !tousProduitsTrouves 
-          ? 'Produits introuvables' 
-          : tousProduitsStockOk 
-          ? 'Prêt à préparer' 
-          : 'En attente de réappro';
+        if (Object.keys(updatePayload).length > 0) {
+          await supabase
+            .from('commande')
+            .update(updatePayload)
+            .eq('id', commande.id);
+        }
 
-        await supabase
-          .from('commande')
-          .update({ 
-            statut_wms: nouveauStatut,
-            client_id: clientId,
-            sous_client: sousClient
-          })
-          .eq('id', commande.id);
-
-        console.log(`✅ ${orderNumber} - Statut: ${nouveauStatut}`);
+        try {
+          supabase.functions.invoke('apply-automatic-rules', {
+            body: { commandeId: commande.id }
+          }).then(() => console.log(`  🤖 Règles auto appliquées`))
+            .catch((err: any) => console.warn(`  ⚠️ Erreur règles auto:`, err));
+          
+          supabase.functions.invoke('check-validation-rules', {
+            body: { commandeId: commande.id }
+          }).then(() => console.log(`  ✅ Validation vérifiée`))
+            .catch((err: any) => console.warn(`  ⚠️ Erreur validation:`, err));
+        } catch (error) {
+          console.warn('⚠️ Erreur lancement règles:', error);
+        }
 
         results.push({
           order_number: orderNumber,
           success: true,
-          commande_id: commande.id
+          commande_id: commande.id,
+          was_updated: wasUpdate,
+          already_exists: wasUpdate
         });
-        successCount++;
 
-      } catch (error) {
-        console.error(`❌ Erreur ${orderNumber}:`, error);
+        if (wasUpdate) {
+          existingCount++;
+        } else {
+          successCount++;
+        }
+
+      } catch (error: any) {
+        console.error(`❌ Erreur traitement ${orderNumber}:`, error);
         results.push({
           order_number: orderNumber,
           success: false,
-          error: error instanceof Error ? error.message : String(error)
+          error: error.message
         });
         errorCount++;
       }
     }
 
-    console.log(`\n📊 Résumé: ${successCount} créées, ${existingCount} existantes, ${errorCount} erreurs`);
+    console.log(`\n📊 Résumé batch: ${successCount} créées, ${existingCount} mises à jour, ${errorCount} erreurs`);
 
     return new Response(
       JSON.stringify({
-        success: errorCount === 0,
+        success: true,
         total: orders.length,
-        processed: successCount,
-        existing: existingCount,
+        created: successCount,
+        updated: existingCount,
         errors: errorCount,
         results
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
-    console.error('❌ Erreur batch:', error);
+  } catch (error: any) {
+    console.error('❌ Erreur batch processing:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : String(error) }),
+      JSON.stringify({ success: false, error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }

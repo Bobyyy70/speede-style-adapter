@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Reception from "./pages/Reception";
 import Mouvements from "./pages/Mouvements";
 import Commandes from "./pages/Commandes";
+import CommandesCentral from "./pages/CommandesCentral";
 import Reappro from "./pages/Reappro";
 import Produits from "./pages/Produits";
 import Emplacements from "./pages/Emplacements";
@@ -55,12 +56,31 @@ import SendCloudDocuments from "./pages/integrations/SendCloudDocuments";
 import SendCloudProducts from "./pages/integrations/SendCloudProducts";
 import SendCloudEvents from "./pages/integrations/SendCloudEvents";
 import SendCloudTracking from "./pages/integrations/SendCloudTracking";
+import SendCloudDashboard from "./pages/integrations/sendcloud/Dashboard";
 import ReglesTransporteurs from "./pages/configuration/ReglesTransporteurs";
 import AutomationTransporteurs from "./pages/configuration/AutomationTransporteurs";
 import ScoringPredictif from "./pages/analytics/ScoringPredictif";
 import OptimisationCouts from "./pages/analytics/OptimisationCouts";
 import ApprentissageContinu from "./pages/analytics/ApprentissageContinu";
 import OptimisationTransport from "./pages/OptimisationTransport";
+import OnboardingWizard from "./pages/onboarding/OnboardingWizard";
+import QuickStartMarketplace from "./pages/onboarding/QuickStartMarketplace";
+import OMSDashboard from "./pages/OMSDashboard";
+import OrchestrationIntelligente from "./pages/OrchestrationIntelligente";
+import PortailClient from "./pages/client/PortailClient";
+import AnalyticsPredictifs from "./pages/AnalyticsPredictifs";
+import OmnicanalClickCollect from "./pages/OmnicanalClickCollect";
+import MarketplaceIntegrations from "./pages/MarketplaceIntegrations";
+import WebhooksManager from "./pages/WebhooksManager";
+
+// TMS Routes
+import DashboardTMS from "./pages/tms/DashboardTMS";
+import Planification from "./pages/tms/Planification";
+import Tracking from "./pages/tms/Tracking";
+import AnalyticsTransporteurs from "./pages/tms/AnalyticsTransporteurs";
+import GreenDashboard from "./pages/tms/GreenDashboard";
+import ConfigurationTransporteurs from "./pages/tms/ConfigurationTransporteurs";
+import ExpeditionTMS from "./pages/tms/Expedition";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +95,8 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin-bootstrap" element={<AdminBootstrap />} />
+            <Route path="/onboarding" element={<OnboardingWizard />} />
+            <Route path="/quick-start-marketplace" element={<QuickStartMarketplace />} />
             <Route
               path="/"
               element={
@@ -132,6 +154,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire', 'client']}>
                   <Commandes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/commandes/central"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire', 'client']}>
+                  <CommandesCentral />
                 </ProtectedRoute>
               }
             />
@@ -353,6 +383,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/integrations/sendcloud/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <SendCloudDashboard />
+                </ProtectedRoute>
+              }
+            />
             
             {/* Réparation */}
             <Route
@@ -364,6 +402,76 @@ const App = () => (
               }
             />
             
+            {/* OMS Dashboard */}
+            <Route
+              path="/oms-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <OMSDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Orchestration Intelligente */}
+            <Route
+              path="/orchestration-intelligente"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <OrchestrationIntelligente />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Analytics Prédictifs */}
+            <Route
+              path="/analytics-predictifs"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <AnalyticsPredictifs />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Omnicanal Click & Collect */}
+            <Route
+              path="/omnicanal-click-collect"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <OmnicanalClickCollect />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Portail Client */}
+            <Route
+              path="/client/portail"
+              element={
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
+                  <PortailClient />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Marketplace Intégrations */}
+            <Route
+              path="/marketplace-integrations"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <MarketplaceIntegrations />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Webhooks Manager */}
+            <Route
+              path="/webhooks-manager"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <WebhooksManager />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Analytics */}
             <Route
               path="/analytics"
@@ -473,7 +581,73 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            
+
+            {/* TMS Routes */}
+            <Route
+              path="/tms"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <DashboardTMS />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <DashboardTMS />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/planification"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <Planification />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/tracking"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <Tracking />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/analytics"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <AnalyticsTransporteurs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/green"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <GreenDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/configuration"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ConfigurationTransporteurs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/expedition"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'operateur']}>
+                  <ExpeditionTMS />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Redirections */}
             <Route path="/produits" element={<Navigate to="/stock/produits" replace />} />
             <Route path="/retours" element={<Navigate to="/commandes/retours" replace />} />

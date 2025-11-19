@@ -51,6 +51,8 @@ export default function SendCloudTracking() {
     queryFn: async () => {
       let query = supabase
         .from('sendcloud_parcels' as any)
+      let query = (supabase as any)
+        .from('sendcloud_parcels')
         .select(`
           *,
           commande:commande_id (
@@ -93,6 +95,8 @@ export default function SendCloudTracking() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('sendcloud_tracking_events' as any)
+      const { data, error } = await (supabase as any)
+        .from('sendcloud_tracking_events')
         .select('*')
         .eq('parcel_id', parcels![0].parcel_id)
         .order('event_timestamp', { ascending: false });

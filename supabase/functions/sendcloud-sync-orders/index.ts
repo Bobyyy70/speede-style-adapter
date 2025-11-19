@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { startSyncLog, finalizeSyncLog, updateSyncProgress, pushToDLQ } from '../_shared/sync-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -120,6 +121,11 @@ Deno.serve(async (req) => {
   }
 
   const startTime = Date.now();
+  const lockOwner = crypto.randomUUID(); // Identifiant unique pour cette exécution
+  let lockAcquired = false;
+  let runId: string | null = null;
+  let totalBatches = 0;
+  let totalItems = 0;
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -137,6 +143,67 @@ Deno.serve(async (req) => {
     const customStartDate = body.startDate;
 
     console.log(`[SendCloud Sync] Mode: ${mode}`);
+
+    // 🔒 ACQUISITION DU VERROU DE SYNCHRONISATION
+    console.log(`[SendCloud Sync] Tentative d'acquisition du verrou (owner: ${lockOwner})...`);
+    const { data: lockResult, error: lockError } = await supabase.rpc('acquire_sync_lock', {
+      p_lock_key: 'sendcloud-sync',
+      p_owner: lockOwner,
+      p_ttl_minutes: 20 // ✅ Augmenté à 20 minutes pour les syncs volumineuses
+    });
+
+    if (lockError) {
+      console.error('[SendCloud Sync] Erreur lors de l\'acquisition du verrou:', lockError);
+      throw new Error(`Impossible d'acquérir le verrou: ${lockError.message}`);
+    }
+
+    if (!lockResult) {
+      console.warn('[SendCloud Sync] ⚠️ Verrou déjà pris - Tentative de retry dans 30s');
+      
+      // ✅ Retry une seule fois après 30 secondes
+      if (!body.isRetry) {
+        await new Promise(resolve => setTimeout(resolve, 30000));
+        
+        const { data: retryLock, error: retryError } = await supabase.rpc('acquire_sync_lock', {
+          p_lock_key: 'sendcloud-sync',
+          p_owner: lockOwner,
+          p_ttl_minutes: 20
+        });
+        
+        if (retryError || !retryLock) {
+          console.error('[SendCloud Sync] ❌ Verrou toujours occupé après retry');
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Synchronisation déjà en cours. Merci de réessayer plus tard.',
+              lock_status: 'busy',
+              retry_attempted: true
+            }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        lockAcquired = true;
+        console.log('[SendCloud Sync] ✅ Verrou acquis après retry');
+      } else {
+        // Si déjà un retry, ne pas boucler
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Une synchronisation SendCloud est déjà en cours.',
+            lock_status: 'busy'
+          }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      lockAcquired = true;
+      console.log('[SendCloud Sync] ✅ Verrou acquis avec succès');
+    }
+
+    // Démarrer le log de synchronisation
+    runId = await startSyncLog(supabase, 'orders', undefined);
+    console.log(`[SendCloud Sync] Sync log started with runId: ${runId}`);
 
     // Calculate time window
     let dateMin: string;
@@ -611,17 +678,21 @@ Deno.serve(async (req) => {
     console.log(`${itemsToProcess.length} new items to process (${existingItems.length} already exist)`);
 
     if (itemsToProcess.length === 0) {
-      await supabase.from('sendcloud_sync_log').insert({
-        statut: 'success',
-        mode_sync: mode,
-        nb_commandes_trouvees: itemsForBatch.length,
-        nb_commandes_creees: 0,
-        nb_commandes_existantes: existingItems.length,
-        nb_erreurs: 0,
-        date_sync: new Date().toISOString(),
-        duree_ms: Date.now() - startTime,
-        details: { strategy, date_min: dateMin }
-      });
+      // Finaliser avec succès sans nouvelles commandes
+      if (runId) {
+        await finalizeSyncLog(supabase, runId, 'success', {
+          batchCount: 0,
+          itemCount: 0,
+          metadata: {
+            strategy,
+            mode,
+            found: itemsForBatch.length,
+            existing: existingItems.length,
+            date_min: dateMin,
+            duration_ms: Date.now() - startTime,
+          },
+        });
+      }
 
       return new Response(
         JSON.stringify({
@@ -647,18 +718,25 @@ Deno.serve(async (req) => {
     if (batchResult.error) {
       console.error('Batch error:', batchResult.error);
 
-      await supabase.from('sendcloud_sync_log').insert({
-        statut: 'error',
-        mode_sync: mode,
-        nb_commandes_trouvees: itemsForBatch.length,
-        nb_commandes_creees: 0,
-        nb_commandes_existantes: existingItems.length,
-        nb_erreurs: 1,
-        date_sync: new Date().toISOString(),
-        duree_ms: Date.now() - startTime,
-        erreur_message: batchResult.error.message || 'Batch processing failed',
-        details: { strategy, date_min: dateMin }
-      });
+      // Pousser dans la DLQ pour retry
+      for (const item of itemsToProcess) {
+        await pushToDLQ(
+          supabase,
+          'order_sync',
+          { order: item, source: 'sendcloud-sync-orders', strategy },
+          batchResult.error.message || 'Batch processing failed'
+        );
+      }
+
+      // Finaliser en erreur
+      if (runId) {
+        await finalizeSyncLog(supabase, runId, 'error', {
+          batchCount: 0,
+          itemCount: 0,
+          errorMessage: batchResult.error.message || 'Batch processing failed',
+          metadata: { strategy, date_min: dateMin, mode },
+        });
+      }
 
       return new Response(
         JSON.stringify({ success: false, error: batchResult.error.message || 'Failed to process batch' }),
@@ -667,19 +745,29 @@ Deno.serve(async (req) => {
     }
 
     const batchData = batchResult.data || {};
+    
+    totalBatches = 1;
+    totalItems = batchData.created || 0;
 
-    await supabase.from('sendcloud_sync_log').insert({
-      statut: batchData.errors > 0 ? 'partial' : 'success',
-      mode_sync: mode,
-      nb_commandes_trouvees: itemsForBatch.length,
-      nb_commandes_creees: batchData.created || 0,
-      nb_commandes_existantes: existingItems.length + (batchData.existing || 0),
-      nb_erreurs: batchData.errors || 0,
-      date_sync: new Date().toISOString(),
-      duree_ms: Date.now() - startTime,
-      erreur_message: batchData.errors > 0 ? 'Some items failed to process' : null,
-      details: { strategy, date_min: dateMin, mode, batch_summary: batchData }
-    });
+    // Finaliser avec succès
+    if (runId) {
+      await finalizeSyncLog(supabase, runId, batchData.errors > 0 ? 'partial' : 'success', {
+        batchCount: totalBatches,
+        itemCount: totalItems,
+        errorMessage: batchData.errors > 0 ? 'Some items failed to process' : undefined,
+        metadata: {
+          strategy,
+          mode,
+          found: itemsForBatch.length,
+          created: batchData.created || 0,
+          existing: existingItems.length + (batchData.existing || 0),
+          errors: batchData.errors || 0,
+          date_min: dateMin,
+          duration_ms: Date.now() - startTime,
+          batch_summary: batchData,
+        },
+      });
+    }
 
     return new Response(
       JSON.stringify({
@@ -704,21 +792,50 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    await supabase.from('sendcloud_sync_log').insert({
-      statut: 'error',
-      mode_sync: 'unknown',
-      nb_commandes_trouvees: 0,
-      nb_commandes_creees: 0,
-      nb_commandes_existantes: 0,
-      nb_erreurs: 1,
-      date_sync: new Date().toISOString(),
-      duree_ms: duration,
-      erreur_message: errorMessage
-    });
+    // Finaliser en erreur
+    if (runId) {
+      await finalizeSyncLog(supabase, runId, 'error', {
+        batchCount: totalBatches,
+        itemCount: totalItems,
+        errorMessage,
+        metadata: { duration_ms: duration },
+      });
+    }
 
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+  } finally {
+    // 🔓 LIBÉRATION DU VERROU DE SYNCHRONISATION
+    if (lockAcquired) {
+      console.log(`[SendCloud Sync] Libération du verrou (owner: ${lockOwner})...`);
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        const { data: released, error: releaseError } = await supabase.rpc('release_sync_lock', {
+          p_lock_key: 'sendcloud-sync',
+          p_owner: lockOwner
+        });
+
+        if (releaseError) {
+          console.error('[SendCloud Sync] ⚠️ Erreur lors de la libération du verrou:', releaseError);
+          // ✅ Forcer la suppression en cas d'erreur
+          await supabase
+            .from('sync_locks')
+            .delete()
+            .eq('lock_key', 'sendcloud-sync')
+            .eq('owner', lockOwner);
+        } else if (released) {
+          console.log('[SendCloud Sync] ✅ Verrou libéré avec succès');
+        } else {
+          console.warn('[SendCloud Sync] ⚠️ Verrou non trouvé lors de la libération (probablement expiré)');
+        }
+      } catch (releaseError) {
+        console.error('[SendCloud Sync] ⚠️ Exception lors de la libération du verrou:', releaseError);
+      }
+    }
   }
 });
