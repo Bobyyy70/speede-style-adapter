@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { PackageX, Clock, CheckCircle, AlertTriangle, RotateCcw } from "lucide-react";
+import { PackageX, Clock, CheckCircle, AlertTriangle, RotateCcw, RefreshCw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ViewSelector } from "@/components/ViewSelector";
 import { RetoursKanban } from "@/components/RetoursKanban";
@@ -25,6 +25,7 @@ export default function Retours() {
   const [selectedRetourId, setSelectedRetourId] = useState<string | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [statutFilter, setStatutFilter] = useState<string>("all");
+  const [syncing, setSyncing] = useState(false);
   const [view, setView] = useState<'list' | 'kanban'>(() => {
     return (localStorage.getItem('retours_view') as 'list' | 'kanban') || 'list';
   });
@@ -82,7 +83,7 @@ export default function Retours() {
   const handleCreateReturn = async (commandeId: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('sendcloud-create-return', {
-        body: { 
+        body: {
           commande_id: commandeId,
           raison: 'Retour client - Mondial Relay',
         },
@@ -98,6 +99,30 @@ export default function Retours() {
       }
     } catch (error: any) {
       toast.error('Erreur: ' + error.message);
+    }
+  };
+
+  const handleSyncReturns = async () => {
+    setSyncing(true);
+    try {
+      console.log('🔄 Synchronisation des retours avec SendCloud...');
+
+      const { data, error } = await supabase.functions.invoke('sendcloud-sync-returns');
+
+      if (error) throw error;
+
+      if (data?.success) {
+        const message = `✅ Synchronisation terminée: ${data.synced || 0} retour(s) synchronisé(s)`;
+        toast.success(message);
+        refetch();
+      } else {
+        toast.error(data?.error || 'Erreur lors de la synchronisation');
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur sync retours:', error);
+      toast.error('Erreur: ' + (error.message || 'Échec de la synchronisation'));
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -135,7 +160,18 @@ export default function Retours() {
             <h1 className="text-3xl font-bold">Retours & SAV</h1>
             <p className="text-muted-foreground">Gestion des retours produits et service après-vente</p>
           </div>
-          <ViewSelector view={view} onViewChange={setView} />
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleSyncReturns}
+              disabled={syncing}
+              variant="outline"
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Synchronisation...' : 'Sync SendCloud'}
+            </Button>
+            <ViewSelector view={view} onViewChange={setView} />
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-4">

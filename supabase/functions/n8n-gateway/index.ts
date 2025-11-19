@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,61 +30,95 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Validate API Key and get client_id
+    let clientId: string | null = null;
+    let authMethod = '';
+
+    // AUTHENTICATION: Support both API Key (for N8N) and Supabase Auth (for frontend)
     const apiKey = req.headers.get('X-N8N-API-KEY');
-    
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized: Missing X-N8N-API-KEY header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const authHeader = req.headers.get('Authorization');
 
-    // Check rate limit (60 requests per minute per API key)
-    const { data: rateLimitCheck } = await supabase.rpc('check_rate_limit', {
-      _identifier: `n8n_gateway:${apiKey.substring(0, 8)}`,
-      _max_requests: 60,
-      _window_seconds: 60
-    });
+    if (apiKey) {
+      // METHOD 1: API Key authentication (for external N8N workflows)
+      authMethod = 'api_key';
 
-    if (rateLimitCheck && !rateLimitCheck.allowed) {
-      console.warn(`[n8n-gateway] Rate limit exceeded for API key: ${apiKey.substring(0, 8)}`);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Rate limit exceeded', 
-          reason: rateLimitCheck.reason,
-          retry_after: rateLimitCheck.blocked_until 
-        }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate API key and get client_id
-    const { data: validation } = await supabase.rpc('validate_n8n_api_key', {
-      _api_key: apiKey
-    });
-
-    if (!validation || !validation.valid) {
-      console.warn(`[n8n-gateway] Invalid API key attempt: ${apiKey.substring(0, 8)}`);
-      
-      // Log failed attempt
-      await supabase.from('n8n_gateway_audit').insert({
-        api_key_hash: apiKey.substring(0, 16),
-        endpoint: path,
-        method,
-        ip_address: req.headers.get('x-forwarded-for') || 'unknown',
-        success: false,
-        error_message: validation?.error || 'Invalid API key'
+      // Check rate limit (60 requests per minute per API key)
+      const { data: rateLimitCheck } = await supabase.rpc('check_rate_limit', {
+        _identifier: `n8n_gateway:${apiKey.substring(0, 8)}`,
+        _max_requests: 60,
+        _window_seconds: 60
       });
 
+      if (rateLimitCheck && !rateLimitCheck.allowed) {
+        console.warn(`[n8n-gateway] Rate limit exceeded for API key: ${apiKey.substring(0, 8)}`);
+        return new Response(
+          JSON.stringify({
+            error: 'Rate limit exceeded',
+            reason: rateLimitCheck.reason,
+            retry_after: rateLimitCheck.blocked_until
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Validate API key and get client_id
+      const { data: validation } = await supabase.rpc('validate_n8n_api_key', {
+        _api_key: apiKey
+      });
+
+      if (!validation || !validation.valid) {
+        console.warn(`[n8n-gateway] Invalid API key attempt: ${apiKey.substring(0, 8)}`);
+
+        // Log failed attempt
+        await supabase.from('n8n_gateway_audit').insert({
+          api_key_hash: apiKey.substring(0, 16),
+          endpoint: path,
+          method,
+          ip_address: req.headers.get('x-forwarded-for') || 'unknown',
+          success: false,
+          error_message: validation?.error || 'Invalid API key'
+        });
+
+        return new Response(
+          JSON.stringify({ error: validation?.error || 'Unauthorized: Invalid API key' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      clientId = validation.client_id;
+      console.log(`[n8n-gateway] API Key auth - Client: ${clientId}`);
+
+    } else if (authHeader) {
+      // METHOD 2: Supabase Auth token (for frontend calls)
+      authMethod = 'supabase_auth';
+
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+      if (userError || !user) {
+        console.warn(`[n8n-gateway] Invalid auth token`);
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized: Invalid authentication token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get user's client_id from profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', user.id)
+        .single();
+
+      clientId = profile?.client_id || null;
+      console.log(`[n8n-gateway] Supabase Auth - User: ${user.id}, Client: ${clientId || 'none'}`);
+
+    } else {
+      // No authentication provided
       return new Response(
-        JSON.stringify({ error: validation?.error || 'Unauthorized: Invalid API key' }),
+        JSON.stringify({ error: 'Unauthorized: Missing authentication (X-N8N-API-KEY header or Authorization token)' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const clientId = validation.client_id;
-    console.log(`[n8n-gateway] Authenticated for client: ${clientId}`);
 
     // Log successful request
     await supabase.from('n8n_gateway_audit').insert({
@@ -92,11 +126,12 @@ Deno.serve(async (req) => {
       endpoint: path,
       method,
       ip_address: req.headers.get('x-forwarded-for') || 'unknown',
-      success: true
+      success: true,
+      metadata: { auth_method: authMethod }
     });
 
     // Log request
-    console.log(`[n8n-gateway] ${method} ${path} [Client: ${clientId}]`);
+    console.log(`[n8n-gateway] ${method} ${path} [Client: ${clientId}] [Auth: ${authMethod}]`);
 
     // ========== HEALTH CHECK ==========
     

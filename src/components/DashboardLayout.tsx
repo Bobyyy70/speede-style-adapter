@@ -42,83 +42,55 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       href: "/",
       icon: LayoutDashboard
     }, {
-      name: "Commandes",
+      name: "Mes Commandes",
+      href: "/client/commandes",
       icon: ClipboardList,
       children: [{
-        name: "Gestion des commandes",
-        href: "/commandes",
-        icon: ClipboardList
-      }, {
         name: "Créer une commande",
         href: "/client/commandes/creer",
         icon: PlusCircle
       }]
     }, {
-      name: "Préparation",
-      href: "/commandes/preparation",
-      icon: PackagePlus,
-      children: [{
-        name: "Sessions de préparation",
-        href: "/commandes/preparation",
-        icon: ClipboardList
-      }, {
-        name: "Réappro",
-        href: "/commandes/reappro",
-        icon: RefreshCw
-      }]
-    }, {
-      name: "Expédition",
-      icon: TruckIcon,
-      children: [{
-        name: "Configuration",
-        href: "/expedition/configuration",
-        icon: Settings
-      }, {
-        name: "Préparer expédition",
-        href: "/expedition/preparer",
-        icon: Package
-      }, {
-        name: "Vue liste",
-        href: "/expedition",
-        icon: ClipboardList
-      }]
-    }, {
-      name: "Retours",
-      href: "/commandes/retours",
+      name: "Mes Retours",
+      href: "/client/retours",
       icon: Undo2,
       children: [{
-        name: "Gestion des retours",
-        href: "/commandes/retours",
-        icon: ClipboardList
-      }, {
         name: "Créer un retour",
         href: "/client/retours/creer",
         icon: PlusCircle
       }]
     }, {
-      name: "Stock",
-      icon: Warehouse,
+      name: "Mes Produits",
+      href: "/client/produits",
+      icon: Boxes
+    }, {
+      name: "Réceptions Attendues",
+      href: "/client/reception",
+      icon: PackageOpen
+    }, {
+      name: "Mouvements Stock",
+      href: "/client/mouvements",
+      icon: ArrowRightLeft
+    }, {
+      name: "Facturation",
+      icon: Receipt,
       children: [{
-        name: "Produits",
-        href: "/stock/produits",
-        icon: Boxes
+        name: "Mes factures",
+        href: "/client/facturation",
+        icon: Receipt
       }, {
-        name: "Réception",
-        href: "/stock/reception",
-        icon: PackageOpen
-      }, {
-        name: "Emplacements",
-        href: "/stock/emplacements",
-        icon: MapPin
-      }, {
-        name: "Mouvements",
-        href: "/stock/mouvements",
-        icon: ArrowRightLeft
+        name: "Rapports d'activité",
+        href: "/client/rapports",
+        icon: FolderTree
       }]
     }, {
-      name: "Services Logistiques",
-      href: "/administratif/services",
-      icon: Building2
+      name: "Portails API",
+      icon: Plug,
+      children: [{
+        name: "Gérer mes tokens",
+        href: "/client/tokens-api",
+        icon: Shield
+      }]
     }, {
       name: "Intégrations",
       icon: Plug,
@@ -126,19 +98,16 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Transporteurs",
         href: "/integrations/transporteurs",
         icon: ShipWheel
-      }, {
-        name: "Connecteurs",
-        href: "/integrations/connecteurs",
-        icon: Cable
       }]
-    }, {
-      name: "Gestion des Données",
-      href: "/gestion-donnees/import-export",
-      icon: FolderTree
     }, {
       name: "Paramètres",
       href: "/parametres",
-      icon: Settings
+      icon: Settings,
+      children: [{
+        name: "Configuration Expéditeur",
+        href: "/parametres/expediteur",
+        icon: Settings
+      }]
     }];
   }
   if (role === "admin") {
@@ -205,11 +174,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       }]
     }, {
       name: "Retours",
-      href: "/commandes/retours",
       icon: Undo2,
       children: [{
-        name: "Gestion des retours",
-        href: "/commandes/retours",
+        name: "Gestion workflow retours",
+        href: "/gestionnaire/retours",
         icon: ClipboardList
       }, {
         name: "Créer un retour",
@@ -235,6 +203,18 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Mouvements",
         href: "/stock/mouvements",
         icon: ArrowRightLeft
+      }]
+    }, {
+      name: "Facturation",
+      icon: Receipt,
+      children: [{
+        name: "Dashboard CA",
+        href: "/gestionnaire/facturation",
+        icon: LayoutDashboard
+      }, {
+        name: "Rapports tous clients",
+        href: "/gestionnaire/rapports",
+        icon: FolderTree
       }]
     }, {
       name: "Services Logistiques",
@@ -316,10 +296,6 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/parametres/notifications",
         icon: Bell
       }, {
-        name: "Facturation",
-        href: "/administratif/facturation",
-        icon: Receipt
-      }, {
         name: "Configuration Expéditeur",
         href: "/parametres/expediteur",
         icon: Settings
@@ -332,6 +308,113 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/parametres/mon-dashboard",
         icon: LayoutDashboard
       }]
+    }];
+  }
+  if (role === "gestionnaire") {
+    return [...baseNavigation, {
+      name: "Commandes",
+      icon: ClipboardList,
+      children: [{
+        name: "Toutes les commandes",
+        href: "/commandes",
+        icon: ClipboardList
+      }, {
+        name: "Règles de validation",
+        href: "/commandes/regles-validation",
+        icon: Shield
+      }, {
+        name: "Règles de filtrage",
+        href: "/commandes/regles-filtrage",
+        icon: Filter
+      }]
+    }, {
+      name: "Préparation",
+      icon: PackagePlus,
+      children: [{
+        name: "Sessions de préparation",
+        href: "/commandes/preparation",
+        icon: ClipboardList
+      }, {
+        name: "Réappro",
+        href: "/commandes/reappro",
+        icon: RefreshCw
+      }, {
+        name: "Règles d'emballage",
+        href: "/preparation/regles-emballages",
+        icon: Shield
+      }]
+    }, {
+      name: "Expédition",
+      icon: TruckIcon,
+      children: [{
+        name: "Configuration",
+        href: "/expedition/configuration",
+        icon: Settings
+      }, {
+        name: "Préparer expédition",
+        href: "/expedition/preparer",
+        icon: Package
+      }, {
+        name: "Vue liste",
+        href: "/expedition",
+        icon: ClipboardList
+      }]
+    }, {
+      name: "Retours",
+      icon: Undo2,
+      children: [{
+        name: "Gestion workflow retours",
+        href: "/gestionnaire/retours",
+        icon: ClipboardList
+      }]
+    }, {
+      name: "Stock",
+      icon: Warehouse,
+      children: [{
+        name: "Produits",
+        href: "/stock/produits",
+        icon: Boxes
+      }, {
+        name: "Emplacements",
+        href: "/stock/emplacements",
+        icon: MapPin
+      }, {
+        name: "Mouvements",
+        href: "/stock/mouvements",
+        icon: ArrowRightLeft
+      }]
+    }, {
+      name: "Facturation",
+      icon: Receipt,
+      children: [{
+        name: "Dashboard CA",
+        href: "/gestionnaire/facturation",
+        icon: LayoutDashboard
+      }, {
+        name: "Rapports tous clients",
+        href: "/gestionnaire/rapports",
+        icon: FolderTree
+      }]
+    }, {
+      name: "Intégrations",
+      icon: Plug,
+      children: [{
+        name: "Transporteurs",
+        href: "/integrations/transporteurs",
+        icon: ShipWheel
+      }, {
+        name: "SendCloud Webhook",
+        href: "/integrations/sendcloud-webhook",
+        icon: Webhook
+      }, {
+        name: "SendCloud Sync",
+        href: "/integrations/sendcloud-sync",
+        icon: RefreshCw
+      }]
+    }, {
+      name: "Paramètres",
+      href: "/parametres",
+      icon: Settings
     }];
   }
   if (role === "operateur") {
@@ -423,13 +506,30 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       }],
       invoices: [{
         name: "Facturation",
-        href: "/client/facturation",
-        icon: Receipt
+        icon: Receipt,
+        children: [{
+          name: "Mes factures",
+          href: "/client/facturation",
+          icon: Receipt
+        }, {
+          name: "Rapports d'activité",
+          href: "/client/rapports",
+          icon: FolderTree
+        }]
       }],
       reports: [{
         name: "Gestion des Données",
         href: "/gestion-donnees/import-export",
         icon: FolderTree
+      }],
+      api_tokens: [{
+        name: "Portails API",
+        icon: Plug,
+        children: [{
+          name: "Gérer mes tokens",
+          href: "/client/tokens-api",
+          icon: Shield
+        }]
       }],
       settings: [{
         name: "Paramètres",

@@ -1,7 +1,7 @@
 // SendCloud Stock Batch Update: Process queued stock updates and send to SendCloud
 // Runs every 2 minutes via cron to batch update stock levels
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
