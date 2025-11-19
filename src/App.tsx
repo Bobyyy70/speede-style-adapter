@@ -64,6 +64,15 @@ import ApprentissageContinu from "./pages/analytics/ApprentissageContinu";
 import OptimisationTransport from "./pages/OptimisationTransport";
 import OnboardingWizard from "./pages/onboarding/OnboardingWizard";
 
+// TMS Routes
+import DashboardTMS from "./pages/tms/DashboardTMS";
+import Planification from "./pages/tms/Planification";
+import Tracking from "./pages/tms/Tracking";
+import AnalyticsTransporteurs from "./pages/tms/AnalyticsTransporteurs";
+import GreenDashboard from "./pages/tms/GreenDashboard";
+import ConfigurationTransporteurs from "./pages/tms/ConfigurationTransporteurs";
+import ExpeditionTMS from "./pages/tms/Expedition";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -484,7 +493,73 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            
+
+            {/* TMS Routes */}
+            <Route
+              path="/tms"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <DashboardTMS />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <DashboardTMS />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/planification"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <Planification />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/tracking"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <Tracking />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/analytics"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <AnalyticsTransporteurs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/green"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <GreenDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/configuration"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <ConfigurationTransporteurs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/expedition"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'preparateur']}>
+                  <ExpeditionTMS />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Redirections */}
             <Route path="/produits" element={<Navigate to="/stock/produits" replace />} />
             <Route path="/retours" element={<Navigate to="/commandes/retours" replace />} />
