@@ -66,6 +66,10 @@ import OnboardingWizard from "./pages/onboarding/OnboardingWizard";
 
 // TMS Routes
 import DashboardTMS from "./pages/tms/DashboardTMS";
+import Planification from "./pages/tms/Planification";
+import Tracking from "./pages/tms/Tracking";
+import AnalyticsTransporteurs from "./pages/tms/AnalyticsTransporteurs";
+import GreenDashboard from "./pages/tms/GreenDashboard";
 
 const queryClient = new QueryClient();
 
@@ -502,6 +506,38 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
                   <DashboardTMS />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/planification"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <Planification />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/tracking"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <Tracking />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/analytics"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <AnalyticsTransporteurs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/green"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <GreenDashboard />
                 </ProtectedRoute>
               }
             />
