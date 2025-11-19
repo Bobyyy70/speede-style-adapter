@@ -240,6 +240,14 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
       name: "Intégrations",
       icon: Plug,
       children: [{
+        name: "Marketplace (40+ apps)",
+        href: "/marketplace-integrations",
+        icon: Store
+      }, {
+        name: "Gestionnaire Webhooks",
+        href: "/webhooks-manager",
+        icon: Webhook
+      }, {
         name: "Transporteurs",
         href: "/integrations/transporteurs",
         icon: ShipWheel

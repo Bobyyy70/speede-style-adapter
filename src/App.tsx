@@ -68,6 +68,8 @@ import OrchestrationIntelligente from "./pages/OrchestrationIntelligente";
 import PortailClient from "./pages/client/PortailClient";
 import AnalyticsPredictifs from "./pages/AnalyticsPredictifs";
 import OmnicanalClickCollect from "./pages/OmnicanalClickCollect";
+import MarketplaceIntegrations from "./pages/MarketplaceIntegrations";
+import WebhooksManager from "./pages/WebhooksManager";
 
 const queryClient = new QueryClient();
 
@@ -426,6 +428,26 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
                   <PortailClient />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Marketplace Intégrations */}
+            <Route
+              path="/marketplace-integrations"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <MarketplaceIntegrations />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Webhooks Manager */}
+            <Route
+              path="/webhooks-manager"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <WebhooksManager />
                 </ProtectedRoute>
               }
             />
