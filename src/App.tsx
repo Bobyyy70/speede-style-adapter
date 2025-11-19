@@ -46,6 +46,7 @@ import ReparationCommandes from "./pages/ReparationCommandes";
 import MonDashboard from "./pages/MonDashboard";
 import DashboardAnalytique from "./pages/DashboardAnalytique";
 import GestionTransitions from "./pages/admin/GestionTransitions";
+import AssignClientToUser from "./pages/admin/AssignClientToUser";
 import Workflows from "./pages/Workflows";
 import ReglesFiltrage from "./pages/commandes/ReglesFiltrage";
 import ReglesEmballages from "./pages/preparation/ReglesEmballages";
@@ -520,6 +521,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <GestionTransitions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/assign-clients"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AssignClientToUser />
                 </ProtectedRoute>
               }
             />
