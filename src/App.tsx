@@ -64,6 +64,9 @@ import ApprentissageContinu from "./pages/analytics/ApprentissageContinu";
 import OptimisationTransport from "./pages/OptimisationTransport";
 import OnboardingWizard from "./pages/onboarding/OnboardingWizard";
 
+// TMS Routes
+import DashboardTMS from "./pages/tms/DashboardTMS";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -484,7 +487,25 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            
+
+            {/* TMS Routes */}
+            <Route
+              path="/tms"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <DashboardTMS />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tms/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
+                  <DashboardTMS />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Redirections */}
             <Route path="/produits" element={<Navigate to="/stock/produits" replace />} />
             <Route path="/retours" element={<Navigate to="/commandes/retours" replace />} />
