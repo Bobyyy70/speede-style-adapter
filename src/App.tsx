@@ -37,9 +37,18 @@ import ClientRetours from "./pages/client/MesRetours";
 import ClientCommandes from "./pages/client/MesCommandes";
 import ClientMouvements from "./pages/client/MesMouvements";
 import ClientFacturation from "./pages/client/MaFacturation";
+import ClientRapports from "./pages/client/MesRapports";
+import ClientTokensAPI from "./pages/client/MesTokensAPI";
 import ClientAttenduReception from "./pages/client/AttenduReception";
 import ClientCreerCommande from "./pages/client/CreerCommande";
 import AdminBootstrap from "./pages/AdminBootstrap";
+// Gestionnaire - Nouvelles pages facturation et retours
+import DashboardFacturation from "./pages/gestionnaire/DashboardFacturation";
+import RapportsFacturation from "./pages/gestionnaire/RapportsFacturation";
+import GestionRetours from "./pages/gestionnaire/GestionRetours";
+// Portails publics
+import TrackingPortail from "./pages/public/TrackingPortail";
+import RetoursPortail from "./pages/public/RetoursPortail";
 import ReglesExpediteur from "./pages/ReglesExpediteur";
 import ReparationCommandes from "./pages/ReparationCommandes";
 import MonDashboard from "./pages/MonDashboard";
@@ -503,7 +512,53 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            
+            <Route
+              path="/client/rapports"
+              element={
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
+                  <ClientRapports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/tokens-api"
+              element={
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
+                  <ClientTokensAPI />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Gestionnaire Routes - Facturation & Retours */}
+            <Route
+              path="/gestionnaire/facturation"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <DashboardFacturation />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/gestionnaire/rapports"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <RapportsFacturation />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/gestionnaire/retours"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <GestionRetours />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Portails Publics (pas de protection) */}
+            <Route path="/public/tracking" element={<TrackingPortail />} />
+            <Route path="/public/retours" element={<RetoursPortail />} />
+
             {/* Redirections */}
             <Route path="/produits" element={<Navigate to="/stock/produits" replace />} />
             <Route path="/retours" element={<Navigate to="/commandes/retours" replace />} />
