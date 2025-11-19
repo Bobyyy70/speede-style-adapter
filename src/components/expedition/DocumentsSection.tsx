@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { FileText, Download, ChevronDown, Loader2, Package, Archive, Sparkles } from "lucide-react";
+import { FileText, Download, ChevronDown, Loader2, Package, Archive, Sparkles, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { CustomsValidation } from "./CustomsValidation";
+import { useThermalPrinter } from "@/hooks/useThermalPrinter";
 
 interface DocumentsSectionProps {
   commandeId: string;
@@ -23,6 +24,7 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
   const { toast } = useToast();
   const [generating, setGenerating] = useState<string | null>(null);
   const [autoGenerating, setAutoGenerating] = useState(false);
+  const { print, isPrinting, printers, hasPickingPrinter, hasShippingPrinter } = useThermalPrinter();
 
   // Fetch documents existants
   const { data: documents, refetch } = useQuery({
@@ -246,6 +248,32 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
     return documents?.find((d) => d.type_document === type);
   };
 
+  const handleThermalPrint = (docType: string) => {
+    // Mapper les types de documents vers les types supportés par useThermalPrinter
+    const typeMapping: Record<string, any> = {
+      'picking_slip': 'picking_slip',
+      'packing_list': 'packing_list',
+      'shipping_label': 'shipping_label',
+    };
+
+    const thermalDocType = typeMapping[docType];
+    if (!thermalDocType) {
+      toast({
+        title: "Type non supporté",
+        description: "Ce type de document n'est pas encore supporté pour l'impression thermique",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    print({
+      commandeId,
+      documentType: thermalDocType,
+      format: 'html_thermal',
+      autoOpen: true,
+    });
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -343,6 +371,24 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
                             <Download className="h-3 w-3 mr-1" />
                             PDF
                           </Button>
+                          {/* Bouton d'impression thermique pour les types supportés */}
+                          {(docType.type === 'picking_slip' || docType.type === 'packing_list') &&
+                           printers && printers.length > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleThermalPrint(docType.type)}
+                              disabled={isPrinting}
+                              title="Imprimer sur imprimante thermique"
+                            >
+                              {isPrinting ? (
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <Printer className="h-3 w-3 mr-1" />
+                              )}
+                              Thermique
+                            </Button>
+                          )}
                         </>
                       ) : (
                         <Button

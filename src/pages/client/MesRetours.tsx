@@ -12,6 +12,7 @@ import { fr } from "date-fns/locale";
 import { RetoursKanban } from "@/components/RetoursKanban";
 import { ViewSelector } from "@/components/ViewSelector";
 import { RetourDetailDialog } from "@/components/RetourDetailDialog";
+import { Package } from "lucide-react";
 
 interface Retour {
   id: string;
@@ -32,6 +33,7 @@ export default function MesRetours() {
   const [searchParams] = useSearchParams();
   const [retours, setRetours] = useState<Retour[]>([]);
   const [loading, setLoading] = useState(true);
+  const [noClientId, setNoClientId] = useState(false);
   const [view, setView] = useState<'list' | 'kanban'>(() => {
     return (localStorage.getItem('client_retours_view') as 'list' | 'kanban') || 'list';
   });
@@ -66,7 +68,11 @@ export default function MesRetours() {
         clientId = profile?.client_id;
       }
 
-      if (!clientId) return;
+      if (!clientId) {
+        setNoClientId(true);
+        setLoading(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from("retour_produit")
@@ -103,6 +109,42 @@ export default function MesRetours() {
 
     return <Badge variant={variants[statut] || "default"}>{statut}</Badge>;
   };
+
+  // If no client_id, show error message
+  if (noClientId) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Mes Retours</h1>
+              <p className="text-muted-foreground">
+                Gestion et suivi de vos retours produits
+              </p>
+            </div>
+          </div>
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center justify-center text-center space-y-4 py-8">
+                <div className="rounded-full bg-red-100 p-3">
+                  <Package className="h-8 w-8 text-red-600" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold text-red-900">Compte Non Configuré</h2>
+                  <p className="text-red-700 max-w-md">
+                    Votre compte n'est pas encore lié à un client. Vous ne pouvez pas accéder à vos retours pour le moment.
+                  </p>
+                  <p className="text-sm text-red-600 mt-4">
+                    Veuillez contacter l'administrateur à <strong>admin@speedelog.net</strong> pour configurer votre compte.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
