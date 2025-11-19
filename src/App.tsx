@@ -632,6 +632,9 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
                   <ClientRapports />
+                </ProtectedRoute>
+              }
+            />
 
             {/* PDA Routes */}
             <Route
@@ -639,6 +642,10 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
                   <PDAHome />
+                </ProtectedRoute>
+              }
+            />
+            
             {/* TMS Routes */}
             <Route
               path="/tms"
@@ -663,10 +670,18 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <DashboardFacturation />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/pda/reception"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
                   <PDAReception />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/tms/dashboard"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
@@ -679,6 +694,10 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
                   <PDAInventaire />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/tms/planification"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
@@ -691,6 +710,10 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
                   <PDAMouvements />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/tms/tracking"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
@@ -703,10 +726,18 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <RapportsFacturation />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/pda/controle-qualite"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
                   <PDAControleQualite />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/tms/analytics"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
@@ -719,6 +750,10 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
                   <PDARetours />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/tms/green"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
@@ -738,6 +773,7 @@ const App = () => (
             {/* Portails Publics (pas de protection) */}
             <Route path="/public/tracking" element={<TrackingPortail />} />
             <Route path="/public/retours" element={<RetoursPortail />} />
+            <Route
               path="/tms/configuration"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
