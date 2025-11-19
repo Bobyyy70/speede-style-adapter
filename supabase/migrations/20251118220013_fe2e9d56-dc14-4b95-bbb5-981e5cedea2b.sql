@@ -1,0 +1,3 @@
+-- DÉBLOCAGE IMMÉDIAT - Désactivation RLS
+ALTER TABLE public.commande DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ligne_commande DISABLE ROW LEVEL SECURITY;

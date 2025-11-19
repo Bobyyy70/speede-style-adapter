@@ -187,8 +187,23 @@ export default function AutomationTransporteurs() {
 
   const handleToggleClient = async (clientId: string, actif: boolean) => {
     try {
-      // Cette fonction RPC n'existe pas encore - à implémenter via migration
-      toast.warning("Fonction à implémenter via migration");
+      console.log(`Toggle automation for client ${clientId}: ${actif}`);
+
+      const { data, error } = await supabase.rpc('toggle_automation_client', {
+        p_client_id: clientId,
+        p_actif: actif,
+      });
+
+      if (error) {
+        console.error('RPC Error:', error);
+        throw error;
+      }
+
+      if (!data || data.length === 0 || !data[0].success) {
+        throw new Error(data?.[0]?.message || 'Échec de la mise à jour');
+      }
+
+      toast.success(data[0].message || `Automatisation ${actif ? 'activée' : 'désactivée'} pour le client`);
       loadData();
     } catch (error) {
       console.error('Error toggling client:', error);

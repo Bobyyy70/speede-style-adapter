@@ -23,10 +23,23 @@ export const ORDER_STATUSES = {
   LIVRE: 'livre',
   ANNULE: 'annule',
   ERREUR: 'erreur',
+  RETOUR: 'retour',
   
   // États incidents
   INCIDENT_LIVRAISON: 'incident_livraison',
-  RETOUR_EXPEDITEUR: 'retour_expediteur'
+  RETOUR_EXPEDITEUR: 'retour_expediteur',
+  
+  // Anciens statuts (compatibilité)
+  EN_ATTENTE_REAPPRO_OLD: 'En attente de réappro',
+  PRET_A_PREPARER: 'Prêt à préparer',
+  RESERVE: 'Réservé',
+  EN_PREPARATION_OLD: 'En préparation',
+  EN_ATTENTE_EXPEDITION: 'En attente d\'expédition',
+  EXPEDIE_OLD: 'Expédié',
+  LIVRE_OLD: 'Livré',
+  ANNULEE: 'Annulée',
+  PRETE: 'prete',
+  EXPEDIEE: 'expediee'
 } as const;
 
 export type OrderStatus = typeof ORDER_STATUSES[keyof typeof ORDER_STATUSES];
@@ -47,8 +60,20 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   [ORDER_STATUSES.LIVRE]: 'Livré',
   [ORDER_STATUSES.ANNULE]: 'Annulé',
   [ORDER_STATUSES.ERREUR]: 'Erreur',
+  [ORDER_STATUSES.RETOUR]: 'Retour',
   [ORDER_STATUSES.INCIDENT_LIVRAISON]: 'Incident livraison',
-  [ORDER_STATUSES.RETOUR_EXPEDITEUR]: 'Retour expéditeur'
+  [ORDER_STATUSES.RETOUR_EXPEDITEUR]: 'Retour expéditeur',
+  // Anciens statuts
+  [ORDER_STATUSES.EN_ATTENTE_REAPPRO_OLD]: 'En attente de réappro',
+  [ORDER_STATUSES.PRET_A_PREPARER]: 'Prêt à préparer',
+  [ORDER_STATUSES.RESERVE]: 'Réservé',
+  [ORDER_STATUSES.EN_PREPARATION_OLD]: 'En préparation',
+  [ORDER_STATUSES.EN_ATTENTE_EXPEDITION]: 'En attente d\'expédition',
+  [ORDER_STATUSES.EXPEDIE_OLD]: 'Expédié',
+  [ORDER_STATUSES.LIVRE_OLD]: 'Livré',
+  [ORDER_STATUSES.ANNULEE]: 'Annulé',
+  [ORDER_STATUSES.PRETE]: 'Prête',
+  [ORDER_STATUSES.EXPEDIEE]: 'Expédiée'
 };
 
 // Couleurs pour l'affichage
@@ -67,8 +92,20 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   [ORDER_STATUSES.LIVRE]: 'text-emerald-600',
   [ORDER_STATUSES.ANNULE]: 'text-red-600',
   [ORDER_STATUSES.ERREUR]: 'text-destructive',
+  [ORDER_STATUSES.RETOUR]: 'text-orange-600',
   [ORDER_STATUSES.INCIDENT_LIVRAISON]: 'text-rose-600',
-  [ORDER_STATUSES.RETOUR_EXPEDITEUR]: 'text-amber-600'
+  [ORDER_STATUSES.RETOUR_EXPEDITEUR]: 'text-amber-600',
+  // Anciens statuts
+  [ORDER_STATUSES.EN_ATTENTE_REAPPRO_OLD]: 'text-orange-600',
+  [ORDER_STATUSES.PRET_A_PREPARER]: 'text-cyan-600',
+  [ORDER_STATUSES.RESERVE]: 'text-blue-600',
+  [ORDER_STATUSES.EN_PREPARATION_OLD]: 'text-yellow-600',
+  [ORDER_STATUSES.EN_ATTENTE_EXPEDITION]: 'text-cyan-600',
+  [ORDER_STATUSES.EXPEDIE_OLD]: 'text-green-600',
+  [ORDER_STATUSES.LIVRE_OLD]: 'text-emerald-600',
+  [ORDER_STATUSES.ANNULEE]: 'text-red-600',
+  [ORDER_STATUSES.PRETE]: 'text-cyan-600',
+  [ORDER_STATUSES.EXPEDIEE]: 'text-green-600'
 };
 
 // Colonnes Kanban

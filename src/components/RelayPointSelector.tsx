@@ -30,6 +30,8 @@ interface RelayPointSelectorProps {
   onSelect: (relayPoint: RelayPoint) => void;
   selectedPointId?: string;
   defaultPostalCode?: string;
+  shippingMethodId?: number; // SendCloud shipping method ID for relay points
+  country?: string; // Default country code (e.g., 'FR')
 }
 
 // Custom map component to handle view changes
@@ -43,6 +45,8 @@ export function RelayPointSelector({
   onSelect,
   selectedPointId,
   defaultPostalCode = "",
+  shippingMethodId = 8, // Default to 8 (common relay point method ID - configure per carrier)
+  country = "FR",
 }: RelayPointSelectorProps) {
   const [postalCode, setPostalCode] = useState(defaultPostalCode);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -80,6 +84,14 @@ export function RelayPointSelector({
 
     setSearchLoading(true);
     try {
+      console.log(`🔍 Recherche points relais: ${postalCode}, ${country}, method: ${shippingMethodId}`);
+
+      // Appel à l'edge function SendCloud pour récupérer les points relais
+      const { data, error } = await supabase.functions.invoke('sendcloud-get-service-points', {
+        body: {
+          shipping_method_id: shippingMethodId,
+          country: country,
+          postal_code: postalCode,
       const { data, error } = await supabase.functions.invoke('mondial-relay-search-points', {
         body: {
           postal_code: postalCode,
@@ -117,6 +129,24 @@ export function RelayPointSelector({
       });
 
       if (error) {
+        console.error("❌ Error fetching relay points:", error);
+        throw error;
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch service points');
+      }
+
+      const servicePoints = data.service_points || [];
+      console.log(`✅ Received ${servicePoints.length} service points from SendCloud`);
+
+      setRelayPoints(servicePoints);
+
+      if (servicePoints.length > 0) {
+        // Centrer la carte sur le premier point
+        setMapCenter([servicePoints[0].latitude, servicePoints[0].longitude]);
+        setMapZoom(14);
+        toast.success(`${servicePoints.length} points relais trouvés`);
         throw new Error(error.message || "Erreur lors de la recherche");
       }
 
@@ -145,8 +175,12 @@ export function RelayPointSelector({
         toast.info("Aucun point relais trouvé pour ce code postal");
       }
     } catch (error) {
-      console.error("Error searching relay points:", error);
-      toast.error("Erreur lors de la recherche des points relais");
+      console.error("❌ Error searching relay points:", error);
+      toast.error(
+        error instanceof Error
+          ? `Erreur: ${error.message}`
+          : "Erreur lors de la recherche des points relais"
+      );
     } finally {
       setSearchLoading(false);
     }

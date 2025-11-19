@@ -1,4 +1,4 @@
-import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
 export interface SyncLogContext {
   runId: string;
@@ -11,7 +11,7 @@ export interface SyncLogContext {
  * @returns runId - Identifiant unique de ce run
  */
 export async function startSyncLog(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<any, "public", any>,
   job: SyncLogContext['job'],
   clientId?: string
 ): Promise<string> {
@@ -41,7 +41,7 @@ export async function startSyncLog(
  * Finalise un log de synchronisation
  */
 export async function finalizeSyncLog(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<any, "public", any>,
   runId: string,
   status: 'success' | 'partial' | 'error',
   stats: {
@@ -74,7 +74,7 @@ export async function finalizeSyncLog(
  * Met à jour le compteur d'items/batches pendant le traitement
  */
 export async function updateSyncProgress(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<any, "public", any>,
   runId: string,
   incrementBatch: number = 0,
   incrementItems: number = 0
@@ -101,7 +101,7 @@ export async function updateSyncProgress(
  * Pousse un message dans la Dead Letter Queue
  */
 export async function pushToDLQ(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<any, "public", any>,
   eventType: string,
   payload: any,
   errorMessage: string,

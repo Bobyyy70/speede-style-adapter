@@ -1,7 +1,7 @@
 // SendCloud Product Sync: Export WMS products to SendCloud
 // Automatically creates/updates products in SendCloud when they are created/modified in WMS
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { startSyncLog, finalizeSyncLog, pushToDLQ } from '../_shared/sync-logger.ts';
 
 const corsHeaders = {
