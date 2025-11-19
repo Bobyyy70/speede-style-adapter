@@ -63,6 +63,7 @@ import OptimisationCouts from "./pages/analytics/OptimisationCouts";
 import ApprentissageContinu from "./pages/analytics/ApprentissageContinu";
 import OptimisationTransport from "./pages/OptimisationTransport";
 import OnboardingWizard from "./pages/onboarding/OnboardingWizard";
+import QuickStartMarketplace from "./pages/onboarding/QuickStartMarketplace";
 import OMSDashboard from "./pages/OMSDashboard";
 import OrchestrationIntelligente from "./pages/OrchestrationIntelligente";
 import PortailClient from "./pages/client/PortailClient";
@@ -85,6 +86,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin-bootstrap" element={<AdminBootstrap />} />
             <Route path="/onboarding" element={<OnboardingWizard />} />
+            <Route path="/quick-start-marketplace" element={<QuickStartMarketplace />} />
             <Route
               path="/"
               element={

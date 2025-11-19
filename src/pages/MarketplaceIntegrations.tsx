@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,9 @@ import {
   BarChart3,
   FileText,
   Smartphone,
+  Sparkles,
+  Rocket,
+  ArrowRight,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -62,6 +66,7 @@ interface Integration {
 }
 
 export default function MarketplaceIntegrations() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
@@ -440,6 +445,56 @@ export default function MarketplaceIntegrations() {
             Connectez votre OMS à 40+ services • Marketplaces, CMS, ERP, Paiement, CRM
           </p>
         </div>
+
+        {/* Quick Start CTA Banner */}
+        <Card className="border-2 border-primary bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950/20 dark:via-purple-950/20 dark:to-pink-950/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                  <Rocket className="w-6 h-6 text-white" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-lg font-bold">
+                      Nouveau client ? Connectez Amazon ou Shopify en 5 minutes !
+                    </h3>
+                    <Badge className="bg-yellow-500 text-yellow-950">
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      Recommandé
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Setup ultra-rapide</strong> pour petits clients • 3 étapes simples • Templates pré-configurés •
+                    Amazon Seller Central + Shopify • Stock unifié • Import automatique
+                  </p>
+                  <div className="flex items-center space-x-4 text-xs text-muted-foreground pt-1">
+                    <span className="flex items-center">
+                      <CheckCircle2 className="w-3 h-3 mr-1 text-green-500" />
+                      Pas de carte requise
+                    </span>
+                    <span className="flex items-center">
+                      <CheckCircle2 className="w-3 h-3 mr-1 text-green-500" />
+                      Configuration en 5 min
+                    </span>
+                    <span className="flex items-center">
+                      <CheckCircle2 className="w-3 h-3 mr-1 text-green-500" />
+                      Support inclus
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <Button
+                size="lg"
+                onClick={() => navigate('/quick-start-marketplace')}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 min-w-[200px]"
+              >
+                Démarrer maintenant
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
