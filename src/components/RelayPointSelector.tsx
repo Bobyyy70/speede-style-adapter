@@ -13,6 +13,7 @@ import "leaflet/dist/leaflet.css";
 
 interface RelayPoint {
   id: string;
+  service_point_id?: string;
   name: string;
   address: string;
   city: string;
@@ -91,6 +92,39 @@ export function RelayPointSelector({
           shipping_method_id: shippingMethodId,
           country: country,
           postal_code: postalCode,
+      const { data, error } = await supabase.functions.invoke('mondial-relay-search-points', {
+        body: {
+          postal_code: postalCode,
+          country_code: 'FR',
+          max_results: 20,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.points && data.points.length > 0) {
+        setRelayPoints(data.points);
+        
+        // Centrer la carte sur le premier point
+        const firstPoint = data.points[0];
+        setMapCenter([firstPoint.latitude, firstPoint.longitude]);
+        setMapZoom(14);
+        
+        if (data.demo_mode) {
+          toast.info("Mode démo: Données Mondial Relay simulées");
+        } else {
+          toast.success(`${data.count} points relais trouvés`);
+        }
+      // Appeler l'API Mondial Relay pour récupérer les points relais
+      const { supabase } = await import("@/integrations/supabase/client");
+
+      const { data, error } = await supabase.functions.invoke('tms-mondialrelay-api', {
+        body: {
+          action: 'searchRelayPoints',
+          postalCode,
+          countryCode: 'FR',
+          numResults: 20,
+          deliveryMode: 'LCC',
         },
       });
 
@@ -113,7 +147,31 @@ export function RelayPointSelector({
         setMapCenter([servicePoints[0].latitude, servicePoints[0].longitude]);
         setMapZoom(14);
         toast.success(`${servicePoints.length} points relais trouvés`);
+        throw new Error(error.message || "Erreur lors de la recherche");
+      }
+
+      // Convertir les points relais Mondial Relay au format attendu
+      const convertedPoints: RelayPoint[] = (data?.relayPoints || []).map((point: any) => ({
+        id: point.code,
+        name: point.name,
+        address: point.address.street,
+        city: point.address.city,
+        postal_code: point.address.postalCode,
+        country: point.address.country,
+        latitude: point.coordinates.latitude,
+        longitude: point.coordinates.longitude,
+        phone: point.phone || '',
+        opening_hours: formatMondialRelayHours(point.openingHours),
+        distance: point.distance / 1000, // Convertir mètres en km
+      }));
+
+      setRelayPoints(convertedPoints);
+      if (convertedPoints.length > 0) {
+        setMapCenter([convertedPoints[0].latitude, convertedPoints[0].longitude]);
+        setMapZoom(14);
+        toast.success(`${convertedPoints.length} points relais trouvés`);
       } else {
+        setRelayPoints([]);
         toast.info("Aucun point relais trouvé pour ce code postal");
       }
     } catch (error) {
@@ -126,6 +184,21 @@ export function RelayPointSelector({
     } finally {
       setSearchLoading(false);
     }
+  };
+
+  // Formater les horaires Mondial Relay pour l'affichage
+  const formatMondialRelayHours = (hours: any): string => {
+    if (!hours || !hours.monday) return "Horaires non disponibles";
+    const formatSlot = (slot: string) => {
+      if (!slot || slot === '0000-0000') return 'Fermé';
+      return slot.split(' ').map(s => {
+        if (s.length === 9) {
+          return `${s.substring(0,2)}:${s.substring(2,4)}-${s.substring(5,7)}:${s.substring(7,9)}`;
+        }
+        return s;
+      }).join(' ');
+    };
+    return `Lun: ${formatSlot(hours.monday)} | Mar: ${formatSlot(hours.tuesday)}`;
   };
 
   const handleSelectPoint = (point: RelayPoint) => {
@@ -214,6 +287,11 @@ export function RelayPointSelector({
                       <Popup>
                         <div className="space-y-1 text-sm">
                           <p className="font-semibold">{point.name}</p>
+                          {point.service_point_id && (
+                            <p className="text-xs bg-muted px-2 py-1 rounded font-mono">
+                              ID: {point.service_point_id}
+                            </p>
+                          )}
                           <p className="text-xs text-muted-foreground">
                             {point.address}
                           </p>
@@ -269,6 +347,12 @@ export function RelayPointSelector({
                         </div>
                         
                         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          {point.service_point_id && (
+                            <div className="flex items-center gap-1 bg-muted px-2 py-1 rounded">
+                              <MapPin className="h-3 w-3" />
+                              <span className="font-mono">{point.service_point_id}</span>
+                            </div>
+                          )}
                           {point.phone && (
                             <div className="flex items-center gap-1">
                               <Phone className="h-3 w-3" />

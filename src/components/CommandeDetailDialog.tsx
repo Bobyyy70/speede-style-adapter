@@ -33,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useStatutTransition } from "@/hooks/useStatutTransition";
+import { useThermalPrinter } from "@/hooks/useThermalPrinter";
 import { DocumentsSection } from "./expedition/DocumentsSection";
 import { HistoireTimeline } from "./expedition/HistoireTimeline";
 import { FicheCommandeComplete } from "./FicheCommandeComplete";
@@ -87,6 +88,9 @@ export const CommandeDetailDialog = ({
 
   // Import du hook de transition
   const { transitionStatut, subscribeToStatutChanges } = useStatutTransition();
+
+  // Hook imprimante thermique
+  const { print, isPrinting, printers } = useThermalPrinter();
 
   // Fetch commande complète
   const { data: commande, refetch } = useQuery({
@@ -242,6 +246,24 @@ export const CommandeDetailDialog = ({
   const handlePrint = () => {
     window.print();
     toast({ title: "Impression lancée" });
+  };
+
+  const handleThermalPrint = (docType: 'picking_slip' | 'packing_list' = 'picking_slip') => {
+    if (!printers || printers.length === 0) {
+      toast({
+        title: "Aucune imprimante configurée",
+        description: "Veuillez configurer une imprimante thermique dans les paramètres",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    print({
+      commandeId,
+      documentType: docType,
+      format: 'html_thermal',
+      autoOpen: true,
+    });
   };
 
   const handleDuplicate = async () => {
@@ -500,6 +522,14 @@ export const CommandeDetailDialog = ({
                   <Printer className="h-4 w-4 mr-2" />
                   Imprimer
                 </DropdownMenuItem>
+
+                {/* Impression thermique */}
+                {printers && printers.length > 0 && (
+                  <DropdownMenuItem onClick={() => handleThermalPrint('picking_slip')} disabled={isPrinting}>
+                    <Printer className="h-4 w-4 mr-2 text-blue-600" />
+                    Imprimer picking (thermique)
+                  </DropdownMenuItem>
+                )}
 
                 {/* Télécharger */}
                 <DropdownMenuItem>
