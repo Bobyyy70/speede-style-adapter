@@ -554,7 +554,7 @@ const App = () => (
             <Route
               path="/tms/expedition"
               element={
-                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'preparateur']}>
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'operateur']}>
                   <ExpeditionTMS />
                 </ProtectedRoute>
               }
