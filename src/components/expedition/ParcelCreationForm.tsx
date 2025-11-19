@@ -164,16 +164,41 @@ export function ParcelCreationForm({ order, disabled }: ParcelCreationFormProps)
           <Label htmlFor="service-point-id">
             Service Point ID <span className="text-destructive">*</span>
           </Label>
-          <Input
-            id="service-point-id"
-            placeholder="Ex: 12345"
-            value={servicePointId}
-            onChange={(e) => setServicePointId(e.target.value)}
-            disabled={disabled}
-          />
+          <div className="flex gap-2">
+            <Input
+              id="service-point-id"
+              placeholder="Ex: MR7500123"
+              value={servicePointId}
+              onChange={(e) => setServicePointId(e.target.value)}
+              disabled={disabled}
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowRelaySelector(!showRelaySelector)}
+              disabled={disabled}
+            >
+              <MapPin className="h-4 w-4 mr-2" />
+              Carte
+            </Button>
+          </div>
           <p className="text-sm text-muted-foreground">
-            Requis pour Mondial Relay Point Relais
+            Requis pour Mondial Relay Point Relais - Utilisez la carte pour sélectionner un point
           </p>
+          
+          {showRelaySelector && (
+            <div className="border rounded-lg p-4 bg-card">
+              <RelayPointSelector
+                onSelect={(point) => {
+                  setServicePointId(point.service_point_id || point.id);
+                  setShowRelaySelector(false);
+                }}
+                selectedPointId={servicePointId}
+                defaultPostalCode={order.code_postal || ""}
+              />
+            </div>
+          )}
         </div>
       )}
 

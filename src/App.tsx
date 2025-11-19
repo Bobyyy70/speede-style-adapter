@@ -55,6 +55,7 @@ import ReparationCommandes from "./pages/ReparationCommandes";
 import MonDashboard from "./pages/MonDashboard";
 import DashboardAnalytique from "./pages/DashboardAnalytique";
 import GestionTransitions from "./pages/admin/GestionTransitions";
+import AssignClientToUser from "./pages/admin/AssignClientToUser";
 import Workflows from "./pages/Workflows";
 import ChatbotIA from "./pages/ChatbotIA";
 import ReglesFiltrage from "./pages/commandes/ReglesFiltrage";
@@ -91,6 +92,14 @@ import AnalyticsTransporteurs from "./pages/tms/AnalyticsTransporteurs";
 import GreenDashboard from "./pages/tms/GreenDashboard";
 import ConfigurationTransporteurs from "./pages/tms/ConfigurationTransporteurs";
 import ExpeditionTMS from "./pages/tms/Expedition";
+
+// PDA Routes
+import PDAHome from "./pages/pda/PDAHome";
+import PDAReception from "./pages/pda/PDAReception";
+import PDAInventaire from "./pages/pda/PDAInventaire";
+import PDAMouvements from "./pages/pda/PDAMouvements";
+import PDAControleQualite from "./pages/pda/PDAControleQualite";
+import PDARetours from "./pages/pda/PDARetours";
 
 const queryClient = new QueryClient();
 
@@ -552,6 +561,15 @@ const App = () => (
               }
             />
 
+            <Route
+              path="/admin/assign-clients"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AssignClientToUser />
+                </ProtectedRoute>
+              }
+            />
+            
             {/* Client Routes */}
             <Route
               path="/client/produits"
@@ -615,6 +633,12 @@ const App = () => (
                 <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
                   <ClientRapports />
 
+            {/* PDA Routes */}
+            <Route
+              path="/pda"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAHome />
             {/* TMS Routes */}
             <Route
               path="/tms"
@@ -639,6 +663,10 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <DashboardFacturation />
+              path="/pda/reception"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAReception />
               path="/tms/dashboard"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
@@ -647,6 +675,10 @@ const App = () => (
               }
             />
             <Route
+              path="/pda/inventaire"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAInventaire />
               path="/tms/planification"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
@@ -655,6 +687,10 @@ const App = () => (
               }
             />
             <Route
+              path="/pda/mouvements"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAMouvements />
               path="/tms/tracking"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
@@ -667,6 +703,10 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
                   <RapportsFacturation />
+              path="/pda/controle-qualite"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAControleQualite />
               path="/tms/analytics"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
@@ -686,6 +726,10 @@ const App = () => (
             {/* Portails Publics (pas de protection) */}
             <Route path="/public/tracking" element={<TrackingPortail />} />
             <Route path="/public/retours" element={<RetoursPortail />} />
+              path="/pda/retours"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDARetours />
               path="/tms/green"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
@@ -714,7 +758,7 @@ const App = () => (
             <Route path="/produits" element={<Navigate to="/stock/produits" replace />} />
             <Route path="/retours" element={<Navigate to="/commandes/retours" replace />} />
             <Route path="/client/attendu-reception" element={<Navigate to="/client/reception" replace />} />
-            
+
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
