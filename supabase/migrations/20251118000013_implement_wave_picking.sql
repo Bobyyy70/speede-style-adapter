@@ -292,7 +292,7 @@ SELECT
   END AS taux_completion_lignes,
 
   -- Erreurs
-  COALESCE(SUM(wl.CASE WHEN statut = 'erreur' THEN 1 ELSE 0 END), 0) AS nb_erreurs,
+  COALESCE(SUM(CASE WHEN wl.statut = 'erreur' THEN 1 ELSE 0 END), 0) AS nb_erreurs,
 
   -- Performance
   CASE
