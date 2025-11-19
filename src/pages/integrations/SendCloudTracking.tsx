@@ -91,8 +91,6 @@ export default function SendCloudTracking() {
     queryKey: ['tracking-events', parcels?.[0]?.parcel_id],
     enabled: !!parcels?.[0]?.parcel_id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sendcloud_tracking_events' as any)
       const { data, error } = await (supabase as any)
         .from('sendcloud_tracking_events')
         .select('*')

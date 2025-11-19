@@ -83,7 +83,7 @@ export default function PDAInventaire() {
       // Récupérer le stock actuel
       const { data: stock } = await supabase
         .from("stock_disponible")
-        .select("quantite_disponible")
+        .select("stock_disponible")
         .eq("produit_id", produit.id)
         .single();
 
