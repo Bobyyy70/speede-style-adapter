@@ -49,9 +49,7 @@ export default function SendCloudTracking() {
   const { data: parcels, isLoading, refetch } = useQuery({
     queryKey: ['sendcloud-parcels', searchTerm],
     queryFn: async () => {
-      let query = supabase
-        .from('sendcloud_parcels' as any)
-      let query = (supabase as any)
+      let queryBuilder = (supabase as any)
         .from('sendcloud_parcels')
         .select(`
           *,
@@ -64,10 +62,10 @@ export default function SendCloudTracking() {
         .limit(50);
 
       if (searchTerm) {
-        query = query.or(`tracking_number.ilike.%${searchTerm}%,parcel_id.ilike.%${searchTerm}%`);
+        queryBuilder = queryBuilder.or(`tracking_number.ilike.%${searchTerm}%,parcel_id.ilike.%${searchTerm}%`);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await queryBuilder;
       if (error) throw error;
 
       // Enrichir avec les noms des clients
@@ -93,8 +91,6 @@ export default function SendCloudTracking() {
     queryKey: ['tracking-events', parcels?.[0]?.parcel_id],
     enabled: !!parcels?.[0]?.parcel_id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sendcloud_tracking_events' as any)
       const { data, error } = await (supabase as any)
         .from('sendcloud_tracking_events')
         .select('*')
