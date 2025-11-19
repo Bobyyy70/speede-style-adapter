@@ -77,13 +77,13 @@ interface Commande {
   id: string;
   numero_commande: string;
   date_creation: string;
-  statut: string;
+  statut_wms: string; // Fixed: was 'statut'
   source: string;
-  marketplace_order_id?: string;
-  client_nom: string;
+  reference_client?: string; // Fixed: was 'marketplace_order_id'
+  adresse_nom: string; // Fixed: was 'client_nom'
   adresse_pays?: string;
-  adresse_pays_code?: string;
-  montant_total?: number;
+  pays_code?: string; // Fixed: was 'adresse_pays_code'
+  valeur_totale?: number; // Fixed: was 'montant_total'
   poids_total?: number;
   nb_articles?: number;
   transporteur?: string;
@@ -169,7 +169,7 @@ export default function CommandesCentral() {
       }
 
       if (filters.pays.length > 0) {
-        query = query.in("adresse_pays_code", filters.pays);
+        query = query.in("pays_code", filters.pays);
       }
 
       const { data, error } = await query;
@@ -182,17 +182,17 @@ export default function CommandesCentral() {
         const searchLower = filters.search.toLowerCase();
         filtered = filtered.filter(cmd =>
           cmd.numero_commande?.toLowerCase().includes(searchLower) ||
-          cmd.client_nom?.toLowerCase().includes(searchLower) ||
-          cmd.marketplace_order_id?.toLowerCase().includes(searchLower)
+          cmd.adresse_nom?.toLowerCase().includes(searchLower) ||
+          cmd.reference_client?.toLowerCase().includes(searchLower)
         );
       }
 
       if (filters.montantMin !== undefined) {
-        filtered = filtered.filter(cmd => (cmd.montant_total || 0) >= filters.montantMin!);
+        filtered = filtered.filter(cmd => (cmd.valeur_totale || 0) >= filters.montantMin!);
       }
 
       if (filters.montantMax !== undefined) {
-        filtered = filtered.filter(cmd => (cmd.montant_total || 0) <= filters.montantMax!);
+        filtered = filtered.filter(cmd => (cmd.valeur_totale || 0) <= filters.montantMax!);
       }
 
       return filtered;
@@ -207,14 +207,14 @@ export default function CommandesCentral() {
       count: commandesData?.filter(cmd => cmd.source === source.id).length || 0,
       ca: commandesData
         ?.filter(cmd => cmd.source === source.id)
-        .reduce((sum, cmd) => sum + (cmd.montant_total || 0), 0) || 0,
+        .reduce((sum, cmd) => sum + (cmd.valeur_totale || 0), 0) || 0,
     })),
     parStatut: Object.entries(ORDER_STATUS_LABELS).map(([key, label]) => ({
       statut: key,
       label,
-      count: commandesData?.filter(cmd => cmd.statut === key).length || 0,
+      count: commandesData?.filter(cmd => cmd.statut_wms === key).length || 0,
     })),
-    caTotal: commandesData?.reduce((sum, cmd) => sum + (cmd.montant_total || 0), 0) || 0,
+    caTotal: commandesData?.reduce((sum, cmd) => sum + (cmd.valeur_totale || 0), 0) || 0,
     poidsTotal: commandesData?.reduce((sum, cmd) => sum + (cmd.poids_total || 0), 0) || 0,
   };
 
@@ -247,10 +247,10 @@ export default function CommandesCentral() {
         cmd.numero_commande,
         new Date(cmd.date_creation).toLocaleDateString('fr-FR'),
         cmd.source,
-        ORDER_STATUS_LABELS[cmd.statut as keyof typeof ORDER_STATUS_LABELS] || cmd.statut,
-        cmd.client_nom,
-        cmd.montant_total?.toFixed(2) || '0.00',
-        cmd.adresse_pays_code || '',
+        ORDER_STATUS_LABELS[cmd.statut_wms as keyof typeof ORDER_STATUS_LABELS] || cmd.statut_wms,
+        cmd.adresse_nom,
+        cmd.valeur_totale?.toFixed(2) || '0.00',
+        cmd.pays_code || '',
       ].join(';'))
     ].join('\n');
 
@@ -288,9 +288,9 @@ export default function CommandesCentral() {
       [ORDER_STATUSES.EN_ATTENTE_REAPPRO]: { variant: 'secondary', icon: Clock },
       [ORDER_STATUSES.STOCK_RESERVE]: { variant: 'default', icon: Package },
       [ORDER_STATUSES.EN_PREPARATION]: { variant: 'default', icon: Package },
-      [ORDER_STATUSES.PRETE_EXPEDITION]: { variant: 'default', icon: CheckCircle2 },
+      [ORDER_STATUSES.PRET_EXPEDITION]: { variant: 'default', icon: CheckCircle2 },
       [ORDER_STATUSES.EXPEDIEE]: { variant: 'default', icon: Truck },
-      [ORDER_STATUSES.LIVREE]: { variant: 'default', icon: CheckCircle2 },
+      [ORDER_STATUSES.LIVRE]: { variant: 'default', icon: CheckCircle2 },
       [ORDER_STATUSES.ANNULEE]: { variant: 'destructive', icon: XCircle },
       [ORDER_STATUSES.EN_ATTENTE_VALIDATION]: { variant: 'secondary', icon: AlertTriangle },
     };
@@ -617,15 +617,15 @@ export default function CommandesCentral() {
                             })}
                           </TableCell>
                           <TableCell>{getSourceBadge(commande.source)}</TableCell>
-                          <TableCell>{commande.client_nom}</TableCell>
-                          <TableCell>{getStatutBadge(commande.statut)}</TableCell>
+                          <TableCell>{commande.adresse_nom}</TableCell>
+                          <TableCell>{getStatutBadge(commande.statut_wms)}</TableCell>
                           <TableCell className="font-medium">
-                            {commande.montant_total?.toFixed(2) || '0.00'} €
+                            {commande.valeur_totale?.toFixed(2) || '0.00'} €
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-1">
                               <Globe className="w-3 h-3 text-muted-foreground" />
-                              <span className="text-xs">{commande.adresse_pays_code || '-'}</span>
+                              <span className="text-xs">{commande.pays_code || '-'}</span>
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
@@ -808,16 +808,16 @@ export default function CommandesCentral() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Statut</Label>
-                  <div className="mt-1">{getStatutBadge(selectedCommande.statut)}</div>
+                  <div className="mt-1">{getStatutBadge(selectedCommande.statut_wms)}</div>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Client</Label>
-                  <p className="text-sm font-medium mt-1">{selectedCommande.client_nom}</p>
+                  <p className="text-sm font-medium mt-1">{selectedCommande.adresse_nom}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Montant</Label>
                   <p className="text-sm font-medium mt-1">
-                    {selectedCommande.montant_total?.toFixed(2) || '0.00'} €
+                    {selectedCommande.valeur_totale?.toFixed(2) || '0.00'} €
                   </p>
                 </div>
               </div>

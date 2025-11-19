@@ -602,12 +602,12 @@ async function fetchOMSMetrics(period: '24h' | '7d' | '30d', clientId: string | 
 
   // Calculs des métriques
   const ordersToday = commandes?.length || 0;
-  const revenue24h = commandes?.reduce((sum, cmd) => sum + (parseFloat(cmd.montant_total) || 0), 0) || 0;
+  const revenue24h = commandes?.reduce((sum, cmd) => sum + (parseFloat(String(cmd.valeur_totale || 0)) || 0), 0) || 0;
   const avgOrderValue = ordersToday > 0 ? revenue24h / ordersToday : 0;
 
   // Métriques par statut
   const ordersByStatus = commandes?.reduce((acc, cmd) => {
-    acc[cmd.statut] = (acc[cmd.statut] || 0) + 1;
+    acc[cmd.statut_wms] = (acc[cmd.statut_wms] || 0) + 1;
     return acc;
   }, {} as { [key: string]: number }) || {};
 

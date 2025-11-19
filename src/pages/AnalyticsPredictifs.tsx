@@ -18,6 +18,7 @@ import {
   BarChart3,
   LineChart,
   Target,
+  CheckCircle2,
   ShieldAlert,
   Sparkles,
   RefreshCw,
