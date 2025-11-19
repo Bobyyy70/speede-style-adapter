@@ -285,6 +285,8 @@ export const DocumentsSection = ({ commandeId, commande }: DocumentsSectionProps
     } finally {
       setSendingCustomsDocs(false);
     }
+  };
+
   const handleThermalPrint = (docType: string) => {
     // Mapper les types de documents vers les types supportés par useThermalPrinter
     const typeMapping: Record<string, any> = {
