@@ -408,7 +408,7 @@ Deno.serve(async (req) => {
           let enrichedCount = 0;
           let enrichErrors = 0;
 
-          // Dynamic batch sizing based on API performance
+          // Dynamic batch sizing based on API performance and error rates
           let batchSize = 5; // Start with conservative batch size
           const MIN_BATCH_SIZE = 2;
           const MAX_BATCH_SIZE = 15;
