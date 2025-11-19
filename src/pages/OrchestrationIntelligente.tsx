@@ -514,7 +514,8 @@ export default function OrchestrationIntelligente() {
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between">
                         <span className="flex items-center gap-2">
-                          <Warehouse className="h-5 w-5" />
+                          {/* Warehouse icon placeholder */}
+                          <span className="text-lg">🏭</span>
                           {warehouse.name}
                         </span>
                         <Badge variant={isNearCapacity ? 'destructive' : 'secondary'}>
