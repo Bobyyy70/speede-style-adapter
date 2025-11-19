@@ -153,7 +153,7 @@ export default function CommandesCentral() {
 
       // Appliquer les filtres
       if (filters.statuts.length > 0) {
-        query = query.in("statut_wms", filters.statuts);
+        query = query.in("statut_wms", filters.statuts as any);
       }
 
       if (filters.sources.length > 0) {
