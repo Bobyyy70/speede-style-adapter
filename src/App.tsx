@@ -64,6 +64,10 @@ import ApprentissageContinu from "./pages/analytics/ApprentissageContinu";
 import OptimisationTransport from "./pages/OptimisationTransport";
 import OnboardingWizard from "./pages/onboarding/OnboardingWizard";
 import OMSDashboard from "./pages/OMSDashboard";
+import OrchestrationIntelligente from "./pages/OrchestrationIntelligente";
+import PortailClient from "./pages/client/PortailClient";
+import AnalyticsPredictifs from "./pages/AnalyticsPredictifs";
+import OmnicanalClickCollect from "./pages/OmnicanalClickCollect";
 
 const queryClient = new QueryClient();
 
@@ -382,6 +386,46 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
                   <OMSDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Orchestration Intelligente */}
+            <Route
+              path="/orchestration-intelligente"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <OrchestrationIntelligente />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Analytics Prédictifs */}
+            <Route
+              path="/analytics-predictifs"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <AnalyticsPredictifs />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Omnicanal Click & Collect */}
+            <Route
+              path="/omnicanal-click-collect"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
+                  <OmnicanalClickCollect />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Portail Client */}
+            <Route
+              path="/client/portail"
+              element={
+                <ProtectedRoute allowedRoles={['client', 'admin', 'gestionnaire']}>
+                  <PortailClient />
                 </ProtectedRoute>
               }
             />
