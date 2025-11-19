@@ -65,17 +65,13 @@ export const GestionWaves = () => {
     type_wave: "standard",
   });
 
-  // Fetch waves
+  // Fetch waves - Feature disabled (table not in database)
   const { data: waves, isLoading } = useQuery({
     queryKey: ["wave_picking"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("wave_picking")
-        .select("*")
-        .order("date_creation", { ascending: false });
-
-      if (error) throw error;
-      return data as Wave[];
+      // Wave picking feature requires wave_picking table
+      // Currently disabled until database migration is run
+      return [] as Wave[];
     },
     refetchInterval: 10000, // Refresh every 10s
   });
@@ -105,15 +101,13 @@ export const GestionWaves = () => {
   // Créer une wave
   const createWaveMutation = useMutation({
     mutationFn: async (waveData: typeof newWave) => {
-      const { data, error } = await supabase.rpc("creer_wave_picking", {
-        p_nom_wave: waveData.nom_wave,
-        p_zone_picking: waveData.zone_picking || null,
-        p_priorite: waveData.priorite,
-        p_type_wave: waveData.type_wave,
+      // Wave creation disabled - requires database function
+      toast({
+        title: "Fonctionnalité désactivée",
+        description: "La création de waves nécessite une migration de base de données",
+        variant: "destructive",
       });
-
-      if (error) throw error;
-      return data;
+      throw new Error("Feature disabled");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wave_picking"] });
@@ -138,15 +132,15 @@ export const GestionWaves = () => {
     },
   });
 
-  // Assigner un opérateur
+  // Assigner un opérateur - Feature disabled
   const assignerOperateurMutation = useMutation({
     mutationFn: async ({ waveId, operateurId }: { waveId: string; operateurId: string }) => {
-      const { error } = await supabase.rpc("assigner_operateur_wave", {
-        p_wave_id: waveId,
-        p_operateur_id: operateurId,
+      toast({
+        title: "Fonctionnalité désactivée",
+        description: "L'assignation d'opérateur nécessite une migration de base de données",
+        variant: "destructive",
       });
-
-      if (error) throw error;
+      throw new Error("Feature disabled");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wave_picking"] });
@@ -164,14 +158,15 @@ export const GestionWaves = () => {
     },
   });
 
-  // Démarrer une wave
+  // Démarrer une wave - Feature disabled
   const demarrerWaveMutation = useMutation({
     mutationFn: async (waveId: string) => {
-      const { error } = await supabase.rpc("demarrer_wave_picking", {
-        p_wave_id: waveId,
+      toast({
+        title: "Fonctionnalité désactivée",
+        description: "Le démarrage de wave nécessite une migration de base de données",
+        variant: "destructive",
       });
-
-      if (error) throw error;
+      throw new Error("Feature disabled");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wave_picking"] });
@@ -189,14 +184,15 @@ export const GestionWaves = () => {
     },
   });
 
-  // Finaliser une wave
+  // Finaliser une wave - Feature disabled
   const finaliserWaveMutation = useMutation({
     mutationFn: async (waveId: string) => {
-      const { error } = await supabase.rpc("finaliser_wave_picking", {
-        p_wave_id: waveId,
+      toast({
+        title: "Fonctionnalité désactivée",
+        description: "La finalisation de wave nécessite une migration de base de données",
+        variant: "destructive",
       });
-
-      if (error) throw error;
+      throw new Error("Feature disabled");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wave_picking"] });

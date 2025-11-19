@@ -5,16 +5,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Download, Package, AlertTriangle } from 'lucide-react';
+import { Download, Package, AlertTriangle, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getN8nConfig, getTransporteurRules } from '@/lib/expeditionConfig';
 import { ParcelCreationPayload, ParcelCreationResponse } from '@/pages/expedition/types';
+import { RelayPointSelector } from '@/components/RelayPointSelector';
 
 interface Order {
   id: string;
   numero_commande: string;
   poids_total?: number;
+  code_postal?: string;
   items: any[];
 }
 
@@ -37,6 +39,7 @@ export function ParcelCreationForm({ order, disabled }: ParcelCreationFormProps)
   const [carrier, setCarrier] = useState<string>('Auto');
   const [service, setService] = useState<string>('Auto');
   const [servicePointId, setServicePointId] = useState('');
+  const [showRelaySelector, setShowRelaySelector] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ParcelCreationResponse | null>(null);
 
