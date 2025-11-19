@@ -83,6 +83,14 @@ import GreenDashboard from "./pages/tms/GreenDashboard";
 import ConfigurationTransporteurs from "./pages/tms/ConfigurationTransporteurs";
 import ExpeditionTMS from "./pages/tms/Expedition";
 
+// PDA Routes
+import PDAHome from "./pages/pda/PDAHome";
+import PDAReception from "./pages/pda/PDAReception";
+import PDAInventaire from "./pages/pda/PDAInventaire";
+import PDAMouvements from "./pages/pda/PDAMouvements";
+import PDAControleQualite from "./pages/pda/PDAControleQualite";
+import PDARetours from "./pages/pda/PDARetours";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -591,6 +599,12 @@ const App = () => (
               }
             />
 
+            {/* PDA Routes */}
+            <Route
+              path="/pda"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAHome />
             {/* TMS Routes */}
             <Route
               path="/tms"
@@ -601,6 +615,10 @@ const App = () => (
               }
             />
             <Route
+              path="/pda/reception"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAReception />
               path="/tms/dashboard"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
@@ -609,6 +627,10 @@ const App = () => (
               }
             />
             <Route
+              path="/pda/inventaire"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAInventaire />
               path="/tms/planification"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
@@ -617,6 +639,10 @@ const App = () => (
               }
             />
             <Route
+              path="/pda/mouvements"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAMouvements />
               path="/tms/tracking"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
@@ -625,6 +651,10 @@ const App = () => (
               }
             />
             <Route
+              path="/pda/controle-qualite"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDAControleQualite />
               path="/tms/analytics"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire']}>
@@ -633,6 +663,10 @@ const App = () => (
               }
             />
             <Route
+              path="/pda/retours"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire']}>
+                  <PDARetours />
               path="/tms/green"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
@@ -661,7 +695,7 @@ const App = () => (
             <Route path="/produits" element={<Navigate to="/stock/produits" replace />} />
             <Route path="/retours" element={<Navigate to="/commandes/retours" replace />} />
             <Route path="/client/attendu-reception" element={<Navigate to="/client/reception" replace />} />
-            
+
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
