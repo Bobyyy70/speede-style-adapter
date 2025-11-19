@@ -179,27 +179,97 @@ Exemple: Commande 5 produits
 
 ---
 
+### 🔌 BONUS - Marketplace d'Intégrations (40+ Apps)
+**Fichier**: `src/pages/MarketplaceIntegrations.tsx`
+**Route**: `/marketplace-integrations`
+**Rôles**: admin, gestionnaire
+
+**Fonctionnalités**:
+- ✅ Hub central d'intégrations (style app store)
+- ✅ 40+ services disponibles:
+  - **Marketplaces** (5): Amazon, eBay, Cdiscount, Rakuten, Fnac
+  - **E-commerce/CMS** (5): Shopify, WooCommerce, PrestaShop, Magento, Wix
+  - **ERP** (3): SAP Business One, Odoo, Sage 100
+  - **Paiement** (3): Stripe, PayPal, Adyen
+  - **Shipping** (3): SendCloud, DHL Express, UPS
+  - **CRM** (2): Salesforce, HubSpot
+  - **Autres** (2): Zapier, API Publique
+- ✅ Recherche intelligente + filtres par catégorie
+- ✅ Statuts: Installé, Disponible, Bientôt
+- ✅ Configuration par intégration (API keys, webhooks)
+- ✅ Stats temps réel (commandes/jour, dernière sync)
+- ✅ Import/Export configuration
+- ✅ Scoring popularité
+
+**Avantages**:
+- 🎯 Installation 1-clic
+- 🎯 Configuration centralisée
+- 🎯 Monitoring par intégration
+- 🎯 Documentation intégrée
+
+---
+
+### 🪝 BONUS - Gestionnaire de Webhooks
+**Fichier**: `src/pages/WebhooksManager.tsx`
+**Route**: `/webhooks-manager`
+**Rôles**: admin, gestionnaire
+
+**Fonctionnalités**:
+- ✅ Gestion complète endpoints webhooks
+- ✅ Monitoring temps réel:
+  - Taux succès par endpoint
+  - Latence moyenne
+  - Échecs 24h
+- ✅ Logs détaillés:
+  - Payload envoyé + réponse reçue
+  - Codes HTTP + durées (ms)
+  - Gestion erreurs + retries (max 3x)
+  - Timeline complète des appels
+- ✅ 17 événements disponibles:
+  - order.* (created, updated, cancelled, fulfilled)
+  - payment.* (succeeded, failed)
+  - inventory.* (updated, low)
+  - product.* (created, updated, deleted)
+  - parcel.* (shipped, delivered, exception)
+  - customer.* (created, updated)
+- ✅ Testing intégré:
+  - Test manuel endpoints
+  - Payload personnalisable
+  - Rejeu événements
+- ✅ Filtres par statut (success/failed/pending)
+- ✅ Export logs (CSV/JSON)
+
+**Impact**:
+- 🎯 Debugging facilité
+- 🎯 Monitoring proactif
+- 🎯 Retry automatique
+- 🎯 Alertes endpoints en erreur
+
+---
+
 ## 📁 Fichiers Créés/Modifiés
 
-### Nouveaux Fichiers (6)
+### Nouveaux Fichiers (8)
 ```
 src/pages/OMSDashboard.tsx                     (500+ lignes)
 src/pages/OrchestrationIntelligente.tsx        (650+ lignes)
 src/pages/client/PortailClient.tsx             (700+ lignes)
 src/pages/AnalyticsPredictifs.tsx              (600+ lignes)
 src/pages/OmnicanalClickCollect.tsx            (550+ lignes)
+src/pages/MarketplaceIntegrations.tsx          (700+ lignes) ⭐ NOUVEAU
+src/pages/WebhooksManager.tsx                  (650+ lignes) ⭐ NOUVEAU
 docs/OMS_COMPETITIVE_ANALYSIS.md               (400+ lignes)
 docs/IMPLEMENTATION_COMPLETE.md                (ce fichier)
 ```
 
 ### Fichiers Modifiés (2)
 ```
-src/App.tsx                            (ajout 4 routes)
-src/components/DashboardLayout.tsx     (ajout section "OMS Avancé")
+src/App.tsx                            (ajout 7 routes)
+src/components/DashboardLayout.tsx     (ajout sections "OMS Avancé" + "Intégrations")
 ```
 
-**Total code**: ~3400+ lignes de code TypeScript React
-**Total documentation**: ~800+ lignes markdown
+**Total code**: ~4900+ lignes de code TypeScript React
+**Total documentation**: ~1200+ lignes markdown
 
 ---
 
@@ -222,6 +292,8 @@ src/components/DashboardLayout.tsx     (ajout section "OMS Avancé")
 | `/analytics-predictifs` | AnalyticsPredictifs.tsx | admin, gestionnaire |
 | `/omnicanal-click-collect` | OmnicanalClickCollect.tsx | admin, gestionnaire |
 | `/client/portail` | PortailClient.tsx | client, admin, gestionnaire |
+| `/marketplace-integrations` | MarketplaceIntegrations.tsx | admin, gestionnaire |
+| `/webhooks-manager` | WebhooksManager.tsx | admin, gestionnaire |
 
 ---
 
