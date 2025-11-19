@@ -1,7 +1,7 @@
 // Feature disabled - PDA reception not fully configured
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import PDALayout from '@/components/pda/PDALayout';
+import { PDALayout } from '@/components/pda/PDALayout';
 
 export default function PDAReception() {
   return (
