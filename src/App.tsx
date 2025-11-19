@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Reception from "./pages/Reception";
 import Mouvements from "./pages/Mouvements";
 import Commandes from "./pages/Commandes";
+import CommandesCentral from "./pages/CommandesCentral";
 import Reappro from "./pages/Reappro";
 import Produits from "./pages/Produits";
 import Emplacements from "./pages/Emplacements";
@@ -144,6 +145,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire', 'client']}>
                   <Commandes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/commandes/central"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'operateur', 'gestionnaire', 'client']}>
+                  <CommandesCentral />
                 </ProtectedRoute>
               }
             />

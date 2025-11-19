@@ -154,6 +154,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/commandes",
         icon: ClipboardList
       }, {
+        name: "Central de Commandes",
+        href: "/commandes/central",
+        icon: Activity
+      }, {
         name: "Créer une commande",
         href: "/client/commandes/creer",
         icon: PlusCircle
