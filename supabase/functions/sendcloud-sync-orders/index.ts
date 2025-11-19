@@ -205,19 +205,48 @@ Deno.serve(async (req) => {
     runId = await startSyncLog(supabase, 'orders', undefined);
     console.log(`[SendCloud Sync] Sync log started with runId: ${runId}`);
 
+    // ============================================================
+    // GET OR CREATE SYNC CURSOR
+    // ============================================================
+    const { data: cursor, error: cursorError } = await supabase.rpc(
+      'get_or_create_sync_cursor',
+      { p_sync_type: 'orders' }
+    );
+
+    if (cursorError) {
+      console.error('[Cursor] Error getting cursor:', cursorError);
+      throw new Error(`Failed to get sync cursor: ${cursorError.message}`);
+    }
+
+    console.log(`[Cursor] Retrieved cursor:`, {
+      page_cursor: cursor.page_cursor,
+      last_synced_at: cursor.last_synced_at,
+      status: cursor.status
+    });
+
     // Calculate time window
     let dateMin: string;
     if (mode === 'full') {
       const d = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
       dateMin = d.toISOString();
       console.log(`[Full] 90 days: ${dateMin}`);
+      // Reset cursor for full sync
+      await supabase.rpc('reset_sync_cursor', { p_sync_type: 'orders' });
+      console.log('[Cursor] Reset for full sync');
     } else if (customStartDate) {
       dateMin = new Date(customStartDate).toISOString();
       console.log(`[Custom] from: ${dateMin}`);
+      // Reset cursor for custom date sync
+      await supabase.rpc('reset_sync_cursor', { p_sync_type: 'orders' });
+      console.log('[Cursor] Reset for custom date sync');
     } else {
       const d = new Date(Date.now() - 5 * 60 * 1000);
       dateMin = d.toISOString();
       console.log(`[Incremental] 5min: ${dateMin}`);
+      // For incremental, continue from cursor if available
+      if (cursor.last_synced_at) {
+        console.log(`[Cursor] Continuing from last sync: ${cursor.last_synced_at}`);
+      }
     }
 
     const authHeader = 'Basic ' + btoa(`${publicKey}:${secretKey}`);
@@ -335,13 +364,35 @@ Deno.serve(async (req) => {
 
       try {
         const dateParam = mode === 'full' ? 'created_at_min' : 'updated_at_min';
-        let page = 1;
+        
+        // ============================================================
+        // CURSOR-BASED PAGINATION
+        // Start from cursor position (or 1 if reset/new)
+        // Process pages in batches to avoid timeout, save progress after each batch
+        // ============================================================
+        let page = cursor.page_cursor || 1;
         const perPage = 100;
-        const maxPages = 5; // ✅ RÉDUIT de 50 à 5 pour éviter timeout (500 parcels max au lieu de 5000)
+        const maxPagesPerExecution = 50; // Process up to 50 pages (5000 parcels) per execution
+        const startPage = page;
+        const endPage = page + maxPagesPerExecution - 1;
 
-        console.log(`[V2 Parcels] Using ${dateParam}=${dateMin} (max ${maxPages} pages = ${maxPages * perPage} parcels max)`);
+        console.log(`[V2 Parcels] Using ${dateParam}=${dateMin}`);
+        console.log(`[V2 Parcels] Cursor-based pagination: starting at page ${startPage}, will process up to page ${endPage}`);
 
-        while (page <= maxPages) {
+        // Update cursor status to 'syncing'
+        await supabase.rpc('update_sync_cursor', {
+          p_sync_type: 'orders',
+          p_status: 'syncing',
+          p_metadata: { 
+            mode, 
+            dateParam, 
+            dateMin,
+            startPage,
+            maxPagesPerExecution 
+          }
+        });
+
+        while (page <= endPage) {
           const url = `${SENDCLOUD_V2_PARCELS_ENDPOINT}?${dateParam}=${dateMin}&page=${page}&per_page=${perPage}`;
           const callStart = Date.now();
 
@@ -374,11 +425,54 @@ Deno.serve(async (req) => {
             const parcels = data.parcels || [];
             console.log(`[V2 Parcels] Page ${page}: ${parcels.length} parcels`);
 
-            if (parcels.length === 0) break;
+            if (parcels.length === 0) {
+              console.log(`[V2 Parcels] No more parcels found at page ${page}, sync complete`);
+              // Update cursor to mark completion
+              await supabase.rpc('update_sync_cursor', {
+                p_sync_type: 'orders',
+                p_last_synced_at: new Date().toISOString(),
+                p_page_cursor: 1, // Reset to 1 since we've completed
+                p_status: 'completed',
+                p_metadata: {
+                  last_completed_at: new Date().toISOString(),
+                  total_pages_processed: page - startPage,
+                  mode
+                }
+              });
+              break;
+            }
 
             allParcels.push(...parcels);
 
-            if (parcels.length < perPage) break;
+            // Update cursor after each successful page
+            await supabase.rpc('update_sync_cursor', {
+              p_sync_type: 'orders',
+              p_page_cursor: page + 1, // Save next page to process
+              p_last_synced_at: new Date().toISOString(),
+              p_status: 'syncing',
+              p_metadata: {
+                current_page: page,
+                parcels_count: allParcels.length,
+                mode
+              }
+            });
+
+            if (parcels.length < perPage) {
+              console.log(`[V2 Parcels] Received fewer than ${perPage} parcels, assuming end of data`);
+              // Update cursor to mark completion
+              await supabase.rpc('update_sync_cursor', {
+                p_sync_type: 'orders',
+                p_last_synced_at: new Date().toISOString(),
+                p_page_cursor: 1, // Reset to 1 since we've completed
+                p_status: 'completed',
+                p_metadata: {
+                  last_completed_at: new Date().toISOString(),
+                  total_pages_processed: page - startPage + 1,
+                  mode
+                }
+              });
+              break;
+            }
 
             page++;
           } catch (error: any) {
@@ -386,8 +480,50 @@ Deno.serve(async (req) => {
             const errMsg = error?.message || String(error);
             await logApiCall(url, null, errMsg, duration, { page, strategy: 'parcels_v2' });
             if (!v2Error) v2Error = errMsg;
+            
+            // Mark cursor as error
+            await supabase.rpc('mark_sync_cursor_error', {
+              p_sync_type: 'orders',
+              p_error_message: `Error at page ${page}: ${errMsg}`,
+              p_retry_delay_minutes: 15
+            });
+            
             break; // Stop V2 pagination
           }
+        }
+
+        // ============================================================
+        // CURSOR UPDATE: Mark completion or continuation status
+        // ============================================================
+        if (page > endPage && allParcels.length > 0) {
+          // Reached the max pages for this execution, but there may be more data
+          console.log(`[V2 Parcels] Processed ${endPage - startPage + 1} pages, cursor saved at page ${page} for next execution`);
+          await supabase.rpc('update_sync_cursor', {
+            p_sync_type: 'orders',
+            p_last_synced_at: new Date().toISOString(),
+            p_page_cursor: page, // Next page to continue from
+            p_status: 'idle', // Ready for next execution
+            p_metadata: {
+              last_batch_completed_at: new Date().toISOString(),
+              pages_processed_this_batch: endPage - startPage + 1,
+              total_parcels_this_batch: allParcels.length,
+              mode,
+              more_pages_available: true
+            }
+          });
+        } else if (allParcels.length === 0 && !v2Error) {
+          // No parcels found, mark as completed
+          console.log('[V2 Parcels] No parcels found in this sync window');
+          await supabase.rpc('update_sync_cursor', {
+            p_sync_type: 'orders',
+            p_last_synced_at: new Date().toISOString(),
+            p_page_cursor: 1,
+            p_status: 'completed',
+            p_metadata: {
+              last_completed_at: new Date().toISOString(),
+              mode
+            }
+          });
         }
 
         // ============================================================
