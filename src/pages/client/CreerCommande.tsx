@@ -9,10 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { ORDER_STATUSES } from "@/lib/orderStatuses";
 
@@ -47,6 +48,7 @@ const CreerCommande = () => {
   const [selectedContactId, setSelectedContactId] = useState<string>("");
   const [saveAsContact, setSaveAsContact] = useState(false);
   const [labelContact, setLabelContact] = useState("");
+  const [activeTab, setActiveTab] = useState("expediteur");
   
   // Pour admin/gestionnaire: liste des clients et client sélectionné
   const [clients, setClients] = useState<Array<{ id: string; nom_entreprise: string }>>([]);
@@ -515,6 +517,22 @@ const CreerCommande = () => {
   const asClient = searchParams.get("asClient");
   const needsClientSelection = !asClient && (userRole === 'admin' || userRole === 'gestionnaire');
 
+  const tabs = ["expediteur", "destinataire", "produits", "etiquette", "transport"];
+  
+  const handleNextTab = () => {
+    const currentIndex = tabs.indexOf(activeTab);
+    if (currentIndex < tabs.length - 1) {
+      setActiveTab(tabs[currentIndex + 1]);
+    }
+  };
+
+  const handlePrevTab = () => {
+    const currentIndex = tabs.indexOf(activeTab);
+    if (currentIndex > 0) {
+      setActiveTab(tabs[currentIndex - 1]);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -551,8 +569,17 @@ const CreerCommande = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Informations Expéditeur */}
-          <Card>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="expediteur">📤 Expéditeur</TabsTrigger>
+              <TabsTrigger value="destinataire">📦 Destinataire</TabsTrigger>
+              <TabsTrigger value="produits">📦 Produits</TabsTrigger>
+              <TabsTrigger value="etiquette">🏷️ Étiquette</TabsTrigger>
+              <TabsTrigger value="transport">🚚 Transport</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="expediteur" className="space-y-4">
+              <Card>
             <CardHeader>
               <CardTitle>📤 Informations Expéditeur</CardTitle>
               <CardDescription>Coordonnées de l'expéditeur (entrepôt ou autre)</CardDescription>
