@@ -101,8 +101,7 @@ export const IAChat = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.session.access_token}`,
-            'X-N8N-API-KEY': 'votre-cle-api-n8n'
+            'Authorization': `Bearer ${session.session.access_token}`
           },
           body: JSON.stringify({
             message: inputMessage,
