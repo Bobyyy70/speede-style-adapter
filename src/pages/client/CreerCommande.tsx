@@ -673,8 +673,9 @@ const CreerCommande = () => {
               </div>
             </CardContent>
           </Card>
+          </TabsContent>
 
-          {/* Informations Destinataire */}
+          <TabsContent value="destinataire" className="space-y-4">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -932,7 +933,9 @@ const CreerCommande = () => {
               ) : null}
             </CardContent>
           </Card>
+          </TabsContent>
 
+          <TabsContent value="produits" className="space-y-4">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -1010,7 +1013,9 @@ const CreerCommande = () => {
               )}
             </CardContent>
           </Card>
+          </TabsContent>
 
+          <TabsContent value="etiquette" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Étiquette de Transport (Optionnel)</CardTitle>
@@ -1050,7 +1055,9 @@ const CreerCommande = () => {
               )}
             </CardContent>
           </Card>
+          </TabsContent>
 
+          <TabsContent value="transport" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Transporteur & Remarques</CardTitle>
@@ -1077,6 +1084,8 @@ const CreerCommande = () => {
               </div>
             </CardContent>
           </Card>
+          </TabsContent>
+          </Tabs>
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => navigate("/client/commandes")}>
