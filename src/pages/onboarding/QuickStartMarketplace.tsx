@@ -44,8 +44,8 @@ export default function QuickStartMarketplace() {
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Wizard terminé - redirection vers dashboard OMS
-      navigate('/oms-dashboard');
+      // Wizard terminé - redirection vers le tableau de bord
+      navigate('/');
     }
   };
 

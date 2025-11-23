@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import logo from "@/assets/logo.jpg";
 // Icons imports
-import { LayoutDashboard, Settings, LogOut, Search, Menu, X, Bell, ArrowRightLeft, ClipboardList, RefreshCw, MapPin, Undo2, TruckIcon, Plug, FolderTree, Boxes, Warehouse, PackageOpen, PackagePlus, UserCog, Receipt, ArrowDownUp, ShipWheel, Cable, Building2, Eye, ChevronDown, PlusCircle, Headphones, Wrench, GitBranch, Shield, AlertTriangle, Filter, Webhook, Package, Activity, Zap, Brain, Store } from "lucide-react";
+import { Home, LayoutDashboard, Settings, LogOut, Search, Menu, X, Bell, ArrowRightLeft, ClipboardList, RefreshCw, MapPin, Undo2, TruckIcon, Plug, FolderTree, Boxes, Warehouse, PackageOpen, PackagePlus, UserCog, Receipt, ArrowDownUp, ShipWheel, Cable, Building2, Eye, ChevronDown, PlusCircle, Headphones, Wrench, GitBranch, Shield, AlertTriangle, Filter, Webhook, Package, Activity, Zap, Brain, Store } from "lucide-react";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -32,7 +32,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
   const baseNavigation: NavigationItem[] = [{
     name: "Tableau de Bord",
     href: "/",
-    icon: LayoutDashboard
+    icon: Home
   }];
 
   // Si admin en mode "Vue Client", afficher le menu client complet
@@ -40,7 +40,7 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
     return [{
       name: "Tableau de Bord",
       href: "/",
-      icon: LayoutDashboard
+      icon: Home
     }, {
       name: "Mes Commandes",
       href: "/client/commandes",
@@ -112,10 +112,6 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
   }
   if (role === "admin") {
     return [...baseNavigation, {
-      name: "OMS Dashboard",
-      href: "/oms-dashboard",
-      icon: Zap
-    }, {
       name: "Commandes",
       icon: ClipboardList,
       children: [{
@@ -216,10 +212,6 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/gestionnaire/rapports",
         icon: FolderTree
       }]
-    }, {
-      name: "Services Logistiques",
-      href: "/administratif/services",
-      icon: Building2
     }, {
       name: "Intégrations",
       icon: Plug,

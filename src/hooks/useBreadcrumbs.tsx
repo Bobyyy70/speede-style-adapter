@@ -27,7 +27,6 @@ const routeLabels: Record<string, string> = {
   "/gestion-donnees/import-export": "Import/Export",
   "/administratif": "Administratif",
   "/administratif/facturation": "Facturation",
-  "/administratif/services": "Services Logistiques",
   "/parametres": "Paramètres",
   "/parametres/utilisateurs": "Utilisateurs",
   "/parametres/clients": "Clients",
