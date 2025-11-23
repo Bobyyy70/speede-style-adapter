@@ -232,16 +232,16 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/integrations/connecteurs",
         icon: Cable
       }, {
-        name: "Webhook Temps Réel",
-        href: "/integrations/sendcloud-webhook",
-        icon: Webhook
-      }, {
         name: "SendCloud Sync",
         href: "/integrations/sendcloud-sync",
         icon: RefreshCw
+      }, {
+        name: "Import/Export",
+        href: "/gestion-donnees/import-export",
+        icon: ArrowDownUp
       }]
     }, {
-      name: "OMS Avancé",
+      name: "Analytics & IA",
       icon: Brain,
       children: [{
         name: "Orchestration Intelligente",
@@ -255,22 +255,6 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Omnicanal Click & Collect",
         href: "/omnicanal-click-collect",
         icon: Store
-      }]
-    }, {
-      name: "Gestion Données",
-      icon: FolderTree,
-      children: [{
-        name: "Import/Export",
-        href: "/gestion-donnees/import-export",
-        icon: ArrowDownUp
-      }]
-    }, {
-      name: "Administration",
-      icon: Settings,
-      children: [{
-        name: "Gestion Transitions",
-        href: "/admin/transitions",
-        icon: GitBranch
       }]
     }, {
       name: "Paramètres",
@@ -295,6 +279,10 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         name: "Règles Expéditeur",
         href: "/parametres/regles-expediteur",
         icon: Settings
+      }, {
+        name: "Gestion Transitions",
+        href: "/admin/transitions",
+        icon: GitBranch
       }, {
         name: "Mon Dashboard",
         href: "/parametres/mon-dashboard",
