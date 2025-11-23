@@ -536,14 +536,14 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
         href: "/parametres",
         icon: Settings
       }],
-      analytics: [], // Fusionné avec dashboard
-      notifications: [], // Intégré dans paramètres
+      analytics: [],
+      // Fusionné avec dashboard
+      notifications: [] // Intégré dans paramètres
     };
 
     // Rendu dynamique basé sur tabsAccess
     const clientNavigation: NavigationItem[] = [];
     const seenNames = new Set<string>();
-
     tabsAccess.forEach(tab => {
       const items = clientTabsMapping[tab] || [];
       items.forEach(item => {
@@ -555,53 +555,45 @@ const getNavigationForRole = (role: string | null, viewingAsClient: boolean = fa
     });
 
     // Toujours ajouter Produits, Attendu de Réception, Mouvements, Intégrations (tabs fixes)
-    const fixedItems: NavigationItem[] = [
-      {
-        name: "Produits",
-        href: "/client/produits",
-        icon: Boxes
-      },
-      {
-        name: "Attendu de Réception",
-        href: "/client/reception",
-        icon: PackageOpen
-      },
-      {
-        name: "Mouvements",
-        href: "/client/mouvements",
-        icon: ArrowRightLeft
-      },
-      {
-        name: "Intégrations",
-        icon: Plug,
-        children: [{
-          name: "Transporteurs",
-          href: "/integrations/transporteurs",
-          icon: ShipWheel
-        }, {
-          name: "Connecteurs",
-          href: "/integrations/connecteurs",
-          icon: Cable
-        }]
-      }
-    ];
-
+    const fixedItems: NavigationItem[] = [{
+      name: "Produits",
+      href: "/client/produits",
+      icon: Boxes
+    }, {
+      name: "Attendu de Réception",
+      href: "/client/reception",
+      icon: PackageOpen
+    }, {
+      name: "Mouvements",
+      href: "/client/mouvements",
+      icon: ArrowRightLeft
+    }, {
+      name: "Intégrations",
+      icon: Plug,
+      children: [{
+        name: "Transporteurs",
+        href: "/integrations/transporteurs",
+        icon: ShipWheel
+      }, {
+        name: "Connecteurs",
+        href: "/integrations/connecteurs",
+        icon: Cable
+      }]
+    }];
     fixedItems.forEach(item => {
       if (!seenNames.has(item.name)) {
         seenNames.add(item.name);
         clientNavigation.push(item);
       }
     });
-
     console.log('Affichage des onglets :', Array.from(seenNames).join(', '));
     console.log('Auth corrigée, 8 onglets affichés pour tous les clients');
-    
+
     // Fallback: si aucun onglet n'a été ajouté, afficher au moins les onglets fixes de base
     if (clientNavigation.length === 0) {
       console.warn('Aucun onglet trouvé dans tabs_access, utilisation des onglets par défaut');
       return baseNavigation;
     }
-    
     return clientNavigation;
   }
   return baseNavigation;
@@ -640,10 +632,7 @@ export function DashboardLayout({
 
   // Corrected logic: viewingAsClient should only be true if explicitly in URL AND user is admin/gestionnaire
   const viewingClientId = getViewingClientId();
-  const isActuallyViewingAsClient = Boolean(
-    viewingClientId && 
-    (userRole === 'admin' || userRole === 'gestionnaire')
-  );
+  const isActuallyViewingAsClient = Boolean(viewingClientId && (userRole === 'admin' || userRole === 'gestionnaire'));
 
   // Generate navigation based on actual viewing mode
   const navigation = getNavigationForRole(userRole, isActuallyViewingAsClient, tabsAccess);
@@ -718,7 +707,6 @@ export function DashboardLayout({
         return "Utilisateur";
     }
   };
-
   const switchToClient = (clientId: string) => {
     localStorage.setItem("viewingAsClient", clientId);
     console.log('[DashboardLayout] Switching to client view:', clientId);
@@ -726,14 +714,12 @@ export function DashboardLayout({
     navigate(newUrl);
     window.location.reload();
   };
-
   const exitClientView = () => {
     localStorage.removeItem("viewingAsClient");
     console.log('[DashboardLayout] Exiting client view');
     navigate(location.pathname);
     window.location.reload();
   };
-
   const handleRefreshPermissions = async () => {
     console.log('[DashboardLayout] Refresh permissions clicked');
     await refreshUserRole();
@@ -792,7 +778,7 @@ export function DashboardLayout({
                 setTimeout(() => navigate(targetHref), 300);
               }
             }} className={cn("flex items-center rounded-lg text-sm font-medium transition-all duration-200 h-11", sidebarOpen ? "px-4 gap-3 justify-start border-l-4" : "px-2 gap-0 justify-center border-l-[5px]", location.pathname === item.href ? "bg-primary text-primary-foreground shadow-lg border-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground hover:border-primary/50 border-transparent")}>
-                    <item.icon className="w-6 h-6 flex-shrink-0" />
+                    
                     {sidebarOpen && <span>{item.name}</span>}
                   </Link>}
               </div>;
@@ -856,15 +842,13 @@ export function DashboardLayout({
                             {client.nom_entreprise}
                           </DropdownMenuItem>)}
                         
-                        {isActuallyViewingAsClient && (
-                          <>
+                        {isActuallyViewingAsClient && <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={exitClientView}>
                               <X className="mr-2 h-4 w-4" />
                               Sortir de la vue client
                             </DropdownMenuItem>
-                          </>
-                        )}
+                          </>}
                       </DropdownMenuContent>
                     </DropdownMenu>}
                 </div>}
