@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
-import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Reception from "./pages/Reception";
 import Mouvements from "./pages/Mouvements";
@@ -52,7 +51,7 @@ import TrackingPortail from "./pages/public/TrackingPortail";
 import RetoursPortail from "./pages/public/RetoursPortail";
 import ReglesExpediteur from "./pages/ReglesExpediteur";
 import ReparationCommandes from "./pages/ReparationCommandes";
-import MonDashboard from "./pages/MonDashboard";
+import DashboardPersonnalise from "./pages/DashboardPersonnalise";
 import DashboardAnalytique from "./pages/DashboardAnalytique";
 import GestionTransitions from "./pages/admin/GestionTransitions";
 import AssignClientToUser from "./pages/admin/AssignClientToUser";
@@ -76,7 +75,6 @@ import ApprentissageContinu from "./pages/analytics/ApprentissageContinu";
 import OptimisationTransport from "./pages/OptimisationTransport";
 import OnboardingWizard from "./pages/onboarding/OnboardingWizard";
 import QuickStartMarketplace from "./pages/onboarding/QuickStartMarketplace";
-import OMSDashboard from "./pages/OMSDashboard";
 import OrchestrationIntelligente from "./pages/OrchestrationIntelligente";
 import PortailClient from "./pages/client/PortailClient";
 import AnalyticsPredictifs from "./pages/AnalyticsPredictifs";
@@ -120,7 +118,7 @@ const App = () => (
               path="/"
               element={
                 <ProtectedRoute>
-                  <Index />
+                  <DashboardPersonnalise />
                 </ProtectedRoute>
               }
             />
@@ -331,9 +329,7 @@ const App = () => (
             <Route
               path="/parametres/mon-dashboard"
               element={
-                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'operateur', 'client']}>
-                  <MonDashboard />
-                </ProtectedRoute>
+                <Navigate to="/" replace />
               }
             />
             
@@ -421,16 +417,6 @@ const App = () => (
               }
             />
             
-            {/* OMS Dashboard */}
-            <Route
-              path="/oms-dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'gestionnaire', 'client']}>
-                  <OMSDashboard />
-                </ProtectedRoute>
-              }
-            />
-
             {/* Orchestration Intelligente */}
             <Route
               path="/orchestration-intelligente"
